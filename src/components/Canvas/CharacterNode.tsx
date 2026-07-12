@@ -13,6 +13,7 @@ interface CharacterNodeProps {
   draggable: boolean;
   isConnectSource: boolean;
   onSelect: () => void;
+  onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
@@ -77,6 +78,7 @@ export function CharacterNode({
   draggable,
   isConnectSource,
   onSelect,
+  onDragMove,
   onDragEnd,
   onConnectHandleDown,
 }: CharacterNodeProps) {
@@ -100,6 +102,9 @@ export function CharacterNode({
       onTap={(e) => {
         e.cancelBubble = true;
         onSelect();
+      }}
+      onDragMove={(e) => {
+        onDragMove({ x: e.target.x(), y: e.target.y() });
       }}
       onDragEnd={(e) => {
         onDragEnd({ x: e.target.x(), y: e.target.y() });

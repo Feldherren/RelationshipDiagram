@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Arrow, Circle, Group, Rect, Text } from "react-konva";
+import { Arrow, Circle, Group } from "react-konva";
 import type Konva from "konva";
-import type { Diagram, Line } from "../../models/types";
+import type { Diagram, Line, Point } from "../../models/types";
 import { rgbToCss } from "../../models/types";
 import {
-  bendFromWorldPoint,
+  bendDeltaFromDrag,
   getLineAnchors,
+  resolveLineBend,
   routeLine,
 } from "../../utils/lineRouting";
 import { useDiagramStore } from "../../store/diagramStore";
+import { PillLabel } from "./PillLabel";
 
 interface LineEdgeProps {
   line: Line;
@@ -16,6 +18,13 @@ interface LineEdgeProps {
   selected: boolean;
   onSelect: () => void;
   onBendChange: (bend: number) => void;
+}
+
+interface BendDragStart {
+  bend: number;
+  world: Point;
+  fromCenter: Point;
+  toCenter: Point;
 }
 
 export function LineEdge({
@@ -28,17 +37,13 @@ export function LineEdge({
   const routed = routeLine(line, diagram);
   const color = rgbToCss(line.color);
   const dash = line.style === "dotted" ? [8, 6] : undefined;
-  const labelHeight = 20;
-  const labelWidth = line.label
-    ? Math.max(line.label.length * 7, 24)
-    : 0;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const handleRadius = 7 / viewportScale;
   const [bendDragging, setBendDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const lineIdRef = useRef(line.id);
-  const dragMoved = useRef(false);
+  const dragStartRef = useRef<BendDragStart | null>(null);
 
   useEffect(() => {
     lineIdRef.current = line.id;
@@ -49,29 +54,27 @@ export function LineEdge({
 
     const onMove = (e: MouseEvent) => {
       const stage = stageRef.current;
-      if (!stage) return;
+      const dragStart = dragStartRef.current;
+      if (!stage || !dragStart) return;
+
       const rect = stage.container().getBoundingClientRect();
       const world = screenToWorld({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });
-      dragMoved.current = true;
-      const state = useDiagramStore.getState();
-      const currentLine = state.lines.find((l) => l.id === lineIdRef.current);
-      if (!currentLine) return;
-      const currentDiagram = {
-        schemaVersion: 1 as const,
-        characters: state.characters,
-        lines: state.lines,
-        groups: state.groups,
-      };
-      const { start, end } = getLineAnchors(currentLine, currentDiagram);
-      onBendChange(bendFromWorldPoint(start, end, world));
+
+      const delta = bendDeltaFromDrag(
+        dragStart.fromCenter,
+        dragStart.toCenter,
+        dragStart.world,
+        world,
+      );
+      onBendChange(dragStart.bend + delta);
     };
 
     const onUp = () => {
       setBendDragging(false);
-      dragMoved.current = false;
+      dragStartRef.current = null;
     };
 
     window.addEventListener("mousemove", onMove);
@@ -82,23 +85,21 @@ export function LineEdge({
     };
   }, [bendDragging, onBendChange, screenToWorld]);
 
-  const beginBendDrag = (
-    e: Konva.KonvaEventObject<MouseEvent>,
-    applyImmediately: boolean,
-  ) => {
+  const beginBendDrag = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true;
     stageRef.current = e.target.getStage() ?? null;
-    dragMoved.current = false;
-    setBendDragging(true);
-    onSelect();
-
-    if (!applyImmediately) return;
-
     const pointer = stageRef.current?.getPointerPosition();
     if (!pointer) return;
-    const world = screenToWorld(pointer);
+
     const { start, end } = getLineAnchors(line, diagram);
-    onBendChange(bendFromWorldPoint(start, end, world));
+    dragStartRef.current = {
+      bend: resolveLineBend(line),
+      world: screenToWorld(pointer),
+      fromCenter: start,
+      toCenter: end,
+    };
+    setBendDragging(true);
+    onSelect();
   };
 
   return (
@@ -126,38 +127,20 @@ export function LineEdge({
         }}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return;
-          beginBendDrag(e, false);
+          beginBendDrag(e);
         }}
       />
       {line.label && (
-        <Group
+        <PillLabel
+          text={line.label}
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
-          listening={false}
-        >
-          <Rect
-            x={-labelWidth / 2}
-            y={-labelHeight / 2}
-            width={labelWidth}
-            height={labelHeight}
-            fill="white"
-            opacity={0.85}
-            cornerRadius={4}
-            listening={false}
-          />
-          <Text
-            text={line.label}
-            fontSize={12}
-            fill="#333"
-            x={-labelWidth / 2}
-            y={-labelHeight / 2}
-            width={labelWidth}
-            height={labelHeight}
-            align="center"
-            verticalAlign="middle"
-            listening={false}
-          />
-        </Group>
+          fontSize={12}
+          fontStyle="bold"
+          textFill={color}
+          selected={selected}
+          selectedStroke="#c62828"
+        />
       )}
       {selected && (
         <Circle
@@ -167,7 +150,7 @@ export function LineEdge({
           fill="#ffffff"
           stroke="#4a90d9"
           strokeWidth={2 / viewportScale}
-          onMouseDown={(e) => beginBendDrag(e, true)}
+          onMouseDown={beginBendDrag}
         />
       )}
     </Group>

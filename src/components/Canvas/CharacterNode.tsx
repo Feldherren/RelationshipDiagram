@@ -6,6 +6,7 @@ import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import { getConnectHandleOffset } from "../../utils/connection";
 import { useDiagramStore } from "../../store/diagramStore";
+import { getPillLabelHeight, PillLabel } from "./PillLabel";
 
 interface CharacterNodeProps {
   character: Character;
@@ -85,6 +86,10 @@ export function CharacterNode({
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
+  const nameFontSize = 13;
+  const subtitleFontSize = 11;
+  const namePillHeight = getPillLabelHeight(nameFontSize);
+  const labelGap = 4;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const handleOffset = getConnectHandleOffset(size);
   const handleRadius = 10 / viewportScale;
@@ -150,28 +155,26 @@ export function CharacterNode({
         />
       )}
       {character.name && (
-        <Text
+        <PillLabel
           text={character.name}
           y={subtitleOffset}
-          fontSize={13}
+          anchor="top"
+          fontSize={nameFontSize}
           fontStyle="bold"
-          fill="#222"
-          align="center"
-          width={size * 3}
-          offsetX={(size * 3) / 2}
-          listening={false}
+          selected={selected}
         />
       )}
       {character.subtitle && (
-        <Text
+        <PillLabel
           text={character.subtitle}
-          y={subtitleOffset + (character.name ? 16 : 0)}
-          fontSize={11}
-          fill="#666"
-          align="center"
-          width={size * 3}
-          offsetX={(size * 3) / 2}
-          listening={false}
+          y={
+            subtitleOffset +
+            (character.name ? namePillHeight + labelGap : 0)
+          }
+          anchor="top"
+          fontSize={subtitleFontSize}
+          textFill="#5c5c5c"
+          selected={selected}
         />
       )}
       <Group

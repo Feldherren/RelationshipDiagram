@@ -3,6 +3,7 @@ import type { Group as GroupType } from "../../models/types";
 import type { Character } from "../../models/types";
 import { COLLAPSED_GROUP_SIZE, rgbToCss } from "../../models/types";
 import { rgbaWithAlpha, getGroupMemberBounds } from "../../utils/geometry";
+import { getPillLabelHeight, PillLabel } from "./PillLabel";
 
 interface GroupContainerProps {
   group: GroupType;
@@ -60,16 +61,12 @@ export function GroupContainer({
           strokeWidth={3}
           fill={rgbaWithAlpha(group.borderColor, 0.15)}
         />
-        <Text
+        <PillLabel
           text={group.name}
+          y={-(size + getPillLabelHeight(12) / 2 + 6)}
           fontSize={12}
           fontStyle="bold"
-          fill="#222"
-          align="center"
-          width={size * 2.5}
-          offsetX={(size * 2.5) / 2}
-          y={-8}
-          listening={false}
+          selected={selected}
         />
         <Text
           text={`${group.memberCharacterIds.length}`}
@@ -129,14 +126,13 @@ export function GroupContainer({
         cornerRadius={[12, 12, 0, 0]}
         listening={false}
       />
-      <Text
-        x={bounds.x + 12}
-        y={bounds.y + 6}
+      <PillLabel
         text={group.name}
-        fontSize={13}
+        x={bounds.x + bounds.width / 2}
+        y={bounds.y + 14}
+        fontSize={12}
         fontStyle="bold"
-        fill="#333"
-        listening={false}
+        selected={selected}
       />
     </Group>
   );

@@ -50,21 +50,20 @@ export function getControlPoint(
   return { x: mid.x + perp.x * bend, y: mid.y + perp.y * bend };
 }
 
-export function bendFromWorldPoint(
+export function bendDeltaFromDrag(
   fromCenter: Point,
   toCenter: Point,
-  point: Point,
+  fromWorld: Point,
+  toWorld: Point,
 ): number {
-  const mid = {
-    x: (fromCenter.x + toCenter.x) / 2,
-    y: (fromCenter.y + toCenter.y) / 2,
-  };
   const dir = normalize({
     x: toCenter.x - fromCenter.x,
     y: toCenter.y - fromCenter.y,
   });
   const perp = perpendicular(dir);
-  return (point.x - mid.x) * perp.x + (point.y - mid.y) * perp.y;
+  return (
+    (toWorld.x - fromWorld.x) * perp.x + (toWorld.y - fromWorld.y) * perp.y
+  );
 }
 
 function quadraticPointAt(
@@ -291,7 +290,7 @@ export function routeLine(line: Line, diagram: Diagram): RoutedLine {
   return {
     points: flattenPoints(visiblePath),
     labelPoint: midpointAlongPath(visiblePath),
-    bendHandlePoint: quadraticPointAt(fromCenter, control, toCenter, 0.5),
+    bendHandlePoint: control,
   };
 }
 

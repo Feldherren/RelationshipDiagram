@@ -101,6 +101,29 @@ export function rgbToCss(color: RGB): string {
   return `rgb(${color.r}, ${color.g}, ${color.b})`;
 }
 
+export function rgbToHex(color: RGB): string {
+  return (
+    "#" +
+    [color.r, color.g, color.b]
+      .map((channel) => channel.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+export function parseHexColor(hexValue: string): RGB | null {
+  const parsed = hexValue.replace(/^#/, "").trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(parsed)) return null;
+  const r = parseInt(parsed.slice(0, 2), 16);
+  const g = parseInt(parsed.slice(2, 4), 16);
+  const b = parseInt(parsed.slice(4, 6), 16);
+  if ([r, g, b].some((channel) => Number.isNaN(channel))) return null;
+  return { r, g, b };
+}
+
+export function colorsEqual(a: RGB, b: RGB): boolean {
+  return a.r === b.r && a.g === b.g && a.b === b.b;
+}
+
 export function defaultRgb(): RGB {
   return { r: 80, g: 120, b: 200 };
 }

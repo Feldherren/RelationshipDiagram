@@ -15,6 +15,10 @@ export function LineEdge({ line, diagram, selected, onSelect }: LineEdgeProps) {
   const routed = routeLine(line, diagram);
   const color = rgbToCss(line.color);
   const dash = line.style === "dotted" ? [8, 6] : undefined;
+  const labelHeight = 20;
+  const labelWidth = line.label
+    ? Math.max(line.label.length * 7, 24)
+    : 0;
 
   return (
     <Group
@@ -42,12 +46,16 @@ export function LineEdge({ line, diagram, selected, onSelect }: LineEdgeProps) {
         lineJoin="round"
       />
       {line.label && (
-        <Group x={routed.labelPoint.x} y={routed.labelPoint.y}>
+        <Group
+          x={routed.labelPoint.x}
+          y={routed.labelPoint.y}
+          listening={false}
+        >
           <Rect
-            x={-line.label.length * 3.5}
-            y={-10}
-            width={line.label.length * 7}
-            height={20}
+            x={-labelWidth / 2}
+            y={-labelHeight / 2}
+            width={labelWidth}
+            height={labelHeight}
             fill="white"
             opacity={0.85}
             cornerRadius={4}
@@ -57,9 +65,12 @@ export function LineEdge({ line, diagram, selected, onSelect }: LineEdgeProps) {
             text={line.label}
             fontSize={12}
             fill="#333"
+            x={-labelWidth / 2}
+            y={-labelHeight / 2}
+            width={labelWidth}
+            height={labelHeight}
             align="center"
-            offsetX={line.label.length * 3.5}
-            width={line.label.length * 7}
+            verticalAlign="middle"
             listening={false}
           />
         </Group>

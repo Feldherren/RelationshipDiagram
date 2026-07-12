@@ -107,10 +107,38 @@ function flattenPoints(points: Point[]): number[] {
   return points.flatMap((p) => [p.x, p.y]);
 }
 
-function midpointOfPoints(points: Point[]): Point {
+function midpointAlongPath(points: Point[]): Point {
   if (points.length === 0) return { x: 0, y: 0 };
-  const midIndex = Math.floor(points.length / 2);
-  return points[midIndex];
+  if (points.length === 1) return points[0];
+
+  let total = 0;
+  const segmentLengths: number[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const len = Math.hypot(
+      points[i + 1].x - points[i].x,
+      points[i + 1].y - points[i].y,
+    );
+    segmentLengths.push(len);
+    total += len;
+  }
+
+  if (total === 0) return points[0];
+
+  const half = total / 2;
+  let traveled = 0;
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segLen = segmentLengths[i];
+    if (traveled + segLen >= half) {
+      const t = (half - traveled) / segLen;
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * t,
+        y: points[i].y + (points[i + 1].y - points[i].y) * t,
+      };
+    }
+    traveled += segLen;
+  }
+
+  return points[points.length - 1];
 }
 
 export function routeLine(line: Line, diagram: Diagram): RoutedLine {
@@ -163,6 +191,6 @@ export function routeLine(line: Line, diagram: Diagram): RoutedLine {
 
   return {
     points: flattenPoints(pathPoints),
-    labelPoint: midpointOfPoints(pathPoints),
+    labelPoint: midpointAlongPath(pathPoints),
   };
 }

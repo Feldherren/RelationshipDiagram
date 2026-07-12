@@ -138,6 +138,18 @@ export function LineEdge({
           textFill={color}
           selected={selected}
           selectedStroke="#c62828"
+          onClick={(e) => {
+            e.cancelBubble = true;
+            onSelect();
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+            onSelect();
+          }}
+          onMouseDown={(e) => {
+            if (e.evt.button !== 0) return;
+            beginBendDrag(e);
+          }}
         />
       )}
     </Group>

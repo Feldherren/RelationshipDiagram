@@ -1,4 +1,5 @@
 import { Group, Rect, Text } from "react-konva";
+import type Konva from "konva";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
   DEFAULT_DIAGRAM_FONT,
@@ -27,6 +28,9 @@ interface PillLabelProps {
   selectedStrokeWidth?: number;
   /** When "top", y is the top edge of the pill; when "center", y is the vertical center. */
   anchor?: "top" | "center";
+  onMouseDown?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onTap?: (e: Konva.KonvaEventObject<TouchEvent>) => void;
 }
 
 export function PillLabel({
@@ -45,6 +49,9 @@ export function PillLabel({
   strokeWidth = 1,
   selectedStrokeWidth = 2,
   anchor = "center",
+  onMouseDown,
+  onClick,
+  onTap,
 }: PillLabelProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontFamily = fontFamilyProp ?? diagramFontFamily;
@@ -60,9 +67,17 @@ export function PillLabel({
   const rectY = anchor === "center" ? -height / 2 : 0;
   const stroke = selected ? selectedStroke : unselectedStroke;
   const activeStrokeWidth = selected ? selectedStrokeWidth : strokeWidth;
+  const interactive = Boolean(onMouseDown || onClick || onTap);
 
   return (
-    <Group x={x} y={y} listening={false}>
+    <Group
+      x={x}
+      y={y}
+      listening={interactive}
+      onMouseDown={onMouseDown}
+      onClick={onClick}
+      onTap={onTap}
+    >
       <Rect
         x={rectX}
         y={rectY}
@@ -72,7 +87,7 @@ export function PillLabel({
         stroke={stroke}
         strokeWidth={activeStrokeWidth}
         cornerRadius={height / 2}
-        listening={false}
+        listening={interactive}
       />
       <Text
         text={text}

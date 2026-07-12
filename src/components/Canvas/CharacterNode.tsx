@@ -17,15 +17,17 @@ function ShapeOutline({
   shape,
   size,
   color,
+  fill = "#ffffff",
 }: {
   shape: Character["borderShape"];
   size: number;
   color: string;
+  fill?: string;
 }) {
   const props = {
     stroke: color,
     strokeWidth: 3,
-    fill: "#ffffff",
+    fill,
   };
 
   switch (shape) {
@@ -103,6 +105,28 @@ function clipFunc(shape: Character["borderShape"], size: number) {
   };
 }
 
+function getCoverImageLayout(
+  image: HTMLImageElement,
+  size: number,
+): { x: number; y: number; width: number; height: number } {
+  const containerSize = size * 2;
+  const imgW = image.naturalWidth || image.width;
+  const imgH = image.naturalHeight || image.height;
+  if (imgW <= 0 || imgH <= 0) {
+    return { x: -size, y: -size, width: containerSize, height: containerSize };
+  }
+
+  const scale = Math.max(containerSize / imgW, containerSize / imgH);
+  const width = imgW * scale;
+  const height = imgH * scale;
+  return {
+    x: -width / 2,
+    y: -size,
+    width,
+    height,
+  };
+}
+
 function CharacterImage({
   imageData,
   shape,
@@ -114,14 +138,15 @@ function CharacterImage({
 }) {
   const [image] = useImage(imageData, "anonymous");
   if (!image) return null;
+  const layout = getCoverImageLayout(image, size);
   return (
     <Group clipFunc={clipFunc(shape, size)}>
       <Image
         image={image}
-        x={-size}
-        y={-size}
-        width={size * 2}
-        height={size * 2}
+        x={layout.x}
+        y={layout.y}
+        width={layout.width}
+        height={layout.height}
       />
     </Group>
   );
@@ -166,7 +191,12 @@ export function CharacterNode({
           listening={false}
         />
       )}
-      <ShapeOutline shape={character.borderShape} size={size} color={color} />
+      <ShapeOutline
+        shape={character.borderShape}
+        size={size}
+        color={color}
+        fill={character.imageData ? "transparent" : "#ffffff"}
+      />
       {character.imageData ? (
         <CharacterImage
           imageData={character.imageData}

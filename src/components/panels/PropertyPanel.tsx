@@ -93,6 +93,7 @@ export function PropertyPanel() {
         <div className="field">
           <span>Image</span>
           <input
+            key={character.id}
             ref={imageInputRef}
             type="file"
             accept="image/*"

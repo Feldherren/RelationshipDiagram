@@ -93,6 +93,7 @@ export interface Point {
 }
 
 export const DEFAULT_CHARACTER_SIZE = 40;
+export const CHARACTER_BORDER_STROKE_WIDTH = 4;
 export const GROUP_PADDING = 48;
 export const GROUP_HEADER_HEIGHT = 28;
 export const COLLAPSED_GROUP_SIZE = 44;

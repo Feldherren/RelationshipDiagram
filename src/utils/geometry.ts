@@ -7,6 +7,7 @@ import type {
   RGB,
 } from "../models/types";
 import {
+  CHARACTER_BORDER_STROKE_WIDTH,
   COLLAPSED_GROUP_SIZE,
   DEFAULT_CHARACTER_SIZE,
   GROUP_HEADER_HEIGHT,
@@ -24,7 +25,7 @@ import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import { getConnectHandleOffset } from "./connection";
 
 const CONNECT_HANDLE_SCREEN_RADIUS = 10;
-const NODE_STROKE_MARGIN = 2;
+const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
 const PILL_STROKE_MARGIN = 2;
 const LABEL_EXTRA_MARGIN = 2;
 

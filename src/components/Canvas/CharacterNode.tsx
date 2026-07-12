@@ -1,7 +1,7 @@
 import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
 import type Konva from "konva";
 import type { Character } from "../../models/types";
-import { rgbToCss } from "../../models/types";
+import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import { getConnectHandleOffset } from "../../utils/connection";
@@ -40,7 +40,7 @@ function ShapeOutline({
 }) {
   const props = {
     stroke: color,
-    strokeWidth: 3,
+    strokeWidth: CHARACTER_BORDER_STROKE_WIDTH,
     fill,
   };
 

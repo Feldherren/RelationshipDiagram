@@ -286,14 +286,14 @@ body,
   position: relative;
   overflow: hidden;
   background: conic-gradient(
-    #ffb3b3,
-    #ffd9b3,
-    #fff5b3,
-    #c8f0c8,
-    #b3d9ff,
-    #c4c8ff,
-    #e0b3ff,
-    #ffb3b3
+    #f89b9b,
+    #fac595,
+    #f5e291,
+    #a6dead,
+    #96c7f6,
+    #aab0f5,
+    #cf9af5,
+    #f89b9b
   );
 }
 

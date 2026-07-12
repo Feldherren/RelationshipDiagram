@@ -15,9 +15,22 @@ export function parseDiagram(json: string): Diagram {
   return data;
 }
 
+function getDefaultDiagramFilename(diagram: Diagram): string {
+  const raw = diagram.title?.trim();
+  if (!raw) return "diagram.rdiagram";
+
+  const sanitized = raw
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!sanitized) return "diagram.rdiagram";
+
+  return `${sanitized}.rdiagram`;
+}
+
 export async function saveDiagramToFile(diagram: Diagram, filename?: string): Promise<void> {
   const content = serializeDiagram(diagram);
-  const suggestedName = filename ?? "diagram.rdiagram";
+  const suggestedName = filename ?? getDefaultDiagramFilename(diagram);
 
   if ("showSaveFilePicker" in window) {
     try {

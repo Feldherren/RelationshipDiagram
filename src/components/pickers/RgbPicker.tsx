@@ -7,13 +7,13 @@ import {
 } from "../../models/types";
 
 const PASTEL_PALETTE: { label: string; color: RGB }[] = [
-  { label: "Pastel red", color: { r: 255, g: 179, b: 179 } },
-  { label: "Pastel orange", color: { r: 255, g: 217, b: 179 } },
-  { label: "Pastel yellow", color: { r: 255, g: 245, b: 179 } },
-  { label: "Pastel green", color: { r: 200, g: 240, b: 200 } },
-  { label: "Pastel blue", color: { r: 179, g: 217, b: 255 } },
-  { label: "Pastel indigo", color: { r: 196, g: 200, b: 255 } },
-  { label: "Pastel violet", color: { r: 224, g: 179, b: 255 } },
+  { label: "Pastel red", color: { r: 248, g: 155, b: 155 } },
+  { label: "Pastel orange", color: { r: 250, g: 197, b: 149 } },
+  { label: "Pastel yellow", color: { r: 245, g: 226, b: 145 } },
+  { label: "Pastel green", color: { r: 166, g: 222, b: 173 } },
+  { label: "Pastel blue", color: { r: 150, g: 199, b: 246 } },
+  { label: "Pastel indigo", color: { r: 170, g: 176, b: 245 } },
+  { label: "Pastel violet", color: { r: 207, g: 154, b: 245 } },
 ];
 
 interface RgbPickerProps {

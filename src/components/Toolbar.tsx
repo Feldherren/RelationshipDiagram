@@ -8,8 +8,6 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onSave, onOpen, onExport, onSettings }: ToolbarProps) {
-  const showGrid = useDiagramStore((s) => s.showGrid);
-  const setShowGrid = useDiagramStore((s) => s.setShowGrid);
   const addCharacterAt = useDiagramStore((s) => s.addCharacterAt);
   const getViewportCenter = useDiagramStore((s) => s.getViewportCenter);
   const addGroupFromSelection = useDiagramStore((s) => s.addGroupFromSelection);
@@ -50,14 +48,6 @@ export function Toolbar({ onSave, onOpen, onExport, onSettings }: ToolbarProps) 
         <button type="button" onClick={onSettings}>
           Settings
         </button>
-        <label className="toolbar-checkbox">
-          <input
-            type="checkbox"
-            checked={showGrid}
-            onChange={(e) => setShowGrid(e.target.checked)}
-          />
-          Grid
-        </label>
       </div>
     </header>
   );

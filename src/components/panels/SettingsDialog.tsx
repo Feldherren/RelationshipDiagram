@@ -10,11 +10,11 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
-  const loadedFontFamilies = useDiagramStore((s) => s.loadedFontFamilies);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
+  const showGrid = useDiagramStore((s) => s.showGrid);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
+  const setShowGrid = useDiagramStore((s) => s.setShowGrid);
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
-  const loadDiagramFontFromFile = useDiagramStore((s) => s.loadDiagramFontFromFile);
 
   if (!open) return null;
 
@@ -33,28 +33,35 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           />
         </label>
 
+        <label className="field checkbox">
+          <input
+            type="checkbox"
+            checked={showGrid}
+            onChange={(e) => setShowGrid(e.target.checked)}
+          />
+          <span>Show background grid</span>
+        </label>
+
         <div className="field">
           <span>Diagram font</span>
           <FontPicker
             value={diagramFontFamily}
-            loadedFontFamilies={loadedFontFamilies}
             onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
-            onLoadFontFile={loadDiagramFontFromFile}
           />
         </div>
 
         {fontMissing && (
           <p className="hint">
             The font &ldquo;{diagramFontFamily}&rdquo; is not available on this
-            device. Choose it from installed fonts or load the font file below.
-            Diagram files only store the font name, not the font file itself.
+            device. Choose it from installed fonts above. Diagram files only
+            store the font name, not the font file itself.
           </p>
         )}
 
         {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
           <p className="hint">
-            Custom fonts rely on fonts installed on this device or loaded from a
-            file. They are not saved inside diagram files.
+            Custom fonts must be installed on this device. They are not saved
+            inside diagram files.
           </p>
         )}
 

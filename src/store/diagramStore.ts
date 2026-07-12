@@ -19,10 +19,11 @@ import {
 import { getGroupCenter, getGroupMemberBounds } from "../utils/geometry";
 import {
   DEFAULT_DIAGRAM_FONT,
+  cleanupDeprecatedFonts,
   ensureFontLoaded,
-  loadFontFromFile,
-  restoreCachedFonts,
+  isDefaultDiagramFont,
 } from "../utils/diagramFont";
+import { isDeprecatedFontFamily } from "../utils/systemFonts";
 import {
   initialBendForRouteIndex,
   nextRouteIndex,
@@ -46,7 +47,6 @@ interface DiagramState {
   stageSize: { width: number; height: number };
   diagramTitle: string;
   diagramFontFamily: string;
-  loadedFontFamilies: string[];
   fontMissing: boolean;
 
   setStageSize: (width: number, height: number) => void;
@@ -57,7 +57,6 @@ interface DiagramState {
   setExportBounds: (bounds: Bounds | null) => void;
   setDiagramTitle: (title: string) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
-  loadDiagramFontFromFile: (file: File) => Promise<void>;
   initializeFonts: () => Promise<void>;
 
   addCharacterAt: (position: { x: number; y: number }) => void;
@@ -112,7 +111,6 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   stageSize: { width: 800, height: 600 },
   diagramTitle: "",
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
-  loadedFontFamilies: [],
   fontMissing: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
@@ -132,30 +130,35 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   setDiagramTitle: (title) => set({ diagramTitle: title }),
 
   setDiagramFontFamily: async (fontFamily) => {
-    const available = await ensureFontLoaded(fontFamily);
-    set({
-      diagramFontFamily: fontFamily,
-      fontMissing: !available && fontFamily !== DEFAULT_DIAGRAM_FONT,
-    });
-  },
+    if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
+      set({
+        diagramFontFamily: DEFAULT_DIAGRAM_FONT,
+        fontMissing: false,
+      });
+      return;
+    }
 
-  loadDiagramFontFromFile: async (file) => {
-    const family = await loadFontFromFile(file);
-    const families = await restoreCachedFonts();
+    const resolvedFamily = await ensureFontLoaded(fontFamily);
     set({
-      diagramFontFamily: family,
-      loadedFontFamilies: families,
-      fontMissing: false,
+      diagramFontFamily: resolvedFamily ?? fontFamily,
+      fontMissing: !resolvedFamily,
     });
   },
 
   initializeFonts: async () => {
-    const families = await restoreCachedFonts();
-    const { diagramFontFamily } = get();
-    const available = await ensureFontLoaded(diagramFontFamily);
+    await cleanupDeprecatedFonts();
+
+    let { diagramFontFamily } = get();
+    if (isDeprecatedFontFamily(diagramFontFamily)) {
+      diagramFontFamily = DEFAULT_DIAGRAM_FONT;
+      set({ diagramFontFamily });
+    }
+
+    const resolvedFamily = await ensureFontLoaded(diagramFontFamily);
     set({
-      loadedFontFamilies: families,
-      fontMissing: !available && diagramFontFamily !== DEFAULT_DIAGRAM_FONT,
+      diagramFontFamily: resolvedFamily ?? diagramFontFamily,
+      fontMissing:
+        !resolvedFamily && !isDefaultDiagramFont(diagramFontFamily),
     });
   },
 
@@ -415,16 +418,22 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   loadDiagram: async (diagram) => {
-    const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
-    const available = await ensureFontLoaded(fontFamily);
+    await cleanupDeprecatedFonts();
+
+    let fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+    if (isDeprecatedFontFamily(fontFamily)) {
+      fontFamily = DEFAULT_DIAGRAM_FONT;
+    }
+
+    const resolvedFamily = await ensureFontLoaded(fontFamily);
     set({
       characters: diagram.characters,
       lines: diagram.lines,
       groups: diagram.groups,
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       diagramTitle: diagram.title ?? "",
-      diagramFontFamily: fontFamily,
-      fontMissing: !available && fontFamily !== DEFAULT_DIAGRAM_FONT,
+      diagramFontFamily: resolvedFamily ?? fontFamily,
+      fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       selection: null,
       connectFrom: null,
       connectDrag: null,

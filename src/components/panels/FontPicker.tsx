@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
-import { DEFAULT_DIAGRAM_FONT, isDefaultDiagramFont } from "../../utils/diagramFont";
+import {
+  DEFAULT_DIAGRAM_FONT,
+  isDefaultDiagramFont,
+} from "../../utils/diagramFont";
 import {
   FONT_PREVIEW_TEXT,
+  clearLocalFontCache,
   formatUiFontFamily,
+  isDeprecatedFontFamily,
   isSystemFontAccessSupported,
   queryInstalledFontFamilies,
   type SystemFontOption,
@@ -10,17 +15,10 @@ import {
 
 interface FontPickerProps {
   value: string;
-  loadedFontFamilies: string[];
   onChange: (fontFamily: string) => void;
-  onLoadFontFile: (file: File) => Promise<void>;
 }
 
-export function FontPicker({
-  value,
-  loadedFontFamilies,
-  onChange,
-  onLoadFontFile,
-}: FontPickerProps) {
+export function FontPicker({ value, onChange }: FontPickerProps) {
   const [query, setQuery] = useState("");
   const [systemFonts, setSystemFonts] = useState<SystemFontOption[]>([]);
   const [systemFontsLoaded, setSystemFontsLoaded] = useState(false);
@@ -29,24 +27,14 @@ export function FontPicker({
 
   const systemFontAccess = isSystemFontAccessSupported();
 
-  const uploadedFonts = useMemo(
-    () =>
-      loadedFontFamilies.filter(
-        (family) =>
-          !isDefaultDiagramFont(family) &&
-          !systemFonts.some((font) => font.family === family),
-      ),
-    [loadedFontFamilies, systemFonts],
-  );
-
   const extraFonts = useMemo(() => {
+    if (isDefaultDiagramFont(value) || isDeprecatedFontFamily(value)) return [];
     const known = new Set([
       DEFAULT_DIAGRAM_FONT,
       ...systemFonts.map((font) => font.family),
-      ...uploadedFonts,
     ]);
-    return !isDefaultDiagramFont(value) && !known.has(value) ? [value] : [];
-  }, [systemFonts, uploadedFonts, value]);
+    return known.has(value) ? [] : [value];
+  }, [systemFonts, value]);
 
   const filteredSystemFonts = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -56,19 +44,12 @@ export function FontPicker({
     );
   }, [query, systemFonts]);
 
-  const filteredUploadedFonts = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return uploadedFonts;
-    return uploadedFonts.filter((family) =>
-      family.toLowerCase().includes(needle),
-    );
-  }, [query, uploadedFonts]);
-
   const loadSystemFonts = async () => {
     if (!systemFontAccess) return;
     setLoadingSystemFonts(true);
     setSystemFontsError(null);
     try {
+      clearLocalFontCache();
       const fonts = await queryInstalledFontFamilies();
       setSystemFonts(fonts);
       setSystemFontsLoaded(true);
@@ -81,16 +62,6 @@ export function FontPicker({
       }
     } finally {
       setLoadingSystemFonts(false);
-    }
-  };
-
-  const handleFontFile = async (file: File | null) => {
-    if (!file) return;
-    try {
-      await onLoadFontFile(file);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load font file.");
     }
   };
 
@@ -136,10 +107,6 @@ export function FontPicker({
           renderOption(family, family, "Saved in diagram"),
         )}
 
-        {filteredUploadedFonts.map((family) =>
-          renderOption(family, family, "Loaded from file"),
-        )}
-
         {systemFontAccess && !systemFontsLoaded && (
           <div className="font-picker-empty">
             <p className="hint">
@@ -167,22 +134,10 @@ export function FontPicker({
 
       {!systemFontAccess && (
         <p className="hint">
-          This browser cannot list installed fonts. Load a font file below, or use
-          Chrome or Edge on desktop to browse installed fonts.
+          This browser cannot list installed fonts. Use Chrome or Edge on desktop
+          to choose fonts installed on your system.
         </p>
       )}
-
-      <label className="field">
-        <span>Load font file</span>
-        <input
-          type="file"
-          accept=".ttf,.otf,.woff,.woff2,font/*"
-          onChange={(e) => {
-            void handleFontFile(e.target.files?.[0] ?? null);
-            e.target.value = "";
-          }}
-        />
-      </label>
     </div>
   );
 }

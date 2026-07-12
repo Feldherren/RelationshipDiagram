@@ -1,0 +1,154 @@
+import { useEffect, useState } from "react";
+import type Konva from "konva";
+import { useDiagramStore } from "../../store/diagramStore";
+import {
+  exportStageToPng,
+  formatBytes,
+  getAutoExportBounds,
+} from "../../utils/export";
+import { downloadDataUrl, estimateDataUrlSize } from "../../utils/persistence";
+import type { Bounds } from "../../models/types";
+
+interface ExportDialogProps {
+  open: boolean;
+  stageRef: React.RefObject<Konva.Stage | null>;
+  onClose: () => void;
+}
+
+export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
+  const characters = useDiagramStore((s) => s.characters);
+  const lines = useDiagramStore((s) => s.lines);
+  const groups = useDiagramStore((s) => s.groups);
+  const diagram = { schemaVersion: 1 as const, characters, lines, groups };
+  const exportBounds = useDiagramStore((s) => s.exportBounds);
+  const setToolMode = useDiagramStore((s) => s.setToolMode);
+  const setExportBounds = useDiagramStore((s) => s.setExportBounds);
+
+  const [mode, setMode] = useState<"auto" | "custom">("auto");
+  const [pixelRatio, setPixelRatio] = useState(1);
+  const [padding, setPadding] = useState(32);
+  const [previewSize, setPreviewSize] = useState<number | null>(null);
+
+  const autoBounds = getAutoExportBounds(diagram, padding);
+  const activeBounds: Bounds | null =
+    mode === "custom" ? exportBounds : autoBounds;
+
+  useEffect(() => {
+    if (!open) return;
+    const stage = stageRef.current;
+    if (!stage || !activeBounds) {
+      setPreviewSize(null);
+      return;
+    }
+    const dataUrl = exportStageToPng(stage, {
+      bounds: activeBounds,
+      pixelRatio,
+    });
+    estimateDataUrlSize(dataUrl).then(setPreviewSize);
+  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds, padding, diagram]);
+
+  if (!open) return null;
+
+  const width = activeBounds ? Math.round(activeBounds.width * pixelRatio) : 0;
+  const height = activeBounds
+    ? Math.round(activeBounds.height * pixelRatio)
+    : 0;
+
+  const handleExport = () => {
+    const stage = stageRef.current;
+    if (!stage || !activeBounds) return;
+    const dataUrl = exportStageToPng(stage, { bounds: activeBounds, pixelRatio });
+    downloadDataUrl(dataUrl, "relationship-diagram.png");
+    onClose();
+  };
+
+  const startCustomBounds = () => {
+    setMode("custom");
+    setExportBounds(null);
+    setToolMode("exportBounds");
+    onClose();
+  };
+
+  return (
+    <div className="dialog-overlay" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <h2>Export diagram</h2>
+
+        <label className="field">
+          <span>Bounds</span>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "auto" | "custom")}
+          >
+            <option value="auto">Auto (content only)</option>
+            <option value="custom">Custom region</option>
+          </select>
+        </label>
+
+        {mode === "auto" && (
+          <label className="field">
+            <span>Padding (px)</span>
+            <input
+              type="number"
+              min={0}
+              max={200}
+              value={padding}
+              onChange={(e) => setPadding(Number(e.target.value))}
+            />
+          </label>
+        )}
+
+        {mode === "custom" && !exportBounds && (
+          <p className="hint">
+            No custom region set. Click below to draw a region on the canvas.
+          </p>
+        )}
+
+        {mode === "custom" && (
+          <button type="button" className="btn-secondary" onClick={startCustomBounds}>
+            Draw export region on canvas
+          </button>
+        )}
+
+        <label className="field">
+          <span>Resolution</span>
+          <select
+            value={pixelRatio}
+            onChange={(e) => setPixelRatio(Number(e.target.value))}
+          >
+            <option value={1}>100% (1x)</option>
+            <option value={2}>200% (2x)</option>
+          </select>
+        </label>
+
+        {activeBounds ? (
+          <div className="export-preview">
+            <p>
+              <strong>Dimensions:</strong> {width} × {height} px
+            </p>
+            <p>
+              <strong>Estimated size:</strong>{" "}
+              {previewSize !== null ? formatBytes(previewSize) : "…"}
+            </p>
+          </div>
+        ) : (
+          <p className="hint">Add content to the diagram before exporting.</p>
+        )}
+
+        <div className="dialog-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!activeBounds}
+            onClick={handleExport}
+          >
+            Download PNG
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

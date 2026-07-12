@@ -4,6 +4,8 @@ import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
 import type { LineStyle } from "../../models/types";
 import { getCharacterById, getGroupById } from "../../utils/geometry";
+import { DEFAULT_IMAGE_FOCUS } from "../../utils/imageLayout";
+import { ImageFocusControls } from "./ImageFocusControls";
 
 const LINE_STYLES: { value: LineStyle; label: string }[] = [
   { value: "straight", label: "Straight" },
@@ -46,13 +48,17 @@ export function PropertyPanel() {
       reader.onload = () => {
         updateCharacter(character.id, {
           imageData: reader.result as string,
+          imageFocus: DEFAULT_IMAGE_FOCUS,
         });
       };
       reader.readAsDataURL(file);
     };
 
     const handleRemoveImage = () => {
-      updateCharacter(character.id, { imageData: undefined });
+      updateCharacter(character.id, {
+        imageData: undefined,
+        imageFocus: undefined,
+      });
       if (imageInputRef.current) {
         imageInputRef.current.value = "";
       }
@@ -102,6 +108,7 @@ export function PropertyPanel() {
             </button>
           )}
         </div>
+        {character.imageData && <ImageFocusControls character={character} />}
         <ShapePicker
           value={character.borderShape}
           onChange={(borderShape) =>

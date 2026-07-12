@@ -20,6 +20,7 @@ export interface Character {
   name: string;
   subtitle?: string;
   imageData?: string;
+  imageFocus?: { x: number; y: number };
   borderShape: BorderShape;
   borderColor: RGB;
   size: number;

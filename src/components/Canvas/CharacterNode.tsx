@@ -1,9 +1,8 @@
-import { Group, Image, Rect, RegularPolygon, Circle, Text } from "react-konva";
-import type { Context } from "konva/lib/Context";
-import useImage from "use-image";
+import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
 import type { Character } from "../../models/types";
 import { rgbToCss } from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
+import { CharacterImage } from "./CharacterImage";
 
 interface CharacterNodeProps {
   character: Character;
@@ -67,91 +66,6 @@ function ShapeOutline({
   }
 }
 
-function clipFunc(shape: Character["borderShape"], size: number) {
-  return (ctx: Context) => {
-    const canvas = ctx._context;
-    canvas.beginPath();
-    switch (shape) {
-      case "square":
-        canvas.rect(-size, -size, size * 2, size * 2);
-        break;
-      case "pentagon": {
-        const sides = 5;
-        for (let i = 0; i < sides; i++) {
-          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / sides;
-          const x = Math.cos(angle) * size;
-          const y = Math.sin(angle) * size;
-          if (i === 0) canvas.moveTo(x, y);
-          else canvas.lineTo(x, y);
-        }
-        canvas.closePath();
-        break;
-      }
-      case "hexagon": {
-        const sides = 6;
-        for (let i = 0; i < sides; i++) {
-          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / sides;
-          const x = Math.cos(angle) * size;
-          const y = Math.sin(angle) * size;
-          if (i === 0) canvas.moveTo(x, y);
-          else canvas.lineTo(x, y);
-        }
-        canvas.closePath();
-        break;
-      }
-      default:
-        canvas.arc(0, 0, size, 0, Math.PI * 2);
-    }
-  };
-}
-
-function getCoverImageLayout(
-  image: HTMLImageElement,
-  size: number,
-): { x: number; y: number; width: number; height: number } {
-  const containerSize = size * 2;
-  const imgW = image.naturalWidth || image.width;
-  const imgH = image.naturalHeight || image.height;
-  if (imgW <= 0 || imgH <= 0) {
-    return { x: -size, y: -size, width: containerSize, height: containerSize };
-  }
-
-  const scale = Math.max(containerSize / imgW, containerSize / imgH);
-  const width = imgW * scale;
-  const height = imgH * scale;
-  return {
-    x: -width / 2,
-    y: -size,
-    width,
-    height,
-  };
-}
-
-function CharacterImage({
-  imageData,
-  shape,
-  size,
-}: {
-  imageData: string;
-  shape: Character["borderShape"];
-  size: number;
-}) {
-  const [image] = useImage(imageData, "anonymous");
-  if (!image) return null;
-  const layout = getCoverImageLayout(image, size);
-  return (
-    <Group clipFunc={clipFunc(shape, size)}>
-      <Image
-        image={image}
-        x={layout.x}
-        y={layout.y}
-        width={layout.width}
-        height={layout.height}
-      />
-    </Group>
-  );
-}
-
 export function CharacterNode({
   character,
   selected,
@@ -202,6 +116,7 @@ export function CharacterNode({
           imageData={character.imageData}
           shape={character.borderShape}
           size={size}
+          focus={character.imageFocus}
         />
       ) : (
         <Text

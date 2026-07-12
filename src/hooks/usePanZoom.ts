@@ -4,10 +4,11 @@ import { useDiagramStore } from "../store/diagramStore";
 export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
   const viewport = useDiagramStore((s) => s.viewport);
   const setViewport = useDiagramStore((s) => s.setViewport);
-  const toolMode = useDiagramStore((s) => s.toolMode);
   const isPanning = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
   const spaceHeld = useRef(false);
+  const didDrag = useRef(false);
+  const DRAG_THRESHOLD = 3;
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -72,6 +73,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
 
   const startPan = (clientX: number, clientY: number) => {
     isPanning.current = true;
+    didDrag.current = false;
     lastPointer.current = { x: clientX, y: clientY };
   };
 
@@ -79,16 +81,24 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
     if (!isPanning.current) return;
     const dx = clientX - lastPointer.current.x;
     const dy = clientY - lastPointer.current.y;
+    if (
+      Math.abs(dx) > DRAG_THRESHOLD ||
+      Math.abs(dy) > DRAG_THRESHOLD
+    ) {
+      didDrag.current = true;
+    }
     lastPointer.current = { x: clientX, y: clientY };
     setViewport({ x: viewport.x + dx, y: viewport.y + dy });
   };
 
   const endPan = () => {
+    const dragged = didDrag.current;
     isPanning.current = false;
+    didDrag.current = false;
+    return dragged;
   };
 
-  const shouldPan = (button: number) =>
-    toolMode === "pan" || button === 1 || spaceHeld.current;
+  const shouldPan = (button: number) => button === 1 || spaceHeld.current;
 
-  return { startPan, movePan, endPan, shouldPan, spaceHeld };
+  return { startPan, movePan, endPan, shouldPan };
 }

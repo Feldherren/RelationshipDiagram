@@ -22,22 +22,6 @@ export function Toolbar({ onSave, onOpen, onExport }: ToolbarProps) {
       <div className="toolbar-group">
         <button
           type="button"
-          className={toolMode === "select" ? "active" : ""}
-          onClick={() => setToolMode("select")}
-          title="Select (V)"
-        >
-          Select
-        </button>
-        <button
-          type="button"
-          className={toolMode === "pan" ? "active" : ""}
-          onClick={() => setToolMode("pan")}
-          title="Pan (hold Space to pan in any mode)"
-        >
-          Pan
-        </button>
-        <button
-          type="button"
           className={toolMode === "connect" ? "active" : ""}
           onClick={() => setToolMode("connect")}
           title="Connect two nodes"

@@ -92,11 +92,7 @@ body,
   overflow: hidden;
 }
 
-.canvas-container.pan-mode {
-  cursor: grab;
-}
-
-.canvas-container.pan-mode:active {
+.canvas-container.panning {
   cursor: grabbing;
 }
 

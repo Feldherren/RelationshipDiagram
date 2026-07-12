@@ -23,7 +23,7 @@ npm run preview
 | Action | How |
 |--------|-----|
 | Add character | **+ Character** in the toolbar |
-| Pan | **Pan** tool, middle-mouse drag, or hold **Space** and drag |
+| Pan | Drag empty canvas, middle-mouse drag, or hold **Space** and drag |
 | Zoom | Scroll wheel |
 | Connect nodes | **Connect** → click source → click target |
 | Edit properties | Select an item; use the panel on the right |

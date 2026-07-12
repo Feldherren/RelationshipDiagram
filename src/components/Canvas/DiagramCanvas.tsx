@@ -35,6 +35,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   } = useDiagramStore();
 
   const { startPan, movePan, endPan, shouldPan } = usePanZoom(containerRef);
+  const suppressClick = useRef(false);
+  const [isPanningView, setIsPanningView] = useState(false);
   const [isDrawingExport, setIsDrawingExport] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(
     null,
@@ -60,15 +62,29 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const stageSize = useDiagramStore((s) => s.stageSize);
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const isStage = e.target === e.target.getStage();
+
     if (shouldPan(e.evt.button)) {
       startPan(e.evt.clientX, e.evt.clientY);
+      setIsPanningView(true);
       return;
     }
-    if (toolMode === "exportBounds" && e.target === e.target.getStage()) {
+
+    if (toolMode === "exportBounds" && isStage) {
       const pos = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
       setIsDrawingExport(true);
       setDrawStart(pos);
       setDrawCurrent(pos);
+      return;
+    }
+
+    if (
+      isStage &&
+      e.evt.button === 0 &&
+      toolMode !== "connect"
+    ) {
+      startPan(e.evt.clientX, e.evt.clientY);
+      setIsPanningView(true);
     }
   };
 
@@ -81,7 +97,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseUp = () => {
-    endPan();
+    if (endPan()) {
+      suppressClick.current = true;
+    }
+    setIsPanningView(false);
     if (isDrawingExport && drawStart && drawCurrent) {
       const x = Math.min(drawStart.x, drawCurrent.x);
       const y = Math.min(drawStart.y, drawCurrent.y);
@@ -97,6 +116,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
     if (shouldPan(e.evt.button)) return;
     if (toolMode === "exportBounds") return;
     if (e.target === e.target.getStage()) {
@@ -159,7 +182,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container ${toolMode === "pan" ? "pan-mode" : ""}`}
+      className={`canvas-container${isPanningView ? " panning" : ""}`}
     >
       {connectFrom && (
         <div className="connect-hint">
@@ -226,7 +249,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   selection?.type === "character" &&
                   selection.id === character.id
                 }
-                draggable={toolMode === "select"}
+                draggable={toolMode !== "connect" && toolMode !== "exportBounds"}
                 onSelect={() =>
                   handleNodeClick({ id: character.id, kind: "character" })
                 }

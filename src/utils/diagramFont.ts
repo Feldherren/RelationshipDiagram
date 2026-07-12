@@ -9,6 +9,7 @@ import {
 
 export const DEFAULT_DIAGRAM_FONT = "Arial, sans-serif";
 export const DIAGRAM_TITLE_FONT_SIZE = 20;
+export const DIAGRAM_SUBTITLE_FONT_SIZE = 14;
 export const DIAGRAM_TITLE_MARGIN = 24;
 
 const registeredFamilies = new Set<string>();

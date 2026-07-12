@@ -16,6 +16,12 @@ function getMeasureCtx(): CanvasRenderingContext2D {
 export const LABEL_PADDING_X = 10;
 export const LABEL_PADDING_Y = 4;
 
+export const CHARACTER_NAME_FONT_SIZE = 15;
+export const CHARACTER_SUBTITLE_FONT_SIZE = 12;
+export const CHARACTER_LABEL_PADDING_X = 12;
+export const CHARACTER_LABEL_PADDING_Y = 5;
+export const CHARACTER_LABEL_GAP = 4;
+
 export function measureLabelText(
   text: string,
   fontSize: number,
@@ -32,14 +38,19 @@ export function getPillLabelSize(
   fontSize: number,
   fontStyle: "normal" | "bold" = "normal",
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  paddingX: number = LABEL_PADDING_X,
+  paddingY: number = LABEL_PADDING_Y,
 ): { width: number; height: number } {
   const textWidth = measureLabelText(text, fontSize, fontStyle, fontFamily);
   return {
-    width: Math.ceil(textWidth) + LABEL_PADDING_X * 2,
-    height: fontSize + LABEL_PADDING_Y * 2,
+    width: Math.ceil(textWidth) + paddingX * 2,
+    height: fontSize + paddingY * 2,
   };
 }
 
-export function getPillLabelHeight(fontSize: number): number {
-  return fontSize + LABEL_PADDING_Y * 2;
+export function getPillLabelHeight(
+  fontSize: number,
+  paddingY: number = LABEL_PADDING_Y,
+): number {
+  return fontSize + paddingY * 2;
 }

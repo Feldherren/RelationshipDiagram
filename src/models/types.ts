@@ -65,6 +65,8 @@ export interface Viewport {
 export interface Diagram {
   schemaVersion: 1;
   title?: string;
+  subtitle?: string;
+  showHeader?: boolean;
   fontFamily?: string;
   characters: Character[];
   lines: Line[];

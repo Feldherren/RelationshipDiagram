@@ -9,10 +9,14 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
+  const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
+  const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
   const showGrid = useDiagramStore((s) => s.showGrid);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
+  const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
+  const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
   const setShowGrid = useDiagramStore((s) => s.setShowGrid);
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
 
@@ -31,6 +35,25 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             placeholder="Untitled diagram"
             onChange={(e) => setDiagramTitle(e.target.value)}
           />
+        </label>
+
+        <label className="field">
+          <span>Diagram subtitle</span>
+          <input
+            type="text"
+            value={diagramSubtitle}
+            placeholder="Optional subtitle"
+            onChange={(e) => setDiagramSubtitle(e.target.value)}
+          />
+        </label>
+
+        <label className="field checkbox">
+          <input
+            type="checkbox"
+            checked={showDiagramHeader}
+            onChange={(e) => setShowDiagramHeader(e.target.checked)}
+          />
+          <span>Show title and subtitle</span>
         </label>
 
         <label className="field checkbox">

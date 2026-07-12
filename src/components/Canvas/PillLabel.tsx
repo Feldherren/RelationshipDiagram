@@ -21,6 +21,10 @@ interface PillLabelProps {
   unselectedStroke?: string;
   selectedStroke?: string;
   fontFamily?: string;
+  paddingX?: number;
+  paddingY?: number;
+  strokeWidth?: number;
+  selectedStrokeWidth?: number;
   /** When "top", y is the top edge of the pill; when "center", y is the vertical center. */
   anchor?: "top" | "center";
 }
@@ -36,6 +40,10 @@ export function PillLabel({
   unselectedStroke = "#d0d0d0",
   selectedStroke = "#4a90d9",
   fontFamily: fontFamilyProp,
+  paddingX = LABEL_PADDING_X,
+  paddingY = LABEL_PADDING_Y,
+  strokeWidth = 1,
+  selectedStrokeWidth = 2,
   anchor = "center",
 }: PillLabelProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
@@ -45,11 +53,13 @@ export function PillLabel({
     fontSize,
     fontStyle,
     fontFamily,
+    paddingX,
+    paddingY,
   );
   const rectX = -width / 2;
   const rectY = anchor === "center" ? -height / 2 : 0;
   const stroke = selected ? selectedStroke : unselectedStroke;
-  const strokeWidth = selected ? 2 : 1;
+  const activeStrokeWidth = selected ? selectedStrokeWidth : strokeWidth;
 
   return (
     <Group x={x} y={y} listening={false}>
@@ -60,7 +70,7 @@ export function PillLabel({
         height={height}
         fill="#ffffff"
         stroke={stroke}
-        strokeWidth={strokeWidth}
+        strokeWidth={activeStrokeWidth}
         cornerRadius={height / 2}
         listening={false}
       />
@@ -82,8 +92,11 @@ export function PillLabel({
   );
 }
 
-export function getPillLabelHeight(fontSize: number): number {
-  return fontSize + LABEL_PADDING_Y * 2;
+export function getPillLabelHeight(
+  fontSize: number,
+  paddingY: number = LABEL_PADDING_Y,
+): number {
+  return fontSize + paddingY * 2;
 }
 
 export { LABEL_PADDING_X, LABEL_PADDING_Y, DEFAULT_DIAGRAM_FONT };

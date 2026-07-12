@@ -6,6 +6,13 @@ import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import { getConnectHandleOffset } from "../../utils/connection";
 import { useDiagramStore } from "../../store/diagramStore";
+import {
+  CHARACTER_LABEL_GAP,
+  CHARACTER_LABEL_PADDING_X,
+  CHARACTER_LABEL_PADDING_Y,
+  CHARACTER_NAME_FONT_SIZE,
+  CHARACTER_SUBTITLE_FONT_SIZE,
+} from "../../utils/labelMetrics";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 
@@ -87,10 +94,13 @@ export function CharacterNode({
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
-  const nameFontSize = 13;
-  const subtitleFontSize = 11;
-  const namePillHeight = getPillLabelHeight(nameFontSize);
-  const labelGap = 4;
+  const nameFontSize = CHARACTER_NAME_FONT_SIZE;
+  const subtitleFontSize = CHARACTER_SUBTITLE_FONT_SIZE;
+  const namePillHeight = getPillLabelHeight(
+    nameFontSize,
+    CHARACTER_LABEL_PADDING_Y,
+  );
+  const labelGap = CHARACTER_LABEL_GAP;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const handleOffset = getConnectHandleOffset(size);
@@ -164,6 +174,10 @@ export function CharacterNode({
           anchor="top"
           fontSize={nameFontSize}
           fontStyle="bold"
+          paddingX={CHARACTER_LABEL_PADDING_X}
+          paddingY={CHARACTER_LABEL_PADDING_Y}
+          strokeWidth={1.5}
+          selectedStrokeWidth={2.5}
           selected={selected}
         />
       )}
@@ -176,6 +190,10 @@ export function CharacterNode({
           }
           anchor="top"
           fontSize={subtitleFontSize}
+          paddingX={CHARACTER_LABEL_PADDING_X}
+          paddingY={CHARACTER_LABEL_PADDING_Y}
+          strokeWidth={1.5}
+          selectedStrokeWidth={2.5}
           textFill="#5c5c5c"
           selected={selected}
         />

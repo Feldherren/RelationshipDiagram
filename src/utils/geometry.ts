@@ -12,6 +12,13 @@ import {
   GROUP_HEADER_HEIGHT,
   GROUP_PADDING,
 } from "../models/types";
+import {
+  CHARACTER_LABEL_GAP,
+  CHARACTER_LABEL_PADDING_Y,
+  CHARACTER_NAME_FONT_SIZE,
+  CHARACTER_SUBTITLE_FONT_SIZE,
+  getPillLabelHeight,
+} from "./labelMetrics";
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -42,9 +49,16 @@ export function getGroupById(
 
 export function getCharacterBounds(character: Character): Bounds {
   const size = character.size || DEFAULT_CHARACTER_SIZE;
-  const subtitleSpace = character.subtitle ? 22 : 0;
-  const nameSpace = character.name ? 18 : 0;
-  const extraHeight = subtitleSpace + nameSpace;
+  const nameSpace = character.name
+    ? getPillLabelHeight(CHARACTER_NAME_FONT_SIZE, CHARACTER_LABEL_PADDING_Y)
+    : 0;
+  const subtitleSpace = character.subtitle
+    ? getPillLabelHeight(
+        CHARACTER_SUBTITLE_FONT_SIZE,
+        CHARACTER_LABEL_PADDING_Y,
+      ) + (character.name ? CHARACTER_LABEL_GAP : 0)
+    : 0;
+  const extraHeight = nameSpace + subtitleSpace;
   return {
     x: character.position.x - size,
     y: character.position.y - size,

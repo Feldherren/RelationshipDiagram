@@ -46,6 +46,8 @@ interface DiagramState {
   exportBounds: Bounds | null;
   stageSize: { width: number; height: number };
   diagramTitle: string;
+  diagramSubtitle: string;
+  showDiagramHeader: boolean;
   diagramFontFamily: string;
   fontMissing: boolean;
 
@@ -56,6 +58,8 @@ interface DiagramState {
   setShowGrid: (show: boolean) => void;
   setExportBounds: (bounds: Bounds | null) => void;
   setDiagramTitle: (title: string) => void;
+  setDiagramSubtitle: (subtitle: string) => void;
+  setShowDiagramHeader: (show: boolean) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
   initializeFonts: () => Promise<void>;
 
@@ -110,6 +114,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   exportBounds: null,
   stageSize: { width: 800, height: 600 },
   diagramTitle: "",
+  diagramSubtitle: "",
+  showDiagramHeader: true,
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
 
@@ -128,6 +134,10 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
   setDiagramTitle: (title) => set({ diagramTitle: title }),
+
+  setDiagramSubtitle: (subtitle) => set({ diagramSubtitle: subtitle }),
+
+  setShowDiagramHeader: (show) => set({ showDiagramHeader: show }),
 
   setDiagramFontFamily: async (fontFamily) => {
     if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
@@ -432,6 +442,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       groups: diagram.groups,
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       diagramTitle: diagram.title ?? "",
+      diagramSubtitle: diagram.subtitle ?? "",
+      showDiagramHeader: diagram.showHeader ?? true,
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       selection: null,
@@ -442,11 +454,21 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   getDiagram: () => {
-    const { characters, lines, groups, viewport, diagramTitle, diagramFontFamily } =
-      get();
+    const {
+      characters,
+      lines,
+      groups,
+      viewport,
+      diagramTitle,
+      diagramSubtitle,
+      showDiagramHeader,
+      diagramFontFamily,
+    } = get();
     return {
       schemaVersion: 1 as const,
       title: diagramTitle || undefined,
+      subtitle: diagramSubtitle || undefined,
+      showHeader: showDiagramHeader ? undefined : false,
       fontFamily:
         diagramFontFamily !== DEFAULT_DIAGRAM_FONT
           ? diagramFontFamily

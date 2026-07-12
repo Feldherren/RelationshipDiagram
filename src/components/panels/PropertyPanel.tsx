@@ -27,12 +27,7 @@ export function PropertyPanel() {
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
 
   if (!selection) {
-    return (
-      <aside className="property-panel">
-        <h2>Properties</h2>
-        <p className="hint">Select a character, line, or group to edit.</p>
-      </aside>
-    );
+    return null;
   }
 
   if (selection.type === "character") {

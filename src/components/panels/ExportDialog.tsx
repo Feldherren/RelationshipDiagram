@@ -7,6 +7,7 @@ import {
   getAutoExportBounds,
 } from "../../utils/export";
 import { downloadDataUrl, estimateDataUrlSize } from "../../utils/persistence";
+import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import type { Bounds } from "../../models/types";
 
 interface ExportDialogProps {
@@ -19,7 +20,18 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
-  const diagram = { schemaVersion: 1 as const, characters, lines, groups };
+  const diagramTitle = useDiagramStore((s) => s.diagramTitle);
+  const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const diagram = {
+    schemaVersion: 1 as const,
+    title: diagramTitle || undefined,
+    fontFamily: isDefaultDiagramFont(diagramFontFamily)
+      ? undefined
+      : diagramFontFamily,
+    characters,
+    lines,
+    groups,
+  };
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setExportBounds = useDiagramStore((s) => s.setExportBounds);

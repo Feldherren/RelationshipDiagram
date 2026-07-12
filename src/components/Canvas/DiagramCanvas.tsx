@@ -5,6 +5,7 @@ import { CharacterNode } from "./CharacterNode";
 import { LineEdge } from "./LineEdge";
 import { GroupContainer } from "./GroupContainer";
 import { GridBackground } from "./GridBackground";
+import { DiagramTitle } from "./DiagramTitle";
 import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
@@ -256,6 +257,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               stageHeight={stageSize.height}
             />
           )}
+
+          <DiagramTitle />
 
           {groups
             .filter((g) => !g.collapsed)

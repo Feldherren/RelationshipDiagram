@@ -12,6 +12,12 @@ import {
   GROUP_HEADER_HEIGHT,
   GROUP_PADDING,
 } from "../models/types";
+import {
+  DEFAULT_DIAGRAM_FONT,
+  DIAGRAM_TITLE_FONT_SIZE,
+  DIAGRAM_TITLE_MARGIN,
+} from "./diagramFont";
+import { getPillLabelSize } from "./labelMetrics";
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -320,10 +326,7 @@ export function expandBounds(bounds: Bounds, padding: number): Bounds {
   };
 }
 
-export function computeDiagramBounds(
-  diagram: Diagram,
-  padding = 32,
-): Bounds | null {
+export function computeContentBounds(diagram: Diagram): Bounds | null {
   let result: Bounds | null = null;
 
   for (const character of diagram.characters) {
@@ -349,6 +352,62 @@ export function computeDiagramBounds(
       const b = getGroupMemberBounds(group, diagram.characters);
       if (b) result = result ? mergeBounds(result, b) : b;
     }
+  }
+
+  return result;
+}
+
+export function getDiagramTitleBounds(
+  diagram: Pick<Diagram, "title" | "fontFamily">,
+  contentBounds: Bounds | null,
+): Bounds | null {
+  const title = diagram.title?.trim();
+  if (!title) return null;
+
+  const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const size = getPillLabelSize(
+    title,
+    DIAGRAM_TITLE_FONT_SIZE,
+    "bold",
+    fontFamily,
+  );
+  const centerX = contentBounds
+    ? contentBounds.x + contentBounds.width / 2
+    : 0;
+  const centerY = contentBounds
+    ? contentBounds.y - DIAGRAM_TITLE_MARGIN - size.height / 2
+    : 0;
+
+  return {
+    x: centerX - size.width / 2,
+    y: centerY - size.height / 2,
+    width: size.width,
+    height: size.height,
+  };
+}
+
+export function getDiagramTitlePosition(
+  diagram: Pick<Diagram, "title" | "fontFamily">,
+  contentBounds: Bounds | null,
+): { x: number; y: number } | null {
+  const bounds = getDiagramTitleBounds(diagram, contentBounds);
+  if (!bounds) return null;
+  return {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
+  };
+}
+
+export function computeDiagramBounds(
+  diagram: Diagram,
+  padding = 32,
+): Bounds | null {
+  const content = computeContentBounds(diagram);
+  const titleBounds = getDiagramTitleBounds(diagram, content);
+  let result = content;
+
+  if (titleBounds) {
+    result = result ? mergeBounds(result, titleBounds) : titleBounds;
   }
 
   if (!result) return null;

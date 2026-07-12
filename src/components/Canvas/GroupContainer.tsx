@@ -4,6 +4,8 @@ import type { Character } from "../../models/types";
 import { COLLAPSED_GROUP_SIZE, rgbToCss } from "../../models/types";
 import { rgbaWithAlpha, getGroupMemberBounds } from "../../utils/geometry";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
+import { formatFontForCanvas } from "../../utils/diagramFont";
+import { useDiagramStore } from "../../store/diagramStore";
 
 interface GroupContainerProps {
   group: GroupType;
@@ -20,6 +22,8 @@ export function GroupContainer({
   onSelect,
   onToggleCollapse,
 }: GroupContainerProps) {
+  const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+
   if (group.collapsed) {
     const pos = group.collapsedPosition ?? { x: 0, y: 0 };
     const color = rgbToCss(group.borderColor);
@@ -70,6 +74,7 @@ export function GroupContainer({
         />
         <Text
           text={`${group.memberCharacterIds.length}`}
+          fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={11}
           fill="#555"
           align="center"

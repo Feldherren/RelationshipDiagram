@@ -7,6 +7,7 @@ import { CharacterImage } from "./CharacterImage";
 import { getConnectHandleOffset } from "../../utils/connection";
 import { useDiagramStore } from "../../store/diagramStore";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
+import { formatFontForCanvas } from "../../utils/diagramFont";
 
 interface CharacterNodeProps {
   character: Character;
@@ -91,6 +92,7 @@ export function CharacterNode({
   const namePillHeight = getPillLabelHeight(nameFontSize);
   const labelGap = 4;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
+  const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const handleOffset = getConnectHandleOffset(size);
   const handleRadius = 10 / viewportScale;
   const handleFontSize = 14 / viewportScale;
@@ -142,6 +144,7 @@ export function CharacterNode({
       ) : (
         <Text
           text={getCharacterInitials(character.name)}
+          fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={size * 0.55}
           fontStyle="bold"
           fill="#333"

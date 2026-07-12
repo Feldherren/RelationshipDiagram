@@ -1,6 +1,11 @@
 import { Group, Rect, Text } from "react-konva";
+import { useDiagramStore } from "../../store/diagramStore";
 import {
-  LABEL_FONT,
+  DEFAULT_DIAGRAM_FONT,
+  formatFontForCanvas,
+} from "../../utils/diagramFont";
+import {
+  LABEL_PADDING_X,
   LABEL_PADDING_Y,
   getPillLabelSize,
 } from "../../utils/labelMetrics";
@@ -15,6 +20,7 @@ interface PillLabelProps {
   selected?: boolean;
   unselectedStroke?: string;
   selectedStroke?: string;
+  fontFamily?: string;
   /** When "top", y is the top edge of the pill; when "center", y is the vertical center. */
   anchor?: "top" | "center";
 }
@@ -29,9 +35,17 @@ export function PillLabel({
   selected = false,
   unselectedStroke = "#d0d0d0",
   selectedStroke = "#4a90d9",
+  fontFamily: fontFamilyProp,
   anchor = "center",
 }: PillLabelProps) {
-  const { width, height } = getPillLabelSize(text, fontSize, fontStyle);
+  const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const fontFamily = fontFamilyProp ?? diagramFontFamily;
+  const { width, height } = getPillLabelSize(
+    text,
+    fontSize,
+    fontStyle,
+    fontFamily,
+  );
   const rectX = -width / 2;
   const rectY = anchor === "center" ? -height / 2 : 0;
   const stroke = selected ? selectedStroke : unselectedStroke;
@@ -52,7 +66,7 @@ export function PillLabel({
       />
       <Text
         text={text}
-        fontFamily={LABEL_FONT}
+        fontFamily={formatFontForCanvas(fontFamily)}
         fontSize={fontSize}
         fontStyle={fontStyle}
         fill={textFill}
@@ -71,3 +85,5 @@ export function PillLabel({
 export function getPillLabelHeight(fontSize: number): number {
   return fontSize + LABEL_PADDING_Y * 2;
 }
+
+export { LABEL_PADDING_X, LABEL_PADDING_Y, DEFAULT_DIAGRAM_FONT };

@@ -18,6 +18,12 @@ import {
 } from "../models/types";
 import { getGroupCenter, getGroupMemberBounds } from "../utils/geometry";
 import {
+  DEFAULT_DIAGRAM_FONT,
+  ensureFontLoaded,
+  loadFontFromFile,
+  restoreCachedFonts,
+} from "../utils/diagramFont";
+import {
   initialBendForRouteIndex,
   nextRouteIndex,
 } from "../utils/lineRouting";
@@ -38,6 +44,10 @@ interface DiagramState {
   showGrid: boolean;
   exportBounds: Bounds | null;
   stageSize: { width: number; height: number };
+  diagramTitle: string;
+  diagramFontFamily: string;
+  loadedFontFamilies: string[];
+  fontMissing: boolean;
 
   setStageSize: (width: number, height: number) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
@@ -45,6 +55,10 @@ interface DiagramState {
   setSelection: (selection: Selection) => void;
   setShowGrid: (show: boolean) => void;
   setExportBounds: (bounds: Bounds | null) => void;
+  setDiagramTitle: (title: string) => void;
+  setDiagramFontFamily: (fontFamily: string) => Promise<void>;
+  loadDiagramFontFromFile: (file: File) => Promise<void>;
+  initializeFonts: () => Promise<void>;
 
   addCharacterAt: (position: { x: number; y: number }) => void;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
@@ -67,7 +81,7 @@ interface DiagramState {
   endConnectDrag: (point: { x: number; y: number }) => void;
   cancelConnect: () => void;
   deleteSelected: () => void;
-  loadDiagram: (diagram: Diagram) => void;
+  loadDiagram: (diagram: Diagram) => Promise<void>;
   getDiagram: () => Diagram;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
@@ -96,6 +110,10 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   showGrid: true,
   exportBounds: null,
   stageSize: { width: 800, height: 600 },
+  diagramTitle: "",
+  diagramFontFamily: DEFAULT_DIAGRAM_FONT,
+  loadedFontFamilies: [],
+  fontMissing: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
@@ -110,6 +128,36 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   setSelection: (selection) => set({ selection }),
   setShowGrid: (show) => set({ showGrid: show }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
+
+  setDiagramTitle: (title) => set({ diagramTitle: title }),
+
+  setDiagramFontFamily: async (fontFamily) => {
+    const available = await ensureFontLoaded(fontFamily);
+    set({
+      diagramFontFamily: fontFamily,
+      fontMissing: !available && fontFamily !== DEFAULT_DIAGRAM_FONT,
+    });
+  },
+
+  loadDiagramFontFromFile: async (file) => {
+    const family = await loadFontFromFile(file);
+    const families = await restoreCachedFonts();
+    set({
+      diagramFontFamily: family,
+      loadedFontFamilies: families,
+      fontMissing: false,
+    });
+  },
+
+  initializeFonts: async () => {
+    const families = await restoreCachedFonts();
+    const { diagramFontFamily } = get();
+    const available = await ensureFontLoaded(diagramFontFamily);
+    set({
+      loadedFontFamilies: families,
+      fontMissing: !available && diagramFontFamily !== DEFAULT_DIAGRAM_FONT,
+    });
+  },
 
   screenToWorld: (screen) => {
     const { viewport } = get();
@@ -366,22 +414,34 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     if (selection.type === "group") get().deleteGroup(selection.id);
   },
 
-  loadDiagram: (diagram) =>
+  loadDiagram: async (diagram) => {
+    const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+    const available = await ensureFontLoaded(fontFamily);
     set({
       characters: diagram.characters,
       lines: diagram.lines,
       groups: diagram.groups,
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
+      diagramTitle: diagram.title ?? "",
+      diagramFontFamily: fontFamily,
+      fontMissing: !available && fontFamily !== DEFAULT_DIAGRAM_FONT,
       selection: null,
       connectFrom: null,
       connectDrag: null,
       toolMode: "select",
-    }),
+    });
+  },
 
   getDiagram: () => {
-    const { characters, lines, groups, viewport } = get();
+    const { characters, lines, groups, viewport, diagramTitle, diagramFontFamily } =
+      get();
     return {
       schemaVersion: 1 as const,
+      title: diagramTitle || undefined,
+      fontFamily:
+        diagramFontFamily !== DEFAULT_DIAGRAM_FONT
+          ? diagramFontFamily
+          : undefined,
       characters,
       lines,
       groups,

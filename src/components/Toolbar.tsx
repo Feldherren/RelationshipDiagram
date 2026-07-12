@@ -4,9 +4,10 @@ interface ToolbarProps {
   onSave: () => void;
   onOpen: () => void;
   onExport: () => void;
+  onSettings: () => void;
 }
 
-export function Toolbar({ onSave, onOpen, onExport }: ToolbarProps) {
+export function Toolbar({ onSave, onOpen, onExport, onSettings }: ToolbarProps) {
   const showGrid = useDiagramStore((s) => s.showGrid);
   const setShowGrid = useDiagramStore((s) => s.setShowGrid);
   const addCharacterAt = useDiagramStore((s) => s.addCharacterAt);
@@ -46,6 +47,9 @@ export function Toolbar({ onSave, onOpen, onExport }: ToolbarProps) {
       </div>
 
       <div className="toolbar-group toolbar-right">
+        <button type="button" onClick={onSettings}>
+          Settings
+        </button>
         <label className="toolbar-checkbox">
           <input
             type="checkbox"

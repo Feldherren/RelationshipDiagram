@@ -33,6 +33,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     groups,
   };
   const exportBounds = useDiagramStore((s) => s.exportBounds);
+  const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setExportBounds = useDiagramStore((s) => s.setExportBounds);
 
@@ -40,8 +41,31 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const [pixelRatio, setPixelRatio] = useState(1);
   const [padding, setPadding] = useState(32);
   const [previewSize, setPreviewSize] = useState<number | null>(null);
+  const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
 
-  const autoBounds = getAutoExportBounds(diagram, padding);
+  useEffect(() => {
+    if (!open) return;
+
+    const updateBounds = () => {
+      const stage = stageRef.current;
+      setAutoBounds(
+        getAutoExportBounds(diagram, padding, viewportScale, stage),
+      );
+    };
+
+    requestAnimationFrame(updateBounds);
+  }, [
+    open,
+    stageRef,
+    padding,
+    viewportScale,
+    diagram,
+    characters,
+    lines,
+    groups,
+    diagramFontFamily,
+  ]);
+
   const activeBounds: Bounds | null =
     mode === "custom" ? exportBounds : autoBounds;
 
@@ -57,7 +81,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
       pixelRatio,
     });
     estimateDataUrlSize(dataUrl).then(setPreviewSize);
-  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds, padding, diagram]);
+  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds]);
 
   if (!open) return null;
 

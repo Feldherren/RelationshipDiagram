@@ -14,11 +14,19 @@ import {
 } from "../models/types";
 import {
   CHARACTER_LABEL_GAP,
+  CHARACTER_LABEL_PADDING_X,
   CHARACTER_LABEL_PADDING_Y,
   CHARACTER_NAME_FONT_SIZE,
   CHARACTER_SUBTITLE_FONT_SIZE,
-  getPillLabelHeight,
+  getPillLabelSize,
 } from "./labelMetrics";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import { getConnectHandleOffset } from "./connection";
+
+const CONNECT_HANDLE_SCREEN_RADIUS = 10;
+const NODE_STROKE_MARGIN = 2;
+const PILL_STROKE_MARGIN = 2;
+const LABEL_EXTRA_MARGIN = 2;
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -47,29 +55,103 @@ export function getGroupById(
   return diagram.groups.find((g) => g.id === id);
 }
 
-export function getCharacterBounds(character: Character): Bounds {
+export function getCharacterBounds(
+  character: Character,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  viewportScale = 1,
+): Bounds {
   const size = character.size || DEFAULT_CHARACTER_SIZE;
-  const nameSpace = character.name
-    ? getPillLabelHeight(CHARACTER_NAME_FONT_SIZE, CHARACTER_LABEL_PADDING_Y)
-    : 0;
-  const subtitleSpace = character.subtitle
-    ? getPillLabelHeight(
-        CHARACTER_SUBTITLE_FONT_SIZE,
-        CHARACTER_LABEL_PADDING_Y,
-      ) + (character.name ? CHARACTER_LABEL_GAP : 0)
-    : 0;
-  const extraHeight = nameSpace + subtitleSpace;
+  const { x, y } = character.position;
+  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+
+  let minX = x - size - NODE_STROKE_MARGIN;
+  let maxX = x + size + NODE_STROKE_MARGIN;
+  let minY = y - size - NODE_STROKE_MARGIN;
+  let maxY = y + size + NODE_STROKE_MARGIN;
+
+  const handleOffset = getConnectHandleOffset(size);
+  const handleX = x + handleOffset.x;
+  const handleY = y + handleOffset.y;
+  minX = Math.min(minX, handleX - handleRadius);
+  maxX = Math.max(maxX, handleX + handleRadius);
+  minY = Math.min(minY, handleY - handleRadius);
+  maxY = Math.max(maxY, handleY + handleRadius);
+
+  let labelTop = y + size + 8;
+
+  if (character.name) {
+    const nameSize = getPillLabelSize(
+      character.name,
+      CHARACTER_NAME_FONT_SIZE,
+      "bold",
+      fontFamily,
+      CHARACTER_LABEL_PADDING_X,
+      CHARACTER_LABEL_PADDING_Y,
+    );
+    minX = Math.min(minX, x - nameSize.width / 2 - PILL_STROKE_MARGIN);
+    maxX = Math.max(maxX, x + nameSize.width / 2 + PILL_STROKE_MARGIN);
+    minY = Math.min(minY, labelTop - LABEL_EXTRA_MARGIN);
+    maxY = Math.max(maxY, labelTop + nameSize.height + LABEL_EXTRA_MARGIN);
+    labelTop += nameSize.height + CHARACTER_LABEL_GAP;
+  }
+
+  if (character.subtitle) {
+    const subtitleSize = getPillLabelSize(
+      character.subtitle,
+      CHARACTER_SUBTITLE_FONT_SIZE,
+      "normal",
+      fontFamily,
+      CHARACTER_LABEL_PADDING_X,
+      CHARACTER_LABEL_PADDING_Y,
+    );
+    minX = Math.min(minX, x - subtitleSize.width / 2 - PILL_STROKE_MARGIN);
+    maxX = Math.max(maxX, x + subtitleSize.width / 2 + PILL_STROKE_MARGIN);
+    minY = Math.min(minY, labelTop - LABEL_EXTRA_MARGIN);
+    maxY = Math.max(maxY, labelTop + subtitleSize.height + LABEL_EXTRA_MARGIN);
+  }
+
   return {
-    x: character.position.x - size,
-    y: character.position.y - size,
-    width: size * 2,
-    height: size * 2 + extraHeight,
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+export function getCollapsedGroupBounds(
+  group: Group,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): Bounds {
+  const center = group.collapsedPosition ?? { x: 0, y: 0 };
+  const size = COLLAPSED_GROUP_SIZE;
+
+  let minX = center.x - size;
+  let maxX = center.x + size;
+  let minY = center.y - size;
+  let maxY = center.y + size;
+
+  if (group.name) {
+    const pill = getPillLabelSize(group.name, 12, "bold", fontFamily);
+    const pillCenterY = center.y - (size + pill.height / 2 + 6);
+    minX = Math.min(minX, center.x - pill.width / 2);
+    maxX = Math.max(maxX, center.x + pill.width / 2);
+    minY = Math.min(minY, pillCenterY - pill.height / 2);
+    maxY = Math.max(maxY, pillCenterY + pill.height / 2);
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
   };
 }
 
 export function getGroupMemberBounds(
   group: Group,
   characters: Character[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  viewportScale = 1,
 ): Bounds | null {
   const members = characters.filter((c) =>
     group.memberCharacterIds.includes(c.id),
@@ -82,7 +164,7 @@ export function getGroupMemberBounds(
   let maxY = -Infinity;
 
   for (const member of members) {
-    const b = getCharacterBounds(member);
+    const b = getCharacterBounds(member, fontFamily, viewportScale);
     minX = Math.min(minX, b.x);
     minY = Math.min(minY, b.y);
     maxX = Math.max(maxX, b.x + b.width);
@@ -332,46 +414,6 @@ export function expandBounds(bounds: Bounds, padding: number): Bounds {
     width: bounds.width + padding * 2,
     height: bounds.height + padding * 2,
   };
-}
-
-export function computeContentBounds(diagram: Diagram): Bounds | null {
-  let result: Bounds | null = null;
-
-  for (const character of diagram.characters) {
-    const inCollapsedGroup = diagram.groups.some(
-      (g) => g.collapsed && g.memberCharacterIds.includes(character.id),
-    );
-    if (inCollapsedGroup) continue;
-    const b = getCharacterBounds(character);
-    result = result ? mergeBounds(result, b) : b;
-  }
-
-  for (const group of diagram.groups) {
-    if (group.collapsed) {
-      const center = group.collapsedPosition ?? { x: 0, y: 0 };
-      const b: Bounds = {
-        x: center.x - COLLAPSED_GROUP_SIZE,
-        y: center.y - COLLAPSED_GROUP_SIZE,
-        width: COLLAPSED_GROUP_SIZE * 2,
-        height: COLLAPSED_GROUP_SIZE * 2,
-      };
-      result = result ? mergeBounds(result, b) : b;
-    } else {
-      const b = getGroupMemberBounds(group, diagram.characters);
-      if (b) result = result ? mergeBounds(result, b) : b;
-    }
-  }
-
-  return result;
-}
-
-export function computeDiagramBounds(
-  diagram: Diagram,
-  padding = 32,
-): Bounds | null {
-  const content = computeContentBounds(diagram);
-  if (!content) return null;
-  return expandBounds(content, padding);
 }
 
 export function rgbaWithAlpha(color: RGB, alpha: number): string {

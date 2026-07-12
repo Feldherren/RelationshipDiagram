@@ -5,6 +5,7 @@ import { PropertyPanel } from "./components/panels/PropertyPanel";
 import { ExportDialog } from "./components/panels/ExportDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
+import { useAutosave } from "./hooks/useAutosave";
 import { useDiagramStore } from "./store/diagramStore";
 import {
   loadDiagramFromFile,
@@ -18,12 +19,17 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
-  const initializeFonts = useDiagramStore((s) => s.initializeFonts);
+  const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
+  const newDiagram = useDiagramStore((s) => s.newDiagram);
+  const restoredFromAutosave = useDiagramStore((s) => s.restoredFromAutosave);
+  const dismissRestoredBanner = useDiagramStore((s) => s.dismissRestoredBanner);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
 
+  useAutosave();
+
   useEffect(() => {
-    void initializeFonts();
-  }, [initializeFonts]);
+    void bootstrapApp();
+  }, [bootstrapApp]);
 
   const handleSave = async () => {
     try {
@@ -45,6 +51,21 @@ function App() {
     }
   };
 
+  const handleNew = async () => {
+    const { characters, lines, groups } = useDiagramStore.getState();
+    const hasContent =
+      characters.length > 0 || lines.length > 0 || groups.length > 0;
+    if (
+      hasContent &&
+      !window.confirm(
+        "Start a new diagram? Your current diagram will be replaced.",
+      )
+    ) {
+      return;
+    }
+    await newDiagram();
+  };
+
   const handleExport = () => {
     setToolMode("select");
     setExportOpen(true);
@@ -53,11 +74,20 @@ function App() {
   return (
     <div className="app">
       <Toolbar
+        onNew={handleNew}
         onSave={handleSave}
         onOpen={handleOpen}
         onExport={handleExport}
         onSettings={() => setSettingsOpen(true)}
       />
+      {restoredFromAutosave && (
+        <div className="autosave-banner">
+          <span>Restored from your last session.</span>
+          <button type="button" onClick={dismissRestoredBanner}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <main className="main">
         <DiagramCanvas stageRef={stageRef} />
         <PropertyPanel />

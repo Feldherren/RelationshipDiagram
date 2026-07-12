@@ -33,6 +33,7 @@ export function GridBackground({
 
   return (
     <Shape
+      name="diagram-grid"
       listening={false}
       stroke="#e0e0e0"
       strokeWidth={strokeWidth}

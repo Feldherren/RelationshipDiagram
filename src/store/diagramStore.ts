@@ -32,6 +32,12 @@ import {
   findConnectionTargetAt,
   sameNodeRef,
 } from "../utils/connection";
+import {
+  createAutosaveSnapshot,
+  loadAutosave,
+  saveAutosave,
+} from "../utils/autosaveStorage";
+import { EMPTY_DIAGRAM } from "./autosaveState";
 
 interface DiagramState {
   characters: Character[];
@@ -50,6 +56,8 @@ interface DiagramState {
   showDiagramHeader: boolean;
   diagramFontFamily: string;
   fontMissing: boolean;
+  autosaveEnabled: boolean;
+  restoredFromAutosave: boolean;
 
   setStageSize: (width: number, height: number) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
@@ -62,6 +70,11 @@ interface DiagramState {
   setShowDiagramHeader: (show: boolean) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
   initializeFonts: () => Promise<void>;
+  bootstrapApp: () => Promise<void>;
+  getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
+  flushAutosave: () => Promise<void>;
+  newDiagram: () => Promise<void>;
+  dismissRestoredBanner: () => void;
 
   addCharacterAt: (position: { x: number; y: number }) => void;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
@@ -84,7 +97,10 @@ interface DiagramState {
   endConnectDrag: (point: { x: number; y: number }) => void;
   cancelConnect: () => void;
   deleteSelected: () => void;
-  loadDiagram: (diagram: Diagram) => Promise<void>;
+  loadDiagram: (
+    diagram: Diagram,
+    options?: { showGrid?: boolean },
+  ) => Promise<void>;
   getDiagram: () => Diagram;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
@@ -118,6 +134,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   showDiagramHeader: true,
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
+  autosaveEnabled: false,
+  restoredFromAutosave: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
@@ -171,6 +189,43 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         !resolvedFamily && !isDefaultDiagramFont(diagramFontFamily),
     });
   },
+
+  bootstrapApp: async () => {
+    set({ autosaveEnabled: false, restoredFromAutosave: false });
+
+    const snapshot = await loadAutosave();
+    if (snapshot) {
+      await get().loadDiagram(snapshot.diagram, { showGrid: snapshot.showGrid });
+      set({ restoredFromAutosave: true });
+    } else {
+      await get().initializeFonts();
+    }
+
+    set({ autosaveEnabled: true });
+  },
+
+  getAutosaveSnapshot: () => {
+    const { showGrid } = get();
+    return createAutosaveSnapshot(get().getDiagram(), showGrid);
+  },
+
+  flushAutosave: async () => {
+    if (!get().autosaveEnabled) return;
+    try {
+      await saveAutosave(get().getAutosaveSnapshot());
+    } catch (err) {
+      console.error("Autosave failed:", err);
+    }
+  },
+
+  newDiagram: async () => {
+    set({ autosaveEnabled: false, restoredFromAutosave: false });
+    await get().loadDiagram(EMPTY_DIAGRAM, { showGrid: true });
+    set({ autosaveEnabled: true });
+    await get().flushAutosave();
+  },
+
+  dismissRestoredBanner: () => set({ restoredFromAutosave: false }),
 
   screenToWorld: (screen) => {
     const { viewport } = get();
@@ -427,7 +482,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     if (selection.type === "group") get().deleteGroup(selection.id);
   },
 
-  loadDiagram: async (diagram) => {
+  loadDiagram: async (diagram, options) => {
     await cleanupDeprecatedFonts();
 
     let fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
@@ -446,11 +501,17 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       showDiagramHeader: diagram.showHeader ?? true,
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
+      showGrid: options?.showGrid ?? get().showGrid,
       selection: null,
       connectFrom: null,
       connectDrag: null,
       toolMode: "select",
+      exportBounds: null,
     });
+
+    if (get().autosaveEnabled) {
+      await get().flushAutosave();
+    }
   },
 
   getDiagram: () => {

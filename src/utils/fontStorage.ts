@@ -1,31 +1,15 @@
-const DB_NAME = "RelationshipDiagram";
-const DB_VERSION = 1;
-const FONT_STORE = "fonts";
+import { FONT_STORE, openDiagramDb } from "./diagramDb";
 
 interface StoredFont {
   family: string;
   data: ArrayBuffer;
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(FONT_STORE)) {
-        db.createObjectStore(FONT_STORE, { keyPath: "family" });
-      }
-    };
-  });
-}
-
 export async function saveFontToStorage(
   family: string,
   data: ArrayBuffer,
 ): Promise<void> {
-  const db = await openDb();
+  const db = await openDiagramDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(FONT_STORE, "readwrite");
     tx.oncomplete = () => resolve();
@@ -37,7 +21,7 @@ export async function saveFontToStorage(
 export async function loadFontFromStorage(
   family: string,
 ): Promise<ArrayBuffer | null> {
-  const db = await openDb();
+  const db = await openDiagramDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(FONT_STORE, "readonly");
     tx.onerror = () => reject(tx.error);
@@ -51,7 +35,7 @@ export async function loadFontFromStorage(
 }
 
 export async function listStoredFontFamilies(): Promise<string[]> {
-  const db = await openDb();
+  const db = await openDiagramDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(FONT_STORE, "readonly");
     tx.onerror = () => reject(tx.error);
@@ -62,7 +46,7 @@ export async function listStoredFontFamilies(): Promise<string[]> {
 }
 
 export async function removeFontFromStorage(family: string): Promise<void> {
-  const db = await openDb();
+  const db = await openDiagramDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(FONT_STORE, "readwrite");
     tx.oncomplete = () => resolve();

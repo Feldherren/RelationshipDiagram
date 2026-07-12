@@ -1,13 +1,20 @@
 import { useDiagramStore } from "../store/diagramStore";
 
 interface ToolbarProps {
+  onNew: () => void;
   onSave: () => void;
   onOpen: () => void;
   onExport: () => void;
   onSettings: () => void;
 }
 
-export function Toolbar({ onSave, onOpen, onExport, onSettings }: ToolbarProps) {
+export function Toolbar({
+  onNew,
+  onSave,
+  onOpen,
+  onExport,
+  onSettings,
+}: ToolbarProps) {
   const addCharacterAt = useDiagramStore((s) => s.addCharacterAt);
   const getViewportCenter = useDiagramStore((s) => s.getViewportCenter);
   const addGroupFromSelection = useDiagramStore((s) => s.addGroupFromSelection);
@@ -33,6 +40,9 @@ export function Toolbar({ onSave, onOpen, onExport, onSettings }: ToolbarProps) 
       </div>
 
       <div className="toolbar-group">
+        <button type="button" onClick={onNew}>
+          New
+        </button>
         <button type="button" onClick={onOpen}>
           Open
         </button>

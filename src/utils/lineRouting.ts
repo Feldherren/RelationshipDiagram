@@ -1,11 +1,17 @@
-import type { Diagram, Line, Point } from "../models/types";
+import type { Bounds, Diagram, Line, Point } from "../models/types";
 import {
   getNodeCenter,
   getNodeEdgePoint,
   isPointInsideNode,
+  mergeBounds,
   normalize,
   perpendicular,
 } from "./geometry";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import { getPillLabelSize } from "./labelMetrics";
+
+const LINE_ARROW_MARGIN = 12;
+const LINE_LABEL_FONT_SIZE = 12;
 
 const AUTO_BEND_STEP = 28;
 const SAMPLE_SEGMENTS = 48;
@@ -292,6 +298,59 @@ export function routeLine(line: Line, diagram: Diagram): RoutedLine {
     labelPoint: midpointAlongPath(visiblePath),
     bendHandlePoint: control,
   };
+}
+
+function boundsFromPoints(points: number[], margin = 0): Bounds | null {
+  if (points.length < 2) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (let i = 0; i < points.length; i += 2) {
+    const x = points[i];
+    const y = points[i + 1];
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+
+  return {
+    x: minX - margin,
+    y: minY - margin,
+    width: maxX - minX + margin * 2,
+    height: maxY - minY + margin * 2,
+  };
+}
+
+export function getLineBounds(
+  line: Line,
+  diagram: Diagram,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): Bounds | null {
+  const routed = routeLine(line, diagram);
+  let result = boundsFromPoints(routed.points, LINE_ARROW_MARGIN);
+
+  if (line.label) {
+    const pill = getPillLabelSize(
+      line.label,
+      LINE_LABEL_FONT_SIZE,
+      "bold",
+      fontFamily,
+    );
+    const margin = LINE_ARROW_MARGIN;
+    const labelBounds: Bounds = {
+      x: routed.labelPoint.x - pill.width / 2 - margin,
+      y: routed.labelPoint.y - pill.height / 2 - margin,
+      width: pill.width + margin * 2,
+      height: pill.height + margin * 2,
+    };
+    result = result ? mergeBounds(result, labelBounds) : labelBounds;
+  }
+
+  return result;
 }
 
 export function nextRouteIndex(

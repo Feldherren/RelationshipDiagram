@@ -37,6 +37,33 @@ body,
   flex-wrap: wrap;
 }
 
+.autosave-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #eef5fc;
+  border-bottom: 1px solid #c8daf0;
+  color: #2f5f94;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.autosave-banner button {
+  padding: 2px 10px;
+  border: 1px solid #a8c4e8;
+  border-radius: 6px;
+  background: #fff;
+  color: #2f5f94;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.autosave-banner button:hover {
+  background: #f7fbff;
+}
+
 .toolbar-group {
   display: flex;
   gap: 4px;

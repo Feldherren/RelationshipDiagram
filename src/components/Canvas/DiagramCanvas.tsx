@@ -4,6 +4,7 @@ import type Konva from "konva";
 import { CharacterNode } from "./CharacterNode";
 import { LineEdge } from "./LineEdge";
 import { GroupContainer } from "./GroupContainer";
+import { GridBackground } from "./GridBackground";
 import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
@@ -213,27 +214,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     [moveCharacter, groups, characters, addCharacterToGroup],
   );
 
-  const gridLines: number[] = [];
-  if (showGrid) {
-    const gridSize = 40;
-    const startX =
-      Math.floor(-viewport.x / viewport.scale / gridSize) * gridSize;
-    const endX =
-      startX +
-      Math.ceil(stageSize.width / viewport.scale / gridSize + 2) * gridSize;
-    const startY =
-      Math.floor(-viewport.y / viewport.scale / gridSize) * gridSize;
-    const endY =
-      startY +
-      Math.ceil(stageSize.height / viewport.scale / gridSize + 2) * gridSize;
-    for (let x = startX; x <= endX; x += gridSize) {
-      gridLines.push(x, startY, x, endY);
-    }
-    for (let y = startY; y <= endY; y += gridSize) {
-      gridLines.push(startX, y, endX, y);
-    }
-  }
-
   const previewBounds =
     isDrawingExport && drawStart && drawCurrent
       ? {
@@ -269,11 +249,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       >
         <Layer>
           {showGrid && (
-            <Line
-              points={gridLines}
-              stroke="#e0e0e0"
-              strokeWidth={1 / viewport.scale}
-              listening={false}
+            <GridBackground
+              viewport={viewport}
+              stageWidth={stageSize.width}
+              stageHeight={stageSize.height}
             />
           )}
 
@@ -335,6 +314,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   handleNodeClick({ id: character.id, kind: "character" })
                 }
                 onConnectHandleDown={handleConnectHandleDown(character.id)}
+                onDragMove={(pos) => moveCharacter(character.id, pos)}
                 onDragEnd={(pos) => onCharacterDragEnd(character.id, pos)}
               />
             ))}

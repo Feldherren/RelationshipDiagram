@@ -1,10 +1,15 @@
 import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
+import { useState } from "react";
 import type Konva from "konva";
 import type { Character } from "../../models/types";
 import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
-import { getConnectHandleOffset } from "../../utils/connection";
+import {
+  CONNECT_HANDLE_FONT_SIZE,
+  CONNECT_HANDLE_SCREEN_RADIUS,
+  getConnectHandleOffset,
+} from "../../utils/connection";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
   CHARACTER_LABEL_GAP,
@@ -91,6 +96,7 @@ export function CharacterNode({
   onDragEnd,
   onConnectHandleDown,
 }: CharacterNodeProps) {
+  const [hovered, setHovered] = useState(false);
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -104,8 +110,9 @@ export function CharacterNode({
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const handleOffset = getConnectHandleOffset(size);
-  const handleRadius = 10 / viewportScale;
-  const handleFontSize = 14 / viewportScale;
+  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+  const handleFontSize = CONNECT_HANDLE_FONT_SIZE / viewportScale;
+  const showConnectHandle = selected || hovered || isConnectSource;
 
   return (
     <Group
@@ -126,6 +133,8 @@ export function CharacterNode({
       onDragEnd={(e) => {
         onDragEnd({ x: e.target.x(), y: e.target.y() });
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {selected && (
         <Circle
@@ -198,43 +207,45 @@ export function CharacterNode({
           selected={selected}
         />
       )}
-      <Group
-        x={handleOffset.x}
-        y={handleOffset.y}
-        onMouseDown={(e) => {
-          e.cancelBubble = true;
-          onConnectHandleDown(e);
-        }}
-        onClick={(e) => {
-          e.cancelBubble = true;
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-        }}
-      >
-        <Circle
-          radius={handleRadius}
-          fill={isConnectSource ? "#2f6fb3" : "#4a90d9"}
-          stroke="#ffffff"
-          strokeWidth={2 / viewportScale}
-          shadowColor="rgba(0,0,0,0.25)"
-          shadowBlur={4 / viewportScale}
-          shadowOffset={{ x: 0, y: 1 / viewportScale }}
-        />
-        <Text
-          text="+"
-          fontSize={handleFontSize}
-          fontStyle="bold"
-          fill="#ffffff"
-          align="center"
-          verticalAlign="middle"
-          width={handleRadius * 2}
-          height={handleRadius * 2}
-          offsetX={handleRadius}
-          offsetY={handleRadius}
-          listening={false}
-        />
-      </Group>
+      {showConnectHandle && (
+        <Group
+          x={handleOffset.x}
+          y={handleOffset.y}
+          onMouseDown={(e) => {
+            e.cancelBubble = true;
+            onConnectHandleDown(e);
+          }}
+          onClick={(e) => {
+            e.cancelBubble = true;
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+          }}
+        >
+          <Circle
+            radius={handleRadius}
+            fill={isConnectSource ? "#2f6fb3" : "#4a90d9"}
+            stroke="#ffffff"
+            strokeWidth={2 / viewportScale}
+            shadowColor="rgba(0,0,0,0.25)"
+            shadowBlur={4 / viewportScale}
+            shadowOffset={{ x: 0, y: 1 / viewportScale }}
+          />
+          <Text
+            text="+"
+            fontSize={handleFontSize}
+            fontStyle="bold"
+            fill="#ffffff"
+            align="center"
+            verticalAlign="middle"
+            width={handleRadius * 2}
+            height={handleRadius * 2}
+            offsetX={handleRadius}
+            offsetY={handleRadius}
+            listening={false}
+          />
+        </Group>
+      )}
     </Group>
   );
 }

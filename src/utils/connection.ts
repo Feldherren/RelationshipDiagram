@@ -44,6 +44,13 @@ export function findConnectionTargetAt(
   return best?.ref ?? null;
 }
 
+export const CONNECT_HANDLE_SCREEN_RADIUS = 14;
+export const CONNECT_HANDLE_FONT_SIZE = 18;
+
 export function getConnectHandleOffset(size: number): Point {
-  return { x: size + 4, y: -size - 4 };
+  // Sit on the top-right diagonal so the handle rim straddles the shape border.
+  const centerDistance =
+    size + CONNECT_HANDLE_SCREEN_RADIUS * 0.5;
+  const axisOffset = centerDistance / Math.SQRT2;
+  return { x: axisOffset, y: -axisOffset };
 }

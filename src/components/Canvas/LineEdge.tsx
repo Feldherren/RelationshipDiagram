@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Arrow, Circle, Group } from "react-konva";
+import { Arrow, Group } from "react-konva";
 import type Konva from "konva";
 import type { Diagram, Line, Point } from "../../models/types";
 import { rgbToCss } from "../../models/types";
@@ -37,9 +37,7 @@ export function LineEdge({
   const routed = routeLine(line, diagram);
   const color = rgbToCss(line.color);
   const dash = line.style === "dotted" ? [8, 6] : undefined;
-  const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
-  const handleRadius = 7 / viewportScale;
   const [bendDragging, setBendDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const lineIdRef = useRef(line.id);
@@ -140,17 +138,6 @@ export function LineEdge({
           textFill={color}
           selected={selected}
           selectedStroke="#c62828"
-        />
-      )}
-      {selected && (
-        <Circle
-          x={routed.bendHandlePoint.x}
-          y={routed.bendHandlePoint.y}
-          radius={handleRadius}
-          fill="#ffffff"
-          stroke="#4a90d9"
-          strokeWidth={2 / viewportScale}
-          onMouseDown={beginBendDrag}
         />
       )}
     </Group>

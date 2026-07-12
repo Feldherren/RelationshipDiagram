@@ -114,6 +114,11 @@ export function CharacterNode({
   const handleFontSize = CONNECT_HANDLE_FONT_SIZE / viewportScale;
   const showConnectHandle = selected || hovered || isConnectSource;
 
+  const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    e.cancelBubble = true;
+    onSelect();
+  };
+
   return (
     <Group
       x={character.position.x}
@@ -188,6 +193,8 @@ export function CharacterNode({
           strokeWidth={1.5}
           selectedStrokeWidth={2.5}
           selected={selected}
+          onClick={handleLabelSelect}
+          onTap={handleLabelSelect}
         />
       )}
       {character.subtitle && (
@@ -205,6 +212,8 @@ export function CharacterNode({
           selectedStrokeWidth={2.5}
           textFill="#5c5c5c"
           selected={selected}
+          onClick={handleLabelSelect}
+          onTap={handleLabelSelect}
         />
       )}
       {showConnectHandle && (

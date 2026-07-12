@@ -141,39 +141,40 @@ function squareEdgePoint(center: Point, half: number, toward: Point): Point {
   return { x: center.x + dx * scale, y: center.y + dy * scale };
 }
 
+function regularPolygonEdgePoint(
+  center: Point,
+  radius: number,
+  sides: number,
+  toward: Point,
+): Point {
+  const dx = toward.x - center.x;
+  const dy = toward.y - center.y;
+  if (dx === 0 && dy === 0) {
+    return { x: center.x, y: center.y - radius };
+  }
+
+  const angle = Math.atan2(dy, dx);
+  const step = (2 * Math.PI) / sides;
+  const startAngle = -Math.PI / 2;
+  let rel = angle - startAngle;
+  rel = ((rel % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const sectorMid = startAngle + Math.floor(rel / step) * step + step / 2;
+  const alpha = angle - sectorMid;
+  const dist = (radius * Math.cos(Math.PI / sides)) / Math.cos(alpha);
+
+  return {
+    x: center.x + Math.cos(angle) * dist,
+    y: center.y + Math.sin(angle) * dist,
+  };
+}
+
 function polygonEdgePoint(
   center: Point,
   radius: number,
   sides: number,
   toward: Point,
 ): Point {
-  const angle = Math.atan2(toward.y - center.y, toward.x - center.x);
-  const step = (Math.PI * 2) / sides;
-  const start = -Math.PI / 2;
-  let bestPoint = center;
-  let bestDist = Infinity;
-
-  for (let i = 0; i < sides; i++) {
-    const a = start + i * step;
-    const px = center.x + Math.cos(a) * radius;
-    const py = center.y + Math.sin(a) * radius;
-    const d = distance({ x: px, y: py }, toward);
-    if (d < bestDist) {
-      bestDist = d;
-      bestPoint = { x: px, y: py };
-    }
-  }
-
-  const dir = normalize({ x: toward.x - center.x, y: toward.y - center.y });
-  const edgeRadius =
-    radius / Math.cos(((angle - start) % step) - step / 2 + step / 2);
-  void edgeRadius;
-  return bestPoint.x !== center.x || bestPoint.y !== center.y
-    ? bestPoint
-    : {
-        x: center.x + dir.x * radius,
-        y: center.y + dir.y * radius,
-      };
+  return regularPolygonEdgePoint(center, radius, sides, toward);
 }
 
 function rectEdgePoint(bounds: Bounds, toward: Point): Point {
@@ -237,6 +238,69 @@ export function getNodeEdgePoint(
   const group = getGroupById(diagram, id);
   if (!group) return toward;
   return getGroupEdgePoint(group, diagram.characters, toward);
+}
+
+function pointInRegularPolygon(
+  point: Point,
+  center: Point,
+  radius: number,
+  sides: number,
+): boolean {
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  if (dx === 0 && dy === 0) return true;
+  const angle = Math.atan2(dy, dx);
+  const step = (2 * Math.PI) / sides;
+  const startAngle = -Math.PI / 2;
+  let rel = angle - startAngle;
+  rel = ((rel % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const sectorMid = startAngle + Math.floor(rel / step) * step + step / 2;
+  const alpha = angle - sectorMid;
+  const edgeDist = (radius * Math.cos(Math.PI / sides)) / Math.cos(alpha);
+  return Math.hypot(dx, dy) <= edgeDist + 0.01;
+}
+
+export function isPointInsideNode(
+  kind: "character" | "group",
+  id: string,
+  point: Point,
+  diagram: Pick<Diagram, "characters" | "groups">,
+): boolean {
+  if (kind === "character") {
+    const character = getCharacterById(diagram, id);
+    if (!character) return false;
+    const center = character.position;
+    const size = character.size || DEFAULT_CHARACTER_SIZE;
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    switch (character.borderShape) {
+      case "square":
+        return Math.max(Math.abs(dx), Math.abs(dy)) <= size;
+      case "pentagon":
+        return pointInRegularPolygon(point, center, size, 5);
+      case "hexagon":
+        return pointInRegularPolygon(point, center, size, 6);
+      default:
+        return Math.hypot(dx, dy) <= size;
+    }
+  }
+
+  const group = getGroupById(diagram, id);
+  if (!group) return false;
+  if (group.collapsed) {
+    const center = group.collapsedPosition ?? { x: 0, y: 0 };
+    return (
+      Math.hypot(point.x - center.x, point.y - center.y) <= COLLAPSED_GROUP_SIZE
+    );
+  }
+  const bounds = getGroupMemberBounds(group, diagram.characters);
+  if (!bounds) return false;
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
 }
 
 export function mergeBounds(a: Bounds, b: Bounds): Bounds {

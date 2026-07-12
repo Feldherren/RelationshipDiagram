@@ -38,6 +38,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     startConnectDrag,
     updateConnectDrag,
     endConnectDrag,
+    updateLine,
   } = useDiagramStore();
 
   const { startPan, movePan, endPan, shouldPan } = usePanZoom(containerRef);
@@ -280,6 +281,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               onSelect={() =>
                 setSelection({ type: "line", id: line.id })
               }
+              onBendChange={(bend) => updateLine(line.id, { bend })}
             />
           ))}
 

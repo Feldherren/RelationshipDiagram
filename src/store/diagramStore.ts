@@ -17,7 +17,10 @@ import {
   defaultRgb,
 } from "../models/types";
 import { getGroupCenter, getGroupMemberBounds } from "../utils/geometry";
-import { getLinePairKey } from "../utils/lineRouting";
+import {
+  initialBendForRouteIndex,
+  nextRouteIndex,
+} from "../utils/lineRouting";
 import {
   findConnectionTargetAt,
   sameNodeRef,
@@ -79,27 +82,6 @@ function createDefaultCharacter(position: { x: number; y: number }): Character {
     borderColor: defaultRgb(),
     size: DEFAULT_CHARACTER_SIZE,
   };
-}
-
-function nextRouteIndex(
-  from: NodeRef,
-  to: NodeRef,
-  lines: Line[],
-): number {
-  const tempLine: Line = {
-    id: "",
-    from,
-    to,
-    color: defaultRgb(),
-    style: "straight",
-    startArrow: false,
-    endArrow: true,
-    routeIndex: 0,
-  };
-  const key = getLinePairKey(tempLine);
-  const existing = lines.filter((l) => getLinePairKey(l) === key);
-  if (existing.length === 0) return 0;
-  return Math.max(...existing.map((l) => l.routeIndex)) + 1;
 }
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
@@ -187,6 +169,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
   addLine: (from, to) => {
     if (from.id === to.id && from.kind === to.kind) return;
+    const existingLines = get().lines;
+    const routeIndex = nextRouteIndex(from, to, existingLines);
     const line: Line = {
       id: uuidv4(),
       from,
@@ -195,7 +179,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       style: "straight",
       startArrow: false,
       endArrow: true,
-      routeIndex: nextRouteIndex(from, to, get().lines),
+      routeIndex,
+      bend: initialBendForRouteIndex(routeIndex),
     };
     set((s) => ({
       lines: [...s.lines, line],

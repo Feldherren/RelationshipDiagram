@@ -200,6 +200,13 @@ export function PropertyPanel() {
           />
           <span>Arrow at end</span>
         </label>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => updateLine(line.id, { bend: 0 })}
+        >
+          Reset curve
+        </button>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           Delete line
         </button>

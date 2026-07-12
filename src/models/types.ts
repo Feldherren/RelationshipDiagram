@@ -44,6 +44,7 @@ export interface Line {
   endArrow: boolean;
   label?: string;
   routeIndex: number;
+  bend?: number;
 }
 
 export interface Group {

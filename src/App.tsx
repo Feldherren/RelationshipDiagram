@@ -21,8 +21,6 @@ function App() {
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
   const newDiagram = useDiagramStore((s) => s.newDiagram);
-  const restoredFromAutosave = useDiagramStore((s) => s.restoredFromAutosave);
-  const dismissRestoredBanner = useDiagramStore((s) => s.dismissRestoredBanner);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
 
   useAutosave();
@@ -80,14 +78,6 @@ function App() {
         onExport={handleExport}
         onSettings={() => setSettingsOpen(true)}
       />
-      {restoredFromAutosave && (
-        <div className="autosave-banner">
-          <span>Restored from your last session.</span>
-          <button type="button" onClick={dismissRestoredBanner}>
-            Dismiss
-          </button>
-        </div>
-      )}
       <main className="main">
         <DiagramCanvas stageRef={stageRef} />
         <PropertyPanel />

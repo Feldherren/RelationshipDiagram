@@ -57,7 +57,6 @@ interface DiagramState {
   diagramFontFamily: string;
   fontMissing: boolean;
   autosaveEnabled: boolean;
-  restoredFromAutosave: boolean;
 
   setStageSize: (width: number, height: number) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
@@ -74,7 +73,6 @@ interface DiagramState {
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
   flushAutosave: () => Promise<void>;
   newDiagram: () => Promise<void>;
-  dismissRestoredBanner: () => void;
 
   addCharacterAt: (position: { x: number; y: number }) => void;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
@@ -135,7 +133,6 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
   autosaveEnabled: false,
-  restoredFromAutosave: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
@@ -191,12 +188,11 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   bootstrapApp: async () => {
-    set({ autosaveEnabled: false, restoredFromAutosave: false });
+    set({ autosaveEnabled: false });
 
     const snapshot = await loadAutosave();
     if (snapshot) {
       await get().loadDiagram(snapshot.diagram, { showGrid: snapshot.showGrid });
-      set({ restoredFromAutosave: true });
     } else {
       await get().initializeFonts();
     }
@@ -219,13 +215,11 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   newDiagram: async () => {
-    set({ autosaveEnabled: false, restoredFromAutosave: false });
+    set({ autosaveEnabled: false });
     await get().loadDiagram(EMPTY_DIAGRAM, { showGrid: true });
     set({ autosaveEnabled: true });
     await get().flushAutosave();
   },
-
-  dismissRestoredBanner: () => set({ restoredFromAutosave: false }),
 
   screenToWorld: (screen) => {
     const { viewport } = get();

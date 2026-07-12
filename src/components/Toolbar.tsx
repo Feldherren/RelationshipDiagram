@@ -1,5 +1,3 @@
-import { useDiagramStore } from "../store/diagramStore";
-
 interface ToolbarProps {
   onNew: () => void;
   onSave: () => void;
@@ -15,30 +13,8 @@ export function Toolbar({
   onExport,
   onSettings,
 }: ToolbarProps) {
-  const addCharacterAt = useDiagramStore((s) => s.addCharacterAt);
-  const getViewportCenter = useDiagramStore((s) => s.getViewportCenter);
-  const addGroupFromSelection = useDiagramStore((s) => s.addGroupFromSelection);
-  const selection = useDiagramStore((s) => s.selection);
-
   return (
     <header className="toolbar">
-      <div className="toolbar-group">
-        <button
-          type="button"
-          onClick={() => addCharacterAt(getViewportCenter())}
-        >
-          + Character
-        </button>
-        <button
-          type="button"
-          disabled={selection?.type !== "character"}
-          onClick={addGroupFromSelection}
-          title="Group selected character"
-        >
-          + Group
-        </button>
-      </div>
-
       <div className="toolbar-group">
         <button type="button" onClick={onNew}>
           New

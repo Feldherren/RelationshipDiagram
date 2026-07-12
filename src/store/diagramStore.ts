@@ -83,7 +83,7 @@ interface DiagramState {
   updateLine: (id: string, patch: Partial<Line>) => void;
   deleteLine: (id: string) => void;
 
-  addGroupFromSelection: () => void;
+  addGroupAt: (position: { x: number; y: number }) => void;
   updateGroup: (id: string, patch: Partial<Group>) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapse: (id: string) => void;
@@ -314,28 +314,15 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           : s.selection,
     })),
 
-  addGroupFromSelection: () => {
-    const { selection, characters, groups } = get();
-    let memberIds: string[] = [];
-
-    if (selection?.type === "character") {
-      memberIds = [selection.id];
-    }
-
-    if (memberIds.length === 0) return;
-
-    const members = characters.filter((c) => memberIds.includes(c.id));
-    const bounds = {
-      minX: Math.min(...members.map((m) => m.position.x)),
-      minY: Math.min(...members.map((m) => m.position.y)),
-    };
-
+  addGroupAt: (position) => {
+    const { groups } = get();
     const group: Group = {
       id: uuidv4(),
       name: `Group ${groups.length + 1}`,
-      memberCharacterIds: memberIds,
+      memberCharacterIds: [],
       collapsed: false,
-      collapsedPosition: { x: bounds.minX, y: bounds.minY },
+      anchorPosition: position,
+      collapsedPosition: position,
       borderColor: { r: 100, g: 140, b: 100 },
     };
 

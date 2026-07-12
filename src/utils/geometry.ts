@@ -156,7 +156,18 @@ export function getGroupMemberBounds(
   const members = characters.filter((c) =>
     group.memberCharacterIds.includes(c.id),
   );
-  if (members.length === 0) return null;
+  if (members.length === 0) {
+    if (!group.anchorPosition) return null;
+    const innerSize = DEFAULT_CHARACTER_SIZE * 2;
+    const width = innerSize + GROUP_PADDING * 2;
+    const height = innerSize + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT;
+    return {
+      x: group.anchorPosition.x - width / 2,
+      y: group.anchorPosition.y - height / 2,
+      width,
+      height,
+    };
+  }
 
   let minX = Infinity;
   let minY = Infinity;

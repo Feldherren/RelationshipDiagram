@@ -6,6 +6,10 @@ import { LineEdge } from "./LineEdge";
 import { GroupContainer } from "./GroupContainer";
 import { GridBackground } from "./GridBackground";
 import { DiagramTitle } from "./DiagramTitle";
+import {
+  CanvasContextMenu,
+  type CanvasContextMenuState,
+} from "./CanvasContextMenu";
 import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
@@ -36,6 +40,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     addCharacterToGroup,
     toggleGroupCollapse,
     screenToWorld,
+    addCharacterAt,
+    addGroupAt,
     startConnectDrag,
     updateConnectDrag,
     endConnectDrag,
@@ -53,6 +59,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     x: number;
     y: number;
   } | null>(null);
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
+    null,
+  );
 
   useEffect(() => {
     const updateSize = () => {
@@ -196,6 +205,20 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     }
   };
 
+  const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault();
+    if (connectDrag || toolMode === "exportBounds") return;
+    if (e.target !== e.target.getStage()) return;
+
+    const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
+    setContextMenu({
+      screenX: e.evt.clientX,
+      screenY: e.evt.clientY,
+      worldX: world.x,
+      worldY: world.y,
+    });
+  };
+
   const onCharacterDragEnd = useCallback(
     (characterId: string, pos: { x: number; y: number }) => {
       moveCharacter(characterId, pos);
@@ -230,8 +253,15 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     <div
       ref={containerRef}
       className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}`}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <DiagramTitle />
+      <CanvasContextMenu
+        menu={contextMenu}
+        onClose={() => setContextMenu(null)}
+        onAddCharacter={addCharacterAt}
+        onAddGroup={addGroupAt}
+      />
       {connectFrom && (
         <div className="connect-hint">
           Click another character to connect (Esc to cancel)
@@ -249,6 +279,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onClick={handleStageClick}
+        onContextMenu={handleStageContextMenu}
       >
         <Layer>
           {showGrid && (

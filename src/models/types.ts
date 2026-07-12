@@ -53,6 +53,7 @@ export interface Group {
   memberCharacterIds: string[];
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
+  anchorPosition?: { x: number; y: number };
   borderColor: RGB;
 }
 

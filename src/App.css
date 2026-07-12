@@ -100,6 +100,34 @@ body,
   cursor: crosshair;
 }
 
+.canvas-context-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 160px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.canvas-context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #1a1a1a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.canvas-context-menu button:hover {
+  background: #f0f4f8;
+}
+
 .connect-hint {
   position: absolute;
   top: 12px;

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import type {
   Bounds,
   Character,
+  ConnectDrag,
   Diagram,
   Group,
   Line,
@@ -17,6 +18,10 @@ import {
 } from "../models/types";
 import { getGroupCenter, getGroupMemberBounds } from "../utils/geometry";
 import { getLinePairKey } from "../utils/lineRouting";
+import {
+  findConnectionTargetAt,
+  sameNodeRef,
+} from "../utils/connection";
 
 interface DiagramState {
   characters: Character[];
@@ -26,6 +31,7 @@ interface DiagramState {
   selection: Selection;
   toolMode: ToolMode;
   connectFrom: NodeRef | null;
+  connectDrag: ConnectDrag | null;
   showGrid: boolean;
   exportBounds: Bounds | null;
   stageSize: { width: number; height: number };
@@ -53,6 +59,10 @@ interface DiagramState {
   addCharacterToGroup: (characterId: string, groupId: string) => void;
 
   handleNodeClick: (ref: NodeRef) => void;
+  startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
+  updateConnectDrag: (point: { x: number; y: number }) => void;
+  endConnectDrag: (point: { x: number; y: number }) => void;
+  cancelConnect: () => void;
   deleteSelected: () => void;
   loadDiagram: (diagram: Diagram) => void;
   getDiagram: () => Diagram;
@@ -100,6 +110,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   selection: null,
   toolMode: "select",
   connectFrom: null,
+  connectDrag: null,
   showGrid: true,
   exportBounds: null,
   stageSize: { width: 800, height: 600 },
@@ -108,7 +119,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   setViewport: (patch) =>
     set((s) => ({ viewport: { ...s.viewport, ...patch } })),
   setToolMode: (mode) =>
-    set({ toolMode: mode, connectFrom: null, exportBounds: mode === "exportBounds" ? get().exportBounds : null }),
+    set({
+      toolMode: mode,
+      connectFrom: null,
+      connectDrag: null,
+      exportBounds: mode === "exportBounds" ? get().exportBounds : null,
+    }),
   setSelection: (selection) => set({ selection }),
   setShowGrid: (show) => set({ showGrid: show }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
@@ -185,7 +201,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       lines: [...s.lines, line],
       selection: { type: "line", id: line.id },
       connectFrom: null,
-      toolMode: "select",
+      connectDrag: null,
     }));
   },
 
@@ -296,13 +312,9 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     })),
 
   handleNodeClick: (ref) => {
-    const { toolMode, connectFrom } = get();
-    if (toolMode === "connect") {
-      if (!connectFrom) {
-        set({ connectFrom: ref, selection: null });
-        return;
-      }
-      if (connectFrom.id === ref.id && connectFrom.kind === ref.kind) {
+    const { connectFrom } = get();
+    if (connectFrom) {
+      if (sameNodeRef(connectFrom, ref)) {
         set({ connectFrom: null });
         return;
       }
@@ -315,6 +327,51 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       set({ selection: { type: "group", id: ref.id } });
     }
   },
+
+  startConnectDrag: (from, point) =>
+    set({
+      connectDrag: {
+        from,
+        startX: point.x,
+        startY: point.y,
+        x: point.x,
+        y: point.y,
+      },
+      connectFrom: null,
+      selection: null,
+    }),
+
+  updateConnectDrag: (point) =>
+    set((s) =>
+      s.connectDrag
+        ? { connectDrag: { ...s.connectDrag, x: point.x, y: point.y } }
+        : {},
+    ),
+
+  endConnectDrag: (point) => {
+    const { connectDrag, characters, groups } = get();
+    if (!connectDrag) return;
+
+    const moved = Math.hypot(
+      point.x - connectDrag.startX,
+      point.y - connectDrag.startY,
+    );
+    const target = findConnectionTargetAt(point, characters, groups);
+
+    if (target && !sameNodeRef(connectDrag.from, target)) {
+      get().addLine(connectDrag.from, target);
+      return;
+    }
+
+    if (moved < 6) {
+      set({ connectFrom: connectDrag.from, connectDrag: null });
+      return;
+    }
+
+    set({ connectDrag: null });
+  },
+
+  cancelConnect: () => set({ connectFrom: null, connectDrag: null }),
 
   deleteSelected: () => {
     const { selection } = get();
@@ -332,6 +389,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       selection: null,
       connectFrom: null,
+      connectDrag: null,
       toolMode: "select",
     }),
 

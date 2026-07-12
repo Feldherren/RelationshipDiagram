@@ -96,6 +96,10 @@ body,
   cursor: grabbing;
 }
 
+.canvas-container.connecting {
+  cursor: crosshair;
+}
+
 .connect-hint {
   position: absolute;
   top: 12px;

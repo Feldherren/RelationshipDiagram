@@ -7,29 +7,15 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onSave, onOpen, onExport }: ToolbarProps) {
-  const toolMode = useDiagramStore((s) => s.toolMode);
   const showGrid = useDiagramStore((s) => s.showGrid);
-  const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setShowGrid = useDiagramStore((s) => s.setShowGrid);
   const addCharacterAt = useDiagramStore((s) => s.addCharacterAt);
   const getViewportCenter = useDiagramStore((s) => s.getViewportCenter);
   const addGroupFromSelection = useDiagramStore((s) => s.addGroupFromSelection);
   const selection = useDiagramStore((s) => s.selection);
-  const connectFrom = useDiagramStore((s) => s.connectFrom);
 
   return (
     <header className="toolbar">
-      <div className="toolbar-group">
-        <button
-          type="button"
-          className={toolMode === "connect" ? "active" : ""}
-          onClick={() => setToolMode("connect")}
-          title="Connect two nodes"
-        >
-          {connectFrom ? "Connect…" : "Connect"}
-        </button>
-      </div>
-
       <div className="toolbar-group">
         <button
           type="button"

@@ -45,7 +45,8 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") spaceHeld.current = true;
       if (e.key === "Escape") {
-        useDiagramStore.setState({ connectFrom: null, toolMode: "select" });
+        useDiagramStore.getState().cancelConnect();
+        useDiagramStore.setState({ toolMode: "select" });
       }
       if (e.key === "Delete" || e.key === "Backspace") {
         const target = e.target as HTMLElement;

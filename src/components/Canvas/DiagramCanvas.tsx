@@ -7,6 +7,7 @@ import { GroupContainer } from "./GroupContainer";
 import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
+import { sameNodeRef } from "../../utils/connection";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -22,6 +23,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     selection,
     toolMode,
     connectFrom,
+    connectDrag,
     showGrid,
     exportBounds,
     setStageSize,
@@ -32,6 +34,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     addCharacterToGroup,
     toggleGroupCollapse,
     screenToWorld,
+    startConnectDrag,
+    updateConnectDrag,
+    endConnectDrag,
   } = useDiagramStore();
 
   const { startPan, movePan, endPan, shouldPan } = usePanZoom(containerRef);
@@ -59,9 +64,69 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     return () => window.removeEventListener("resize", updateSize);
   }, [setStageSize]);
 
+  useEffect(() => {
+    if (!connectDrag) return;
+
+    const pointerToWorld = (clientX: number, clientY: number) => {
+      const stage = stageRef.current;
+      if (!stage) return null;
+      const rect = stage.container().getBoundingClientRect();
+      return screenToWorld({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      });
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const world = pointerToWorld(e.clientX, e.clientY);
+      if (world) updateConnectDrag(world);
+    };
+
+    const onUp = (e: MouseEvent) => {
+      const world = pointerToWorld(e.clientX, e.clientY);
+      if (world) endConnectDrag(world);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [
+    connectDrag,
+    stageRef,
+    screenToWorld,
+    updateConnectDrag,
+    endConnectDrag,
+  ]);
+
   const stageSize = useDiagramStore((s) => s.stageSize);
 
+  const handleConnectHandleDown = useCallback(
+    (characterId: string) => (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const stage = e.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+      const world = screenToWorld(pointer);
+      startConnectDrag({ id: characterId, kind: "character" }, world);
+    },
+    [screenToWorld, startConnectDrag],
+  );
+
+  const isConnectSource = useCallback(
+    (characterId: string) => {
+      const ref = { id: characterId, kind: "character" as const };
+      if (connectFrom && sameNodeRef(connectFrom, ref)) return true;
+      if (connectDrag && sameNodeRef(connectDrag.from, ref)) return true;
+      return false;
+    },
+    [connectFrom, connectDrag],
+  );
+
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (connectDrag) return;
+
     const isStage = e.target === e.target.getStage();
 
     if (shouldPan(e.evt.button)) {
@@ -78,18 +143,16 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       return;
     }
 
-    if (
-      isStage &&
-      e.evt.button === 0 &&
-      toolMode !== "connect"
-    ) {
+    if (isStage && e.evt.button === 0) {
       startPan(e.evt.clientX, e.evt.clientY);
       setIsPanningView(true);
     }
   };
 
   const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    movePan(e.evt.clientX, e.evt.clientY);
+    if (!connectDrag) {
+      movePan(e.evt.clientX, e.evt.clientY);
+    }
     if (isDrawingExport && drawStart) {
       const pos = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
       setDrawCurrent(pos);
@@ -97,6 +160,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseUp = () => {
+    if (connectDrag) return;
+
     if (endPan()) {
       suppressClick.current = true;
     }
@@ -124,7 +189,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     if (toolMode === "exportBounds") return;
     if (e.target === e.target.getStage()) {
       setSelection(null);
-      useDiagramStore.setState({ connectFrom: null });
+      useDiagramStore.getState().cancelConnect();
     }
   };
 
@@ -182,11 +247,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container${isPanningView ? " panning" : ""}`}
+      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}`}
     >
       {connectFrom && (
         <div className="connect-hint">
-          Click a target node to connect (Esc to cancel)
+          Click another character to connect (Esc to cancel)
         </div>
       )}
       <Stage
@@ -239,6 +304,21 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             />
           ))}
 
+          {connectDrag && (
+            <Line
+              points={[
+                connectDrag.startX,
+                connectDrag.startY,
+                connectDrag.x,
+                connectDrag.y,
+              ]}
+              stroke="#4a90d9"
+              strokeWidth={2 / viewport.scale}
+              dash={[8 / viewport.scale, 5 / viewport.scale]}
+              listening={false}
+            />
+          )}
+
           {characters
             .filter((c) => !isCharacterHidden(c.id, groups))
             .map((character) => (
@@ -249,10 +329,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   selection?.type === "character" &&
                   selection.id === character.id
                 }
-                draggable={toolMode !== "connect" && toolMode !== "exportBounds"}
+                isConnectSource={isConnectSource(character.id)}
+                draggable={toolMode !== "exportBounds" && !connectDrag}
                 onSelect={() =>
                   handleNodeClick({ id: character.id, kind: "character" })
                 }
+                onConnectHandleDown={handleConnectHandleDown(character.id)}
                 onDragEnd={(pos) => onCharacterDragEnd(character.id, pos)}
               />
             ))}

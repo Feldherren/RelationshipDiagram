@@ -25,7 +25,7 @@ npm run preview
 | Add character | **+ Character** in the toolbar |
 | Pan | Drag empty canvas, middle-mouse drag, or hold **Space** and drag |
 | Zoom | Scroll wheel |
-| Connect nodes | **Connect** → click source → click target |
+| Connect nodes | Click a character's **+** button, then click a target — or drag **+** to another character |
 | Edit properties | Select an item; use the panel on the right |
 | Group | Select a character → **+ Group**; drag characters into an expanded group |
 | Collapse group | Double-click the group, or use **Collapse group** in the panel |

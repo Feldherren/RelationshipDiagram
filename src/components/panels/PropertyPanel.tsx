@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
@@ -12,6 +13,7 @@ const LINE_STYLES: { value: LineStyle; label: string }[] = [
 ];
 
 export function PropertyPanel() {
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const selection = useDiagramStore((s) => s.selection);
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
@@ -49,6 +51,13 @@ export function PropertyPanel() {
       reader.readAsDataURL(file);
     };
 
+    const handleRemoveImage = () => {
+      updateCharacter(character.id, { imageData: undefined });
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+    };
+
     return (
       <aside className="property-panel">
         <h2>Character</h2>
@@ -75,9 +84,10 @@ export function PropertyPanel() {
             }
           />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Image</span>
           <input
+            ref={imageInputRef}
             type="file"
             accept="image/*"
             onChange={(e) => handleImage(e.target.files?.[0] ?? null)}
@@ -86,12 +96,12 @@ export function PropertyPanel() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => updateCharacter(character.id, { imageData: undefined })}
+              onClick={handleRemoveImage}
             >
               Remove image
             </button>
           )}
-        </label>
+        </div>
         <ShapePicker
           value={character.borderShape}
           onChange={(borderShape) =>

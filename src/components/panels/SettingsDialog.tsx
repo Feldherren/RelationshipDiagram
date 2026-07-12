@@ -1,8 +1,6 @@
 import { useDiagramStore } from "../../store/diagramStore";
-import {
-  DEFAULT_DIAGRAM_FONT,
-  isDefaultDiagramFont,
-} from "../../utils/diagramFont";
+import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import { FontPicker } from "./FontPicker";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -20,27 +18,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   if (!open) return null;
 
-  const fontOptions = [
-    DEFAULT_DIAGRAM_FONT,
-    ...loadedFontFamilies.filter((f) => f !== DEFAULT_DIAGRAM_FONT),
-  ];
-  if (
-    diagramFontFamily !== DEFAULT_DIAGRAM_FONT &&
-    !fontOptions.includes(diagramFontFamily)
-  ) {
-    fontOptions.push(diagramFontFamily);
-  }
-
-  const handleFontFile = async (file: File | null) => {
-    if (!file) return;
-    try {
-      await loadDiagramFontFromFile(file);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load font file.");
-    }
-  };
-
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
@@ -56,50 +33,30 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           />
         </label>
 
-        <label className="field">
+        <div className="field">
           <span>Diagram font</span>
-          <select
+          <FontPicker
             value={diagramFontFamily}
-            onChange={(e) => void setDiagramFontFamily(e.target.value)}
-          >
-            <option value={DEFAULT_DIAGRAM_FONT}>Default (Arial)</option>
-            {fontOptions
-              .filter((family) => family !== DEFAULT_DIAGRAM_FONT)
-              .map((family) => (
-                <option key={family} value={family}>
-                  {family}
-                </option>
-              ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Load font file</span>
-          <input
-            type="file"
-            accept=".ttf,.otf,.woff,.woff2,font/*"
-            onChange={(e) => {
-              void handleFontFile(e.target.files?.[0] ?? null);
-              e.target.value = "";
-            }}
+            loadedFontFamilies={loadedFontFamilies}
+            onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
+            onLoadFontFile={loadDiagramFontFromFile}
           />
-        </label>
+        </div>
 
         {fontMissing && (
           <p className="hint">
             The font &ldquo;{diagramFontFamily}&rdquo; is not available on this
-            device. Load the font file above to use it. Diagram files only store
-            the font name, not the font file itself.
+            device. Choose it from installed fonts or load the font file below.
+            Diagram files only store the font name, not the font file itself.
           </p>
         )}
 
-        {!fontMissing &&
-          !isDefaultDiagramFont(diagramFontFamily) && (
-            <p className="hint">
-              Custom fonts must be loaded on each device. They are cached in
-              this browser but are not saved inside diagram files.
-            </p>
-          )}
+        {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
+          <p className="hint">
+            Custom fonts rely on fonts installed on this device or loaded from a
+            file. They are not saved inside diagram files.
+          </p>
+        )}
 
         <p className="hint">
           Diagram font applies to canvas labels only. The application interface

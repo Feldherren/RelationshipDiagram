@@ -114,6 +114,32 @@ body,
   pointer-events: none;
 }
 
+.diagram-title-bar {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.diagram-title-pill {
+  display: inline-block;
+  padding: 6px 16px;
+  font-weight: bold;
+  color: #1f1f1f;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  max-width: calc(100% - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .property-panel {
   width: 280px;
   flex-shrink: 0;
@@ -260,6 +286,8 @@ body,
   padding: 24px;
   width: 400px;
   max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
@@ -290,4 +318,86 @@ body,
 
 .export-preview p {
   margin: 4px 0;
+}
+
+.font-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.font-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid #dde1e6;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.font-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dde1e6;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.font-picker-option:hover {
+  border-color: #b8c0c9;
+  background: #f7f9fb;
+}
+
+.font-picker-option.selected {
+  border-color: #4a90d9;
+  box-shadow: inset 0 0 0 1px #4a90d9;
+  background: #f3f8fd;
+}
+
+.font-picker-preview {
+  font-size: 18px;
+  line-height: 1.2;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.font-picker-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.font-picker-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.font-picker-subtitle {
+  font-size: 11px;
+  color: #777;
+}
+
+.font-picker-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.font-picker-empty .btn-secondary {
+  width: auto;
+  margin-top: 0;
 }

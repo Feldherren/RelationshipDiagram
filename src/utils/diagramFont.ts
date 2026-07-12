@@ -53,13 +53,20 @@ export async function loadFontFromFile(file: File): Promise<string> {
 
 export async function ensureFontLoaded(fontFamily: string): Promise<boolean> {
   if (isDefaultDiagramFont(fontFamily)) return true;
-  if (isFontAvailable(fontFamily)) return true;
+
+  const formatted = formatFontForCanvas(fontFamily);
+  try {
+    await document.fonts.load(`16px ${formatted}`);
+  } catch {
+    // Fall through to cached font lookup.
+  }
+  if (document.fonts.check(`16px ${formatted}`)) return true;
 
   const data = await loadFontFromStorage(fontFamily);
   if (!data) return false;
 
   await registerFontData(fontFamily, data, false);
-  return isFontAvailable(fontFamily);
+  return document.fonts.check(`16px ${formatted}`);
 }
 
 export async function restoreCachedFonts(): Promise<string[]> {

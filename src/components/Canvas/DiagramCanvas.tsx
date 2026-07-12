@@ -231,6 +231,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       ref={containerRef}
       className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}`}
     >
+      <DiagramTitle />
       {connectFrom && (
         <div className="connect-hint">
           Click another character to connect (Esc to cancel)
@@ -257,8 +258,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               stageHeight={stageSize.height}
             />
           )}
-
-          <DiagramTitle />
 
           {groups
             .filter((g) => !g.collapsed)

@@ -3,6 +3,7 @@ import type {
   Character,
   Diagram,
   Group,
+  GroupResizeEdge,
   Point,
   RGB,
 } from "../models/types";
@@ -12,6 +13,8 @@ import {
   DEFAULT_CHARACTER_SIZE,
   GROUP_HEADER_HEIGHT,
   GROUP_PADDING,
+  MIN_GROUP_HEIGHT,
+  MIN_GROUP_WIDTH,
 } from "../models/types";
 import {
   CHARACTER_LABEL_GAP,
@@ -147,6 +150,18 @@ export function getCollapsedGroupBounds(
   };
 }
 
+export function getEmptyGroupBounds(anchor: Point): Bounds {
+  const innerSize = DEFAULT_CHARACTER_SIZE * 2;
+  const width = innerSize + GROUP_PADDING * 2;
+  const height = innerSize + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT;
+  return {
+    x: anchor.x - width / 2,
+    y: anchor.y - height / 2,
+    width,
+    height,
+  };
+}
+
 export function getGroupMemberBounds(
   group: Group,
   characters: Character[],
@@ -158,15 +173,7 @@ export function getGroupMemberBounds(
   );
   if (members.length === 0) {
     if (!group.anchorPosition) return null;
-    const innerSize = DEFAULT_CHARACTER_SIZE * 2;
-    const width = innerSize + GROUP_PADDING * 2;
-    const height = innerSize + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT;
-    return {
-      x: group.anchorPosition.x - width / 2,
-      y: group.anchorPosition.y - height / 2,
-      width,
-      height,
-    };
+    return getEmptyGroupBounds(group.anchorPosition);
   }
 
   let minX = Infinity;
@@ -190,11 +197,71 @@ export function getGroupMemberBounds(
   };
 }
 
+export function resolveGroupBounds(
+  group: Group,
+  characters: Character[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  viewportScale = 1,
+): Bounds | null {
+  if (group.bounds) return group.bounds;
+  return getGroupMemberBounds(group, characters, fontFamily, viewportScale);
+}
+
+export function resizeGroupBounds(
+  start: Bounds,
+  edge: GroupResizeEdge,
+  pointer: Point,
+  startPointer: Point,
+  minWidth = MIN_GROUP_WIDTH,
+  minHeight = MIN_GROUP_HEIGHT,
+): Bounds {
+  const dx = pointer.x - startPointer.x;
+  const dy = pointer.y - startPointer.y;
+
+  let { x, y, width, height } = start;
+
+  if (edge.includes("e")) {
+    width = Math.max(minWidth, start.width + dx);
+  }
+  if (edge.includes("w")) {
+    const newWidth = Math.max(minWidth, start.width - dx);
+    x = start.x + start.width - newWidth;
+    width = newWidth;
+  }
+  if (edge.includes("s")) {
+    height = Math.max(minHeight, start.height + dy);
+  }
+  if (edge.includes("n")) {
+    const newHeight = Math.max(minHeight, start.height - dy);
+    y = start.y + start.height - newHeight;
+    height = newHeight;
+  }
+
+  return { x, y, width, height };
+}
+
+export function cursorForGroupResizeEdge(edge: GroupResizeEdge): string {
+  switch (edge) {
+    case "n":
+    case "s":
+      return "ns-resize";
+    case "e":
+    case "w":
+      return "ew-resize";
+    case "ne":
+    case "sw":
+      return "nesw-resize";
+    case "nw":
+    case "se":
+      return "nwse-resize";
+  }
+}
+
 export function getGroupCenter(group: Group, characters: Character[]): Point {
   if (group.collapsed && group.collapsedPosition) {
     return group.collapsedPosition;
   }
-  const bounds = getGroupMemberBounds(group, characters);
+  const bounds = resolveGroupBounds(group, characters);
   if (!bounds) {
     return group.collapsedPosition ?? { x: 0, y: 0 };
   }
@@ -230,7 +297,7 @@ export function getNodeRadius(
   const group = getGroupById(diagram, id);
   if (!group) return COLLAPSED_GROUP_SIZE;
   if (group.collapsed) return COLLAPSED_GROUP_SIZE;
-  const bounds = getGroupMemberBounds(group, diagram.characters);
+  const bounds = resolveGroupBounds(group, diagram.characters);
   if (!bounds) return COLLAPSED_GROUP_SIZE;
   return Math.max(bounds.width, bounds.height) / 2;
 }
@@ -323,7 +390,7 @@ export function getGroupEdgePoint(
     const center = group.collapsedPosition ?? { x: 0, y: 0 };
     return circleEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
   }
-  const bounds = getGroupMemberBounds(group, characters);
+  const bounds = resolveGroupBounds(group, characters);
   if (!bounds) {
     const center = group.collapsedPosition ?? { x: 0, y: 0 };
     return circleEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
@@ -400,7 +467,7 @@ export function isPointInsideNode(
       Math.hypot(point.x - center.x, point.y - center.y) <= COLLAPSED_GROUP_SIZE
     );
   }
-  const bounds = getGroupMemberBounds(group, diagram.characters);
+  const bounds = resolveGroupBounds(group, diagram.characters);
   if (!bounds) return false;
   return (
     point.x >= bounds.x &&

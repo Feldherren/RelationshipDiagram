@@ -40,7 +40,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     moveCharacter,
     handleNodeClick,
     addCharacterToGroup,
+    removeCharacterFromGroup,
     toggleGroupCollapse,
+    updateGroup,
+    moveGroup,
     screenToWorld,
     addCharacterAt,
     addGroupAt,
@@ -61,9 +64,21 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     x: number;
     y: number;
   } | null>(null);
+  const [isResizingGroup, setIsResizingGroup] = useState(false);
+  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
+  const isInteractingWithGroup = isResizingGroup || isDraggingGroup;
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
     null,
   );
+
+  useEffect(() => {
+    const clearGroupInteraction = () => {
+      setIsResizingGroup(false);
+      setIsDraggingGroup(false);
+    };
+    window.addEventListener("mouseup", clearGroupInteraction);
+    return () => window.removeEventListener("mouseup", clearGroupInteraction);
+  }, []);
 
   useEffect(() => {
     const updateSize = () => {
@@ -139,7 +154,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   );
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (connectDrag) return;
+    if (connectDrag || isInteractingWithGroup) return;
 
     const isStage = e.target === e.target.getStage();
 
@@ -164,7 +179,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!connectDrag) {
+    if (!connectDrag && !isInteractingWithGroup) {
       movePan(e.evt.clientX, e.evt.clientY);
     }
     if (isDrawingExport && drawStart) {
@@ -174,7 +189,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseUp = () => {
-    if (connectDrag) return;
+    if (connectDrag || isInteractingWithGroup) return;
 
     if (endPan()) {
       suppressClick.current = true;
@@ -233,12 +248,23 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           pos.x <= bounds.x + bounds.width &&
           pos.y >= bounds.y &&
           pos.y <= bounds.y + bounds.height;
-        if (inside) {
+
+        if (group.memberCharacterIds.includes(characterId)) {
+          if (!inside) {
+            removeCharacterFromGroup(characterId, group.id);
+          }
+        } else if (inside) {
           addCharacterToGroup(characterId, group.id);
         }
       }
     },
-    [moveCharacter, groups, characters, addCharacterToGroup],
+    [
+      moveCharacter,
+      groups,
+      characters,
+      addCharacterToGroup,
+      removeCharacterFromGroup,
+    ],
   );
 
   const previewBounds =
@@ -254,7 +280,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${
+      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${isInteractingWithGroup ? " resizing-group" : ""}${
         diagramBackgroundColor === null ? " canvas-checkerboard" : ""
       }`}
       style={
@@ -311,6 +337,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 }
                 onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
+                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
+                onResizeStart={() => setIsResizingGroup(true)}
+                onResizeEnd={() => setIsResizingGroup(false)}
+                onDragStart={() => setIsDraggingGroup(true)}
+                onDragEnd={() => setIsDraggingGroup(false)}
               />
             ))}
 
@@ -375,6 +407,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 }
                 onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
+                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
+                onResizeStart={() => setIsResizingGroup(true)}
+                onResizeEnd={() => setIsResizingGroup(false)}
+                onDragStart={() => setIsDraggingGroup(true)}
+                onDragEnd={() => setIsDraggingGroup(false)}
               />
             ))}
 

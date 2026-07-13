@@ -17,7 +17,11 @@ import {
   DEFAULT_CHARACTER_SIZE,
   defaultRgb,
 } from "../models/types";
-import { getGroupCenter, getGroupMemberBounds } from "../utils/geometry";
+import {
+  getEmptyGroupBounds,
+  getGroupCenter,
+  resolveGroupBounds,
+} from "../utils/geometry";
 import {
   DEFAULT_DIAGRAM_FONT,
   cleanupDeprecatedFonts,
@@ -95,7 +99,9 @@ interface DiagramState {
   updateGroup: (id: string, patch: Partial<Group>) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapse: (id: string) => void;
+  moveGroup: (id: string, delta: { dx: number; dy: number }) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
+  removeCharacterFromGroup: (characterId: string, groupId: string) => void;
 
   handleNodeClick: (ref: NodeRef) => void;
   startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
@@ -327,6 +333,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
   addGroupAt: (position) => {
     const { groups } = get();
+    const bounds = getEmptyGroupBounds(position);
     const group: Group = {
       id: uuidv4(),
       name: `Group ${groups.length + 1}`,
@@ -334,6 +341,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       collapsed: false,
       anchorPosition: position,
       collapsedPosition: position,
+      bounds,
       borderColor: { r: 100, g: 140, b: 100 },
     };
 
@@ -385,6 +393,47 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
     }
   },
 
+  moveGroup: (id, delta) =>
+    set((s) => ({
+      characters: s.characters.map((c) => {
+        const inGroup = s.groups.some(
+          (g) => g.id === id && g.memberCharacterIds.includes(c.id),
+        );
+        if (!inGroup) return c;
+        return {
+          ...c,
+          position: {
+            x: c.position.x + delta.dx,
+            y: c.position.y + delta.dy,
+          },
+        };
+      }),
+      groups: s.groups.map((g) => {
+        if (g.id !== id) return g;
+        const next: Group = { ...g };
+        if (g.bounds) {
+          next.bounds = {
+            ...g.bounds,
+            x: g.bounds.x + delta.dx,
+            y: g.bounds.y + delta.dy,
+          };
+        }
+        if (g.anchorPosition) {
+          next.anchorPosition = {
+            x: g.anchorPosition.x + delta.dx,
+            y: g.anchorPosition.y + delta.dy,
+          };
+        }
+        if (g.collapsedPosition) {
+          next.collapsedPosition = {
+            x: g.collapsedPosition.x + delta.dx,
+            y: g.collapsedPosition.y + delta.dy,
+          };
+        }
+        return next;
+      }),
+    })),
+
   addCharacterToGroup: (characterId, groupId) =>
     set((s) => ({
       groups: s.groups.map((g) => {
@@ -402,6 +451,20 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
           memberCharacterIds: [...g.memberCharacterIds, characterId],
         };
       }),
+    })),
+
+  removeCharacterFromGroup: (characterId, groupId) =>
+    set((s) => ({
+      groups: s.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              memberCharacterIds: g.memberCharacterIds.filter(
+                (id) => id !== characterId,
+              ),
+            }
+          : g,
+      ),
     })),
 
   handleNodeClick: (ref) => {
@@ -554,5 +617,5 @@ export function getExpandedGroupBounds(
   group: Group,
   characters: Character[],
 ) {
-  return getGroupMemberBounds(group, characters);
+  return resolveGroupBounds(group, characters);
 }

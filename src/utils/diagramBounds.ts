@@ -4,7 +4,7 @@ import {
   expandBounds,
   getCharacterBounds,
   getCollapsedGroupBounds,
-  getGroupMemberBounds,
+  resolveGroupBounds,
   mergeBounds,
 } from "./geometry";
 import { getLineBounds } from "./lineRouting";
@@ -28,7 +28,7 @@ export function collectContentObstacles(
     if (group.collapsed) {
       obstacles.push(getCollapsedGroupBounds(group, fontFamily));
     } else {
-      const bounds = getGroupMemberBounds(
+      const bounds = resolveGroupBounds(
         group,
         diagram.characters,
         fontFamily,
@@ -67,7 +67,7 @@ export function computeContentBounds(
       const bounds = getCollapsedGroupBounds(group, fontFamily);
       result = result ? mergeBounds(result, bounds) : bounds;
     } else {
-      const bounds = getGroupMemberBounds(
+      const bounds = resolveGroupBounds(
         group,
         diagram.characters,
         fontFamily,

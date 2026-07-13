@@ -114,6 +114,10 @@ body,
   cursor: crosshair;
 }
 
+.canvas-container.resizing-group {
+  cursor: inherit;
+}
+
 .canvas-context-menu {
   position: fixed;
   z-index: 20;

@@ -54,6 +54,7 @@ export interface Group {
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
   anchorPosition?: { x: number; y: number };
+  bounds?: Bounds;
   borderColor: RGB;
 }
 
@@ -99,6 +100,19 @@ export const CHARACTER_BORDER_STROKE_WIDTH = 4;
 export const GROUP_PADDING = 48;
 export const GROUP_HEADER_HEIGHT = 28;
 export const COLLAPSED_GROUP_SIZE = 44;
+export const MIN_GROUP_WIDTH = 120;
+export const MIN_GROUP_HEIGHT = GROUP_HEADER_HEIGHT + 32;
+export const GROUP_RESIZE_HANDLE_SCREEN_SIZE = 8;
+
+export type GroupResizeEdge =
+  | "n"
+  | "s"
+  | "e"
+  | "w"
+  | "ne"
+  | "nw"
+  | "se"
+  | "sw";
 
 export function rgbToCss(color: RGB): string {
   return `rgb(${color.r}, ${color.g}, ${color.b})`;

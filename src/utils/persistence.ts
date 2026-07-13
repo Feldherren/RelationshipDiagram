@@ -132,9 +132,3 @@ export function downloadDataUrl(dataUrl: string, filename: string): void {
   a.download = filename;
   a.click();
 }
-
-export async function estimateDataUrlSize(dataUrl: string): Promise<number> {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  return blob.size;
-}

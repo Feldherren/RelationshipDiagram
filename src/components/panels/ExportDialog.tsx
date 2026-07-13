@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
 import type Konva from "konva";
 import { useDiagramStore } from "../../store/diagramStore";
-import {
-  exportStageToPng,
-  formatBytes,
-  getAutoExportBounds,
-} from "../../utils/export";
-import { downloadDataUrl, estimateDataUrlSize, getDefaultExportFilename } from "../../utils/persistence";
+import { exportStageToPng, getAutoExportBounds } from "../../utils/export";
+import { downloadDataUrl, getDefaultExportFilename } from "../../utils/persistence";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import type { Bounds } from "../../models/types";
 
@@ -45,7 +41,6 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const [mode, setMode] = useState<"auto" | "custom">("auto");
   const [pixelRatio, setPixelRatio] = useState(1);
   const [padding, setPadding] = useState(32);
-  const [previewSize, setPreviewSize] = useState<number | null>(null);
   const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
 
   useEffect(() => {
@@ -81,53 +76,6 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     fontFamily: diagramFontFamily,
     diagram,
   };
-
-  useEffect(() => {
-    if (!open) return;
-    const stage = stageRef.current;
-    if (!stage || !activeBounds) {
-      setPreviewSize(null);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void exportStageToPng(stage, {
-        bounds: activeBounds,
-        pixelRatio,
-        backgroundColor: diagramBackgroundColor,
-        showGrid,
-        header: exportHeader,
-        viewportScale,
-      }).then((dataUrl) => {
-        if (!cancelled) {
-          estimateDataUrlSize(dataUrl).then(setPreviewSize);
-        }
-      });
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [
-    open,
-    stageRef,
-    activeBounds,
-    pixelRatio,
-    mode,
-    exportBounds,
-    diagramBackgroundColor,
-    showGrid,
-    diagramTitle,
-    diagramSubtitle,
-    showDiagramHeader,
-    diagramFontFamily,
-    viewportScale,
-    characters,
-    lines,
-    groups,
-  ]);
 
   if (!open) return null;
 
@@ -214,10 +162,6 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
           <div className="export-preview">
             <p>
               <strong>Dimensions:</strong> {width} × {height} px
-            </p>
-            <p>
-              <strong>Estimated size:</strong>{" "}
-              {previewSize !== null ? formatBytes(previewSize) : "…"}
             </p>
           </div>
         ) : (

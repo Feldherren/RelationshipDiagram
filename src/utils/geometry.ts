@@ -121,6 +121,18 @@ export function getCharacterBounds(
   };
 }
 
+export function isPointOverCollapsedGroup(
+  point: Point,
+  group: Group,
+  padding = 0,
+): boolean {
+  const center = group.collapsedPosition ?? { x: 0, y: 0 };
+  const half = COLLAPSED_GROUP_SIZE + padding;
+  return (
+    Math.max(Math.abs(point.x - center.x), Math.abs(point.y - center.y)) <= half
+  );
+}
+
 export function getCollapsedGroupSquareBounds(center: Point): Bounds {
   const half = COLLAPSED_GROUP_SIZE;
   return {

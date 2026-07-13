@@ -17,6 +17,7 @@ import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
+import { isPointOverCollapsedGroup } from "../../utils/geometry";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -241,7 +242,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     (characterId: string, pos: { x: number; y: number }) => {
       moveCharacter(characterId, pos);
       for (const group of groups) {
-        if (group.collapsed) continue;
+        if (group.collapsed) {
+          if (isPointOverCollapsedGroup(pos, group)) {
+            addCharacterToGroup(characterId, group.id);
+          }
+          continue;
+        }
+
         const bounds = getExpandedGroupBounds(group, characters);
         if (!bounds) continue;
         const inside =

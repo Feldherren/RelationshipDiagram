@@ -11,7 +11,7 @@ import { getLineDisplayLabel, resolveLineEndpoint, shouldRenderLine } from "./li
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import { getPillLabelSize } from "./labelMetrics";
 
-const LINE_ARROW_MARGIN = 12;
+const LINE_ARROW_MARGIN = 14;
 const LINE_LABEL_FONT_SIZE = 12;
 
 const AUTO_BEND_STEP = 28;

@@ -128,8 +128,8 @@ export function LineEdge({
         fill={color}
         strokeWidth={2}
         dash={dash}
-        pointerLength={10}
-        pointerWidth={8}
+        pointerLength={14}
+        pointerWidth={11}
         pointerAtBeginning={line.startArrow}
         pointerAtEnding={line.endArrow}
         hitStrokeWidth={16}

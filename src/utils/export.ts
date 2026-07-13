@@ -18,8 +18,15 @@ import {
   type ExportHeaderConfig,
 } from "./exportHeader";
 
+import {
+  computeGridLineBounds,
+  DIAGRAM_GRID_SIZE,
+  DIAGRAM_GRID_STROKE,
+} from "./gridBackground";
+
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
+export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -53,6 +60,7 @@ export interface ExportOptions {
   bounds: Bounds;
   pixelRatio: number;
   backgroundColor?: RGB | null;
+  showGrid?: boolean;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -120,7 +128,7 @@ export async function exportStageToPng(
   stage: Konva.Stage,
   options: ExportOptions,
 ): Promise<string> {
-  const { bounds, pixelRatio, backgroundColor, header, viewportScale = 1 } =
+  const { bounds, pixelRatio, backgroundColor, showGrid, header, viewportScale = 1 } =
     options;
 
   if (header?.showHeader) {
@@ -144,11 +152,19 @@ export async function exportStageToPng(
   const layer = stage.getLayers()[0];
   const tempNodes: KonvaLib.Node[] = [];
   let backgroundRect: KonvaLib.Rect | null = null;
+  const existingGrid = layer?.findOne(
+    (node: KonvaLib.Node) => node.name() === GRID_NODE_NAME,
+  );
+  const gridWasVisible = existingGrid?.visible() ?? true;
   const headerLayout =
     header && layer ? layoutExportHeader(crop, header, viewportScale) : null;
 
   stage.position({ x: 0, y: 0 });
   stage.scale({ x: 1, y: 1 });
+
+  if (existingGrid) {
+    existingGrid.visible(false);
+  }
 
   if (resolvedBackground !== null && layer) {
     backgroundRect = new KonvaLib.Rect({
@@ -163,6 +179,35 @@ export async function exportStageToPng(
     layer.add(backgroundRect);
     backgroundRect.moveToBottom();
     tempNodes.push(backgroundRect);
+  }
+
+  if (showGrid && layer) {
+    const gridBounds = computeGridLineBounds(crop);
+    const exportGrid = new KonvaLib.Shape({
+      name: EXPORT_GRID_NODE_NAME,
+      listening: false,
+      stroke: DIAGRAM_GRID_STROKE,
+      strokeWidth: 1,
+      sceneFunc: (ctx, shape) => {
+        const { startX, endX, startY, endY } = gridBounds;
+        ctx.beginPath();
+        for (let x = startX; x <= endX; x += DIAGRAM_GRID_SIZE) {
+          ctx.moveTo(x, startY);
+          ctx.lineTo(x, endY);
+        }
+        for (let y = startY; y <= endY; y += DIAGRAM_GRID_SIZE) {
+          ctx.moveTo(startX, y);
+          ctx.lineTo(endX, y);
+        }
+        ctx.strokeShape(shape);
+      },
+    });
+    layer.add(exportGrid);
+    exportGrid.moveToBottom();
+    if (backgroundRect) {
+      exportGrid.moveUp();
+    }
+    tempNodes.push(exportGrid);
   }
 
   stage.batchDraw();
@@ -180,6 +225,9 @@ export async function exportStageToPng(
   } finally {
     for (const node of tempNodes) {
       node.destroy();
+    }
+    if (existingGrid) {
+      existingGrid.visible(gridWasVisible);
     }
     stage.position(position);
     stage.scale(scale);

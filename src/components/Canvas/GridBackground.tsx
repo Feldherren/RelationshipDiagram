@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { Shape } from "react-konva";
 import type { Viewport } from "../../models/types";
+import {
+  computeViewportGridLineBounds,
+  DIAGRAM_GRID_SIZE,
+  DIAGRAM_GRID_STROKE,
+} from "../../utils/gridBackground";
+import { GRID_NODE_NAME } from "../../utils/export";
 
 interface GridBackgroundProps {
   viewport: Viewport;
@@ -13,29 +19,26 @@ export function GridBackground({
   viewport,
   stageWidth,
   stageHeight,
-  gridSize = 40,
+  gridSize = DIAGRAM_GRID_SIZE,
 }: GridBackgroundProps) {
-  const bounds = useMemo(() => {
-    const startX =
-      Math.floor(-viewport.x / viewport.scale / gridSize) * gridSize;
-    const endX =
-      startX +
-      Math.ceil(stageWidth / viewport.scale / gridSize + 2) * gridSize;
-    const startY =
-      Math.floor(-viewport.y / viewport.scale / gridSize) * gridSize;
-    const endY =
-      startY +
-      Math.ceil(stageHeight / viewport.scale / gridSize + 2) * gridSize;
-    return { startX, endX, startY, endY };
-  }, [viewport.x, viewport.y, viewport.scale, stageWidth, stageHeight, gridSize]);
+  const bounds = useMemo(
+    () =>
+      computeViewportGridLineBounds(
+        viewport,
+        stageWidth,
+        stageHeight,
+        gridSize,
+      ),
+    [viewport.x, viewport.y, viewport.scale, stageWidth, stageHeight, gridSize],
+  );
 
   const strokeWidth = 1 / viewport.scale;
 
   return (
     <Shape
-      name="diagram-grid"
+      name={GRID_NODE_NAME}
       listening={false}
-      stroke="#e0e0e0"
+      stroke={DIAGRAM_GRID_STROKE}
       strokeWidth={strokeWidth}
       sceneFunc={(ctx, shape) => {
         const { startX, endX, startY, endY } = bounds;

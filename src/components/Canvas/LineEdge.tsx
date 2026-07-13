@@ -11,6 +11,7 @@ import {
 } from "../../utils/lineRouting";
 import { useDiagramStore } from "../../store/diagramStore";
 import { PillLabel } from "./PillLabel";
+import { LineAura, shouldShowHoverAura } from "./HoverAura";
 
 interface LineEdgeProps {
   line: Line;
@@ -38,6 +39,7 @@ export function LineEdge({
   const color = rgbToCss(line.color);
   const dash = line.style === "dotted" ? [8, 6] : undefined;
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
+  const [hovered, setHovered] = useState(false);
   const [bendDragging, setBendDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const lineIdRef = useRef(line.id);
@@ -101,7 +103,17 @@ export function LineEdge({
   };
 
   return (
-    <Group>
+    <Group
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {shouldShowHoverAura(hovered, selected) && (
+        <LineAura
+          points={routed.points}
+          color={line.color}
+          dash={dash}
+        />
+      )}
       <Arrow
         points={routed.points}
         stroke={color}

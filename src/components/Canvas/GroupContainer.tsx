@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Circle, Group, Rect, Text } from "react-konva";
 import type { Group as GroupType } from "../../models/types";
 import type { Character } from "../../models/types";
@@ -6,6 +7,11 @@ import { rgbaWithAlpha, getGroupMemberBounds } from "../../utils/geometry";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
+import {
+  RadialAuraCircle,
+  RadialAuraRect,
+  shouldShowHoverAura,
+} from "./HoverAura";
 
 interface GroupContainerProps {
   group: GroupType;
@@ -23,6 +29,8 @@ export function GroupContainer({
   onToggleCollapse,
 }: GroupContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const [hovered, setHovered] = useState(false);
+  const showAura = shouldShowHoverAura(hovered, selected);
 
   if (group.collapsed) {
     const pos = group.collapsedPosition ?? { x: 0, y: 0 };
@@ -33,6 +41,8 @@ export function GroupContainer({
       <Group
         x={pos.x}
         y={pos.y}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         onClick={(e) => {
           e.cancelBubble = true;
           onSelect();
@@ -50,6 +60,9 @@ export function GroupContainer({
           onToggleCollapse();
         }}
       >
+        {showAura && (
+          <RadialAuraCircle innerRadius={size} color={group.borderColor} />
+        )}
         {selected && (
           <Circle
             radius={size + 6}
@@ -94,6 +107,8 @@ export function GroupContainer({
 
   return (
     <Group
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect();
@@ -111,6 +126,15 @@ export function GroupContainer({
         onToggleCollapse();
       }}
     >
+      {showAura && (
+        <RadialAuraRect
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={bounds.height}
+          color={group.borderColor}
+        />
+      )}
       <Rect
         x={bounds.x}
         y={bounds.y}

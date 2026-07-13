@@ -9,7 +9,7 @@ import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
   RadialAuraCircle,
-  RadialAuraRect,
+  RoundedRectAura,
   shouldShowHoverAura,
 } from "./HoverAura";
 
@@ -127,7 +127,7 @@ export function GroupContainer({
       }}
     >
       {showAura && (
-        <RadialAuraRect
+        <RoundedRectAura
           x={bounds.x}
           y={bounds.y}
           width={bounds.width}

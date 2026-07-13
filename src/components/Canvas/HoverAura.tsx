@@ -1,4 +1,6 @@
-import { Arrow, Circle, Rect } from "react-konva";
+import { useEffect, useRef } from "react";
+import { Arrow, Circle, Group, Rect } from "react-konva";
+import type Konva from "konva";
 import type { RGB } from "../../models/types";
 import { rgbaWithAlpha } from "../../utils/geometry";
 
@@ -47,7 +49,65 @@ export function RadialAuraCircle({
   );
 }
 
-interface RadialAuraRectProps {
+interface RoundedRectAuraRingProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  cornerRadius: number;
+  color: RGB;
+  pad: number;
+  opacity: number;
+}
+
+function RoundedRectAuraRing({
+  x,
+  y,
+  width,
+  height,
+  cornerRadius,
+  color,
+  pad,
+  opacity,
+}: RoundedRectAuraRingProps) {
+  const groupRef = useRef<Konva.Group>(null);
+
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    group.clearCache();
+    group.cache();
+    return () => {
+      group.clearCache();
+    };
+  }, [x, y, width, height, cornerRadius, color, pad, opacity]);
+
+  return (
+    <Group ref={groupRef} listening={false}>
+      <Rect
+        x={x - pad}
+        y={y - pad}
+        width={width + pad * 2}
+        height={height + pad * 2}
+        cornerRadius={cornerRadius + pad * 0.35}
+        fill={rgbaWithAlpha(color, opacity)}
+        listening={false}
+      />
+      <Rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        cornerRadius={cornerRadius}
+        globalCompositeOperation="destination-out"
+        fill="rgba(0,0,0,1)"
+        listening={false}
+      />
+    </Group>
+  );
+}
+
+interface RoundedRectAuraProps {
   x: number;
   y: number;
   width: number;
@@ -57,38 +117,38 @@ interface RadialAuraRectProps {
   peakOpacity?: number;
 }
 
-export function RadialAuraRect({
+export function RoundedRectAura({
   x,
   y,
   width,
   height,
   color,
   cornerRadius = 12,
-  peakOpacity = 0.24,
-}: RadialAuraRectProps) {
-  const pad = AURA_OUTER_PADDING;
-  const auraWidth = width + pad * 2;
-  const auraHeight = height + pad * 2;
-  const centerX = auraWidth / 2;
-  const centerY = auraHeight / 2;
-  const innerRadius = Math.min(width, height) / 2;
-  const outerRadius =
-    Math.max(width, height) / 2 + AURA_OUTER_PADDING;
+  peakOpacity = 0.3,
+}: RoundedRectAuraProps) {
+  const rings = [
+    { pad: 20, opacity: peakOpacity * 0.28 },
+    { pad: 14, opacity: peakOpacity * 0.42 },
+    { pad: 8, opacity: peakOpacity * 0.68 },
+    { pad: 4, opacity: peakOpacity * 0.95 },
+  ];
 
   return (
-    <Rect
-      x={x - pad}
-      y={y - pad}
-      width={auraWidth}
-      height={auraHeight}
-      cornerRadius={cornerRadius + pad * 0.5}
-      listening={false}
-      fillRadialGradientStartPoint={{ x: centerX, y: centerY }}
-      fillRadialGradientStartRadius={innerRadius}
-      fillRadialGradientEndPoint={{ x: centerX, y: centerY }}
-      fillRadialGradientEndRadius={outerRadius}
-      fillRadialGradientColorStops={radialColorStops(color, peakOpacity)}
-    />
+    <Group listening={false}>
+      {rings.map((ring) => (
+        <RoundedRectAuraRing
+          key={ring.pad}
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          cornerRadius={cornerRadius}
+          color={color}
+          pad={ring.pad}
+          opacity={ring.opacity}
+        />
+      ))}
+    </Group>
   );
 }
 

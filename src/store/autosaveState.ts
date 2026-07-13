@@ -1,4 +1,4 @@
-import type { Diagram } from "../models/types";
+import type { Diagram, RGB } from "../models/types";
 
 export interface PersistedDiagramState {
   characters: Diagram["characters"];
@@ -9,6 +9,7 @@ export interface PersistedDiagramState {
   diagramSubtitle: string;
   showDiagramHeader: boolean;
   diagramFontFamily: string;
+  diagramBackgroundColor: RGB | null;
   showGrid: boolean;
 }
 
@@ -24,6 +25,7 @@ export function pickPersistedState(
     diagramSubtitle: state.diagramSubtitle,
     showDiagramHeader: state.showDiagramHeader,
     diagramFontFamily: state.diagramFontFamily,
+    diagramBackgroundColor: state.diagramBackgroundColor,
     showGrid: state.showGrid,
   };
 }

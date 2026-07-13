@@ -8,6 +8,7 @@ import type {
   Group,
   Line,
   NodeRef,
+  RGB,
   Selection,
   ToolMode,
   Viewport,
@@ -38,6 +39,11 @@ import {
   saveAutosave,
 } from "../utils/autosaveStorage";
 import { EMPTY_DIAGRAM } from "./autosaveState";
+import {
+  DEFAULT_DIAGRAM_BACKGROUND,
+  resolveDiagramBackground,
+  serializeDiagramBackground,
+} from "../utils/diagramBackground";
 
 interface DiagramState {
   characters: Character[];
@@ -56,6 +62,7 @@ interface DiagramState {
   showDiagramHeader: boolean;
   diagramFontFamily: string;
   fontMissing: boolean;
+  diagramBackgroundColor: RGB | null;
   autosaveEnabled: boolean;
 
   setStageSize: (width: number, height: number) => void;
@@ -67,6 +74,7 @@ interface DiagramState {
   setDiagramTitle: (title: string) => void;
   setDiagramSubtitle: (subtitle: string) => void;
   setShowDiagramHeader: (show: boolean) => void;
+  setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
@@ -132,6 +140,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   showDiagramHeader: true,
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
+  diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   autosaveEnabled: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
@@ -153,6 +162,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   setDiagramSubtitle: (subtitle) => set({ diagramSubtitle: subtitle }),
 
   setShowDiagramHeader: (show) => set({ showDiagramHeader: show }),
+
+  setDiagramBackgroundColor: (color) => set({ diagramBackgroundColor: color }),
 
   setDiagramFontFamily: async (fontFamily) => {
     if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
@@ -482,6 +493,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       showDiagramHeader: diagram.showHeader ?? true,
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
+      diagramBackgroundColor: resolveDiagramBackground(diagram.backgroundColor),
       showGrid: options?.showGrid ?? get().showGrid,
       selection: null,
       connectFrom: null,
@@ -505,6 +517,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       diagramSubtitle,
       showDiagramHeader,
       diagramFontFamily,
+      diagramBackgroundColor,
     } = get();
     return {
       schemaVersion: 1 as const,
@@ -515,6 +528,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         diagramFontFamily !== DEFAULT_DIAGRAM_FONT
           ? diagramFontFamily
           : undefined,
+      backgroundColor: serializeDiagramBackground(diagramBackgroundColor),
       characters,
       lines,
       groups,

@@ -14,6 +14,7 @@ import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
 import { sameNodeRef } from "../../utils/connection";
+import { backgroundColorForDisplay } from "../../utils/diagramBackground";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -32,6 +33,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     connectDrag,
     showGrid,
     exportBounds,
+    diagramBackgroundColor,
     setStageSize,
     setSelection,
     setExportBounds,
@@ -252,7 +254,14 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}`}
+      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${
+        diagramBackgroundColor === null ? " canvas-checkerboard" : ""
+      }`}
+      style={
+        diagramBackgroundColor === null
+          ? undefined
+          : { background: backgroundColorForDisplay(diagramBackgroundColor) ?? undefined }
+      }
       onContextMenu={(e) => e.preventDefault()}
     >
       <DiagramTitle />

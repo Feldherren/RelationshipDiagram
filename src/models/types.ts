@@ -69,6 +69,7 @@ export interface Diagram {
   subtitle?: string;
   showHeader?: boolean;
   fontFamily?: string;
+  backgroundColor?: RGB | null;
   characters: Character[];
   lines: Line[];
   groups: Group[];

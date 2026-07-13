@@ -33,6 +33,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     groups,
   };
   const exportBounds = useDiagramStore((s) => s.exportBounds);
+  const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setExportBounds = useDiagramStore((s) => s.setExportBounds);
@@ -79,9 +80,10 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     const dataUrl = exportStageToPng(stage, {
       bounds: activeBounds,
       pixelRatio,
+      backgroundColor: diagramBackgroundColor,
     });
     estimateDataUrlSize(dataUrl).then(setPreviewSize);
-  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds]);
+  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds, diagramBackgroundColor]);
 
   if (!open) return null;
 
@@ -93,7 +95,11 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const handleExport = () => {
     const stage = stageRef.current;
     if (!stage || !activeBounds) return;
-    const dataUrl = exportStageToPng(stage, { bounds: activeBounds, pixelRatio });
+    const dataUrl = exportStageToPng(stage, {
+      bounds: activeBounds,
+      pixelRatio,
+      backgroundColor: diagramBackgroundColor,
+    });
     downloadDataUrl(dataUrl, "relationship-diagram.png");
     onClose();
   };

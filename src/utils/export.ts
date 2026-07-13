@@ -1,14 +1,19 @@
 import type Konva from "konva";
-import type { Bounds } from "../models/types";
+import KonvaLib from "konva";
+import type { Bounds, RGB } from "../models/types";
+import { rgbToCss } from "../models/types";
 import { computeDiagramBounds } from "./diagramBounds";
 import type { Diagram } from "../models/types";
 import { expandBounds, mergeBounds } from "./geometry";
+import { resolveDiagramBackground } from "./diagramBackground";
 
 export const GRID_NODE_NAME = "diagram-grid";
+export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
 
 export interface ExportOptions {
   bounds: Bounds;
   pixelRatio: number;
+  backgroundColor?: RGB | null;
 }
 
 function normalizeBounds(bounds: Bounds): Bounds {
@@ -74,13 +79,31 @@ export function exportStageToPng(
   stage: Konva.Stage,
   options: ExportOptions,
 ): string {
-  const { bounds, pixelRatio } = options;
+  const { bounds, pixelRatio, backgroundColor } = options;
+  const resolvedBackground = resolveDiagramBackground(backgroundColor);
   const position = stage.position();
   const scale = { x: stage.scaleX(), y: stage.scaleY() };
   const crop = normalizeBounds(bounds);
+  const layer = stage.getLayers()[0];
+  let backgroundRect: KonvaLib.Rect | null = null;
 
   stage.position({ x: 0, y: 0 });
   stage.scale({ x: 1, y: 1 });
+
+  if (resolvedBackground !== null && layer) {
+    backgroundRect = new KonvaLib.Rect({
+      x: crop.x,
+      y: crop.y,
+      width: crop.width,
+      height: crop.height,
+      fill: rgbToCss(resolvedBackground),
+      listening: false,
+      name: EXPORT_BACKGROUND_NODE_NAME,
+    });
+    layer.add(backgroundRect);
+    backgroundRect.moveToBottom();
+  }
+
   stage.batchDraw();
 
   try {
@@ -93,6 +116,7 @@ export function exportStageToPng(
       mimeType: "image/png",
     });
   } finally {
+    backgroundRect?.destroy();
     stage.position(position);
     stage.scale(scale);
     stage.batchDraw();

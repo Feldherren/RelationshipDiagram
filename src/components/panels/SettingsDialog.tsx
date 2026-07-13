@@ -1,5 +1,6 @@
 import { useDiagramStore } from "../../store/diagramStore";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import { BackgroundColorPicker } from "../pickers/BackgroundColorPicker";
 import { FontPicker } from "./FontPicker";
 
 interface SettingsDialogProps {
@@ -14,10 +15,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
   const showGrid = useDiagramStore((s) => s.showGrid);
+  const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
   const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
   const setShowGrid = useDiagramStore((s) => s.setShowGrid);
+  const setDiagramBackgroundColor = useDiagramStore(
+    (s) => s.setDiagramBackgroundColor,
+  );
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
 
   if (!open) return null;
@@ -64,6 +69,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           />
           <span>Show background grid</span>
         </label>
+
+        <BackgroundColorPicker
+          label="Background colour"
+          value={diagramBackgroundColor}
+          onChange={setDiagramBackgroundColor}
+        />
 
         <div className="field">
           <span>Diagram font</span>

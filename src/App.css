@@ -88,8 +88,22 @@ body,
 .canvas-container {
   flex: 1;
   position: relative;
-  background: #fafbfc;
   overflow: hidden;
+}
+
+.canvas-container.canvas-checkerboard {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e4e6ea 25%, transparent 25%),
+    linear-gradient(-45deg, #e4e6ea 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e4e6ea 75%),
+    linear-gradient(-45deg, transparent 75%, #e4e6ea 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
 }
 
 .canvas-container.panning {
@@ -295,6 +309,21 @@ body,
     #cf9af5,
     #f89b9b
   );
+}
+
+.color-swatch-transparent {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #d0d4da 25%, transparent 25%),
+    linear-gradient(-45deg, #d0d4da 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d0d4da 75%),
+    linear-gradient(-45deg, transparent 75%, #d0d4da 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0;
 }
 
 .color-input-hidden {

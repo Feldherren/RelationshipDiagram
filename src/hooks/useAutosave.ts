@@ -1,35 +1,42 @@
 import { useEffect } from "react";
 import { useDiagramStore } from "../store/diagramStore";
 import {
-  hasPersistedStateChanged,
   pickPersistedState,
 } from "../store/autosaveState";
-
-const AUTOSAVE_DEBOUNCE_MS = 800;
+import {
+  flushAutosaveNow,
+  scheduleAutosave,
+} from "../store/autosaveScheduler";
 
 export function useAutosave() {
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let previous = pickPersistedState(useDiagramStore.getState());
+    const flush = () => useDiagramStore.getState().flushAutosave();
 
-    const unsubscribe = useDiagramStore.subscribe((state) => {
-      if (!state.autosaveEnabled) {
-        previous = pickPersistedState(state);
-        return;
-      }
+    const unsubscribe = useDiagramStore.subscribe(
+      (state) => pickPersistedState(state),
+      () => {
+        if (!useDiagramStore.getState().autosaveEnabled) return;
+        scheduleAutosave(flush);
+      },
+      {
+        equalityFn: (left, right) =>
+          JSON.stringify(left) === JSON.stringify(right),
+      },
+    );
 
-      if (!hasPersistedStateChanged(state, previous)) return;
-      previous = pickPersistedState(state);
+    const flushOnHide = () => {
+      if (document.visibilityState !== "hidden") return;
+      if (!useDiagramStore.getState().autosaveEnabled) return;
+      void flushAutosaveNow(flush);
+    };
 
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        void useDiagramStore.getState().flushAutosave();
-      }, AUTOSAVE_DEBOUNCE_MS);
-    });
+    document.addEventListener("visibilitychange", flushOnHide);
+    window.addEventListener("pagehide", flushOnHide);
 
     return () => {
       unsubscribe();
-      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", flushOnHide);
+      window.removeEventListener("pagehide", flushOnHide);
     };
   }, []);
 }

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
 import type {
   Bounds,
@@ -44,6 +45,7 @@ import {
   saveAutosave,
 } from "../utils/autosaveStorage";
 import { EMPTY_DIAGRAM } from "./autosaveState";
+import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
   resolveDiagramBackground,
@@ -130,7 +132,8 @@ function createDefaultCharacter(position: { x: number; y: number }): Character {
   };
 }
 
-export const useDiagramStore = create<DiagramState>((set, get) => ({
+export const useDiagramStore = create<DiagramState>()(
+  subscribeWithSelector((set, get) => ({
   characters: [],
   lines: [],
   groups: [],
@@ -206,6 +209,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   bootstrapApp: async () => {
+    cancelScheduledAutosave();
     set({ autosaveEnabled: false });
 
     const snapshot = await loadAutosave();
@@ -226,13 +230,17 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   flushAutosave: async () => {
     if (!get().autosaveEnabled) return;
     try {
-      await saveAutosave(get().getAutosaveSnapshot());
+      await performAutosave(
+        () => get().getAutosaveSnapshot(),
+        saveAutosave,
+      );
     } catch (err) {
       console.error("Autosave failed:", err);
     }
   },
 
   newDiagram: async () => {
+    cancelScheduledAutosave();
     set({ autosaveEnabled: false });
     await get().loadDiagram(EMPTY_DIAGRAM, { showGrid: true });
     set({ autosaveEnabled: true });
@@ -539,6 +547,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   },
 
   loadDiagram: async (diagram, options) => {
+    cancelScheduledAutosave();
     await cleanupDeprecatedFonts();
 
     let fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
@@ -599,7 +608,8 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       viewport,
     };
   },
-}));
+  })),
+);
 
 export function getCharacterInitials(name: string): string {
   if (!name.trim()) return "?";

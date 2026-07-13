@@ -1,15 +1,30 @@
 import type { Point } from "../models/types";
-import type { Character, Group, NodeRef } from "../models/types";
+import type { Bounds, Character, Group, NodeRef } from "../models/types";
 import { COLLAPSED_GROUP_SIZE } from "../models/types";
+import { resolveGroupBounds } from "./geometry";
+import { getCollapsedGroupForCharacter } from "./lineEndpoints";
 
 function isCharacterHidden(characterId: string, groups: Group[]): boolean {
-  return groups.some(
-    (g) => g.collapsed && g.memberCharacterIds.includes(characterId),
-  );
+  return getCollapsedGroupForCharacter(characterId, groups) != null;
 }
 
 export function sameNodeRef(a: NodeRef, b: NodeRef): boolean {
   return a.id === b.id && a.kind === b.kind;
+}
+
+function pointInBounds(point: Point, bounds: Bounds): boolean {
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
+function distanceToBoundsCenter(point: Point, bounds: Bounds): number {
+  const cx = bounds.x + bounds.width / 2;
+  const cy = bounds.y + bounds.height / 2;
+  return Math.hypot(point.x - cx, point.y - cy);
 }
 
 export function findConnectionTargetAt(
@@ -32,11 +47,20 @@ export function findConnectionTargetAt(
   }
 
   for (const group of groups) {
-    if (!group.collapsed) continue;
-    const pos = group.collapsedPosition ?? { x: 0, y: 0 };
-    const dist = Math.hypot(point.x - pos.x, point.y - pos.y);
-    const hitRadius = COLLAPSED_GROUP_SIZE + 14;
-    if (dist <= hitRadius && (!best || dist < best.dist)) {
+    if (group.collapsed) {
+      const pos = group.collapsedPosition ?? { x: 0, y: 0 };
+      const dist = Math.hypot(point.x - pos.x, point.y - pos.y);
+      const hitRadius = COLLAPSED_GROUP_SIZE + 14;
+      if (dist <= hitRadius && (!best || dist < best.dist)) {
+        best = { ref: { id: group.id, kind: "group" }, dist };
+      }
+      continue;
+    }
+
+    const bounds = resolveGroupBounds(group, characters);
+    if (!bounds || !pointInBounds(point, bounds)) continue;
+    const dist = distanceToBoundsCenter(point, bounds);
+    if (!best || dist < best.dist) {
       best = { ref: { id: group.id, kind: "group" }, dist };
     }
   }
@@ -53,4 +77,20 @@ export function getConnectHandleOffset(size: number): Point {
     size + CONNECT_HANDLE_SCREEN_RADIUS * 0.5;
   const axisOffset = centerDistance / Math.SQRT2;
   return { x: axisOffset, y: -axisOffset };
+}
+
+export function getGroupConnectHandlePosition(
+  bounds: Bounds,
+): Point {
+  return {
+    x: bounds.x + bounds.width - 10,
+    y: bounds.y + 14,
+  };
+}
+
+export function getCollapsedGroupConnectHandlePosition(
+  size: number,
+): Point {
+  const offset = getConnectHandleOffset(size);
+  return { x: offset.x, y: offset.y };
 }

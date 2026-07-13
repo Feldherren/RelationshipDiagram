@@ -7,6 +7,7 @@ import {
   normalize,
   perpendicular,
 } from "./geometry";
+import { getLineDisplayLabel, resolveLineEndpoint, shouldRenderLine } from "./lineEndpoints";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import { getPillLabelSize } from "./labelMetrics";
 
@@ -190,10 +191,13 @@ function trimPathToNodeOutlines(
 ): Point[] {
   if (path.length < 2) return path;
 
+  const from = resolveLineEndpoint(line.from, diagram);
+  const to = resolveLineEndpoint(line.to, diagram);
+
   const insideFrom = (p: Point) =>
-    isPointInsideNode(line.from.kind, line.from.id, p, diagram);
+    isPointInsideNode(from.anchorKind, from.anchorId, p, diagram);
   const insideTo = (p: Point) =>
-    isPointInsideNode(line.to.kind, line.to.id, p, diagram);
+    isPointInsideNode(to.anchorKind, to.anchorId, p, diagram);
 
   let exitIndex = -1;
   for (let i = 0; i < path.length - 1; i++) {
@@ -213,8 +217,13 @@ function trimPathToNodeOutlines(
 
   if (exitIndex < 0 || enterIndex < 0 || exitIndex >= enterIndex) {
     return [
-      getNodeEdgePoint(line.from.kind, line.from.id, path[path.length - 1], diagram),
-      getNodeEdgePoint(line.to.kind, line.to.id, path[0], diagram),
+      getNodeEdgePoint(
+        from.anchorKind,
+        from.anchorId,
+        path[path.length - 1],
+        diagram,
+      ),
+      getNodeEdgePoint(to.anchorKind, to.anchorId, path[0], diagram),
     ];
   }
 
@@ -273,15 +282,19 @@ export function getLineAnchors(
   line: Line,
   diagram: Diagram,
 ): { start: Point; end: Point } {
+  const from = resolveLineEndpoint(line.from, diagram);
+  const to = resolveLineEndpoint(line.to, diagram);
   return {
-    start: getNodeCenter(line.from.kind, line.from.id, diagram),
-    end: getNodeCenter(line.to.kind, line.to.id, diagram),
+    start: getNodeCenter(from.anchorKind, from.anchorId, diagram),
+    end: getNodeCenter(to.anchorKind, to.anchorId, diagram),
   };
 }
 
 export function routeLine(line: Line, diagram: Diagram): RoutedLine {
-  const fromCenter = getNodeCenter(line.from.kind, line.from.id, diagram);
-  const toCenter = getNodeCenter(line.to.kind, line.to.id, diagram);
+  const from = resolveLineEndpoint(line.from, diagram);
+  const to = resolveLineEndpoint(line.to, diagram);
+  const fromCenter = getNodeCenter(from.anchorKind, from.anchorId, diagram);
+  const toCenter = getNodeCenter(to.anchorKind, to.anchorId, diagram);
   const bend = resolveLineBend(line);
   const control = getControlPoint(fromCenter, toCenter, bend);
 
@@ -330,12 +343,15 @@ export function getLineBounds(
   diagram: Diagram,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Bounds | null {
+  if (!shouldRenderLine(line, diagram)) return null;
+
   const routed = routeLine(line, diagram);
   let result = boundsFromPoints(routed.points, LINE_ARROW_MARGIN);
 
-  if (line.label) {
+  const displayLabel = getLineDisplayLabel(line, diagram);
+  if (displayLabel) {
     const pill = getPillLabelSize(
-      line.label,
+      displayLabel,
       LINE_LABEL_FONT_SIZE,
       "bold",
       fontFamily,

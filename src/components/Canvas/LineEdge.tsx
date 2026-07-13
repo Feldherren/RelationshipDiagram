@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Arrow, Group } from "react-konva";
+import { Arrow, Circle, Group } from "react-konva";
 import type Konva from "konva";
 import type { Diagram, Line, Point } from "../../models/types";
 import { rgbToCss } from "../../models/types";
@@ -9,6 +9,10 @@ import {
   resolveLineBend,
   routeLine,
 } from "../../utils/lineRouting";
+import {
+  getLineDisplayLabel,
+  resolveLineEndpoint,
+} from "../../utils/lineEndpoints";
 import { useDiagramStore } from "../../store/diagramStore";
 import { PillLabel } from "./PillLabel";
 import { LineAura, shouldShowAura } from "./HoverAura";
@@ -36,8 +40,12 @@ export function LineEdge({
   onBendChange,
 }: LineEdgeProps) {
   const routed = routeLine(line, diagram);
+  const displayLabel = getLineDisplayLabel(line, diagram);
+  const fromResolved = resolveLineEndpoint(line.from, diagram);
+  const toResolved = resolveLineEndpoint(line.to, diagram);
   const color = rgbToCss(line.color);
   const dash = line.style === "dotted" ? [8, 6] : undefined;
+  const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const [hovered, setHovered] = useState(false);
   const [bendDragging, setBendDragging] = useState(false);
@@ -140,9 +148,31 @@ export function LineEdge({
           beginBendDrag(e);
         }}
       />
-      {line.label && (
+      {fromResolved.hiddenCharacterId && routed.points.length >= 2 && (
+        <Circle
+          x={routed.points[0]}
+          y={routed.points[1]}
+          radius={4 / viewportScale}
+          fill="#ffffff"
+          stroke={color}
+          strokeWidth={2 / viewportScale}
+          listening={false}
+        />
+      )}
+      {toResolved.hiddenCharacterId && routed.points.length >= 2 && (
+        <Circle
+          x={routed.points[routed.points.length - 2]}
+          y={routed.points[routed.points.length - 1]}
+          radius={4 / viewportScale}
+          fill="#ffffff"
+          stroke={color}
+          strokeWidth={2 / viewportScale}
+          listening={false}
+        />
+      )}
+      {displayLabel && (
         <PillLabel
-          text={line.label}
+          text={displayLabel}
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}

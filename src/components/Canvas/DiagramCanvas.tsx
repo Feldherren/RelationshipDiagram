@@ -14,6 +14,8 @@ import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { getExpandedGroupBounds } from "../../store/diagramStore";
 import { sameNodeRef } from "../../utils/connection";
+import { shouldRenderLine } from "../../utils/lineEndpoints";
+import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
 
 interface DiagramCanvasProps {
@@ -133,19 +135,18 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const stageSize = useDiagramStore((s) => s.stageSize);
 
   const handleConnectHandleDown = useCallback(
-    (characterId: string) => (e: Konva.KonvaEventObject<MouseEvent>) => {
+    (ref: NodeRef) => (e: Konva.KonvaEventObject<MouseEvent>) => {
       const stage = e.target.getStage();
       const pointer = stage?.getPointerPosition();
       if (!pointer) return;
       const world = screenToWorld(pointer);
-      startConnectDrag({ id: characterId, kind: "character" }, world);
+      startConnectDrag(ref, world);
     },
     [screenToWorld, startConnectDrag],
   );
 
   const isConnectSource = useCallback(
-    (characterId: string) => {
-      const ref = { id: characterId, kind: "character" as const };
+    (ref: NodeRef) => {
       if (connectFrom && sameNodeRef(connectFrom, ref)) return true;
       if (connectDrag && sameNodeRef(connectDrag.from, ref)) return true;
       return false;
@@ -267,6 +268,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     ],
   );
 
+  const diagram = { schemaVersion: 1 as const, characters, lines, groups };
+
   const previewBounds =
     isDrawingExport && drawStart && drawCurrent
       ? {
@@ -299,7 +302,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       />
       {connectFrom && (
         <div className="connect-hint">
-          Click another character to connect (Esc to cancel)
+          Click another character or group to connect (Esc to cancel)
         </div>
       )}
       <Stage
@@ -335,6 +338,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 selected={
                   selection?.type === "group" && selection.id === group.id
                 }
+                isConnectSource={isConnectSource({
+                  id: group.id,
+                  kind: "group",
+                })}
                 onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
                 onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
@@ -343,14 +350,20 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onResizeEnd={() => setIsResizingGroup(false)}
                 onDragStart={() => setIsDraggingGroup(true)}
                 onDragEnd={() => setIsDraggingGroup(false)}
+                onConnectHandleDown={handleConnectHandleDown({
+                  id: group.id,
+                  kind: "group",
+                })}
               />
             ))}
 
-          {lines.map((line) => (
+          {lines
+            .filter((line) => shouldRenderLine(line, diagram))
+            .map((line) => (
             <LineEdge
               key={line.id}
               line={line}
-              diagram={{ schemaVersion: 1, characters, lines, groups }}
+              diagram={diagram}
               selected={selection?.type === "line" && selection.id === line.id}
               onSelect={() =>
                 setSelection({ type: "line", id: line.id })
@@ -384,12 +397,18 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   selection?.type === "character" &&
                   selection.id === character.id
                 }
-                isConnectSource={isConnectSource(character.id)}
+                isConnectSource={isConnectSource({
+                  id: character.id,
+                  kind: "character",
+                })}
                 draggable={toolMode !== "exportBounds" && !connectDrag}
                 onSelect={() =>
                   handleNodeClick({ id: character.id, kind: "character" })
                 }
-                onConnectHandleDown={handleConnectHandleDown(character.id)}
+                onConnectHandleDown={handleConnectHandleDown({
+                  id: character.id,
+                  kind: "character",
+                })}
                 onDragMove={(pos) => moveCharacter(character.id, pos)}
                 onDragEnd={(pos) => onCharacterDragEnd(character.id, pos)}
               />
@@ -405,6 +424,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 selected={
                   selection?.type === "group" && selection.id === group.id
                 }
+                isConnectSource={isConnectSource({
+                  id: group.id,
+                  kind: "group",
+                })}
                 onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
                 onToggleCollapse={() => toggleGroupCollapse(group.id)}
                 onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
@@ -413,6 +436,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onResizeEnd={() => setIsResizingGroup(false)}
                 onDragStart={() => setIsDraggingGroup(true)}
                 onDragEnd={() => setIsDraggingGroup(false)}
+                onConnectHandleDown={handleConnectHandleDown({
+                  id: group.id,
+                  kind: "group",
+                })}
               />
             ))}
 

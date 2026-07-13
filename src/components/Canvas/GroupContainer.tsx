@@ -23,6 +23,11 @@ import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
+  getCollapsedGroupConnectHandlePosition,
+  getGroupConnectHandlePosition,
+} from "../../utils/connection";
+import { ConnectHandle } from "./ConnectHandle";
+import {
   RadialAuraCircle,
   RoundedRectAura,
   shouldShowAura,
@@ -32,6 +37,7 @@ interface GroupContainerProps {
   group: GroupType;
   characters: Character[];
   selected: boolean;
+  isConnectSource: boolean;
   onSelect: () => void;
   onToggleCollapse: () => void;
   onBoundsChange: (bounds: Bounds) => void;
@@ -40,6 +46,7 @@ interface GroupContainerProps {
   onResizeEnd: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
 interface ResizeDragStart {
@@ -120,6 +127,7 @@ export function GroupContainer({
   group,
   characters,
   selected,
+  isConnectSource,
   onSelect,
   onToggleCollapse,
   onBoundsChange,
@@ -128,6 +136,7 @@ export function GroupContainer({
   onResizeEnd,
   onDragStart,
   onDragEnd,
+  onConnectHandleDown,
 }: GroupContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
@@ -147,6 +156,7 @@ export function GroupContainer({
   onResizeEndRef.current = onResizeEnd;
   onDragEndRef.current = onDragEnd;
   const showAura = shouldShowAura(hovered, selected);
+  const showConnectHandle = selected || hovered || isConnectSource;
   const handleSize = GROUP_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
 
   useEffect(() => {
@@ -265,6 +275,7 @@ export function GroupContainer({
     const pos = group.collapsedPosition ?? { x: 0, y: 0 };
     const color = rgbToCss(group.borderColor);
     const size = COLLAPSED_GROUP_SIZE;
+    const connectHandlePos = getCollapsedGroupConnectHandlePosition(size);
 
     return (
       <Group
@@ -317,6 +328,15 @@ export function GroupContainer({
           offsetY={5}
           listening={false}
         />
+        {showConnectHandle && (
+          <ConnectHandle
+            x={connectHandlePos.x}
+            y={connectHandlePos.y}
+            viewportScale={viewportScale}
+            isConnectSource={isConnectSource}
+            onMouseDown={onConnectHandleDown}
+          />
+        )}
       </Group>
     );
   }
@@ -325,6 +345,7 @@ export function GroupContainer({
   if (!bounds) return null;
 
   const color = rgbToCss(group.borderColor);
+  const connectHandlePos = getGroupConnectHandlePosition(bounds);
 
   return (
     <Group
@@ -426,6 +447,15 @@ export function GroupContainer({
         fontStyle="bold"
         selected={selected}
       />
+      {showConnectHandle && (
+        <ConnectHandle
+          x={connectHandlePos.x}
+          y={connectHandlePos.y}
+          viewportScale={viewportScale}
+          isConnectSource={isConnectSource}
+          onMouseDown={onConnectHandleDown}
+        />
+      )}
     </Group>
   );
 }

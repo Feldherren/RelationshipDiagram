@@ -8,6 +8,7 @@ import {
   mergeBounds,
 } from "./geometry";
 import { getLineBounds } from "./lineRouting";
+import { shouldRenderLine } from "./lineEndpoints";
 
 export function collectContentObstacles(
   diagram: Diagram,
@@ -39,6 +40,7 @@ export function collectContentObstacles(
   }
 
   for (const line of diagram.lines) {
+    if (!shouldRenderLine(line, diagram)) continue;
     const bounds = getLineBounds(line, diagram, fontFamily);
     if (bounds) obstacles.push(bounds);
   }
@@ -78,6 +80,7 @@ export function computeContentBounds(
   }
 
   for (const line of diagram.lines) {
+    if (!shouldRenderLine(line, diagram)) continue;
     const bounds = getLineBounds(line, diagram, fontFamily);
     if (bounds) result = result ? mergeBounds(result, bounds) : bounds;
   }

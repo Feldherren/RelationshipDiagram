@@ -37,6 +37,7 @@ import {
   findConnectionTargetAt,
   sameNodeRef,
 } from "../utils/connection";
+import { getCollapsedGroupForCharacter } from "../utils/lineEndpoints";
 import {
   createAutosaveSnapshot,
   loadAutosave,
@@ -608,9 +609,7 @@ export function getCharacterInitials(name: string): string {
 }
 
 export function isCharacterHidden(characterId: string, groups: Group[]): boolean {
-  return groups.some(
-    (g) => g.collapsed && g.memberCharacterIds.includes(characterId),
-  );
+  return getCollapsedGroupForCharacter(characterId, groups) != null;
 }
 
 export function getExpandedGroupBounds(

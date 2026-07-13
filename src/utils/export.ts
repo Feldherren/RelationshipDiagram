@@ -6,14 +6,55 @@ import { computeDiagramBounds } from "./diagramBounds";
 import type { Diagram } from "../models/types";
 import { expandBounds, mergeBounds } from "./geometry";
 import { resolveDiagramBackground } from "./diagramBackground";
+import {
+  DIAGRAM_SUBTITLE_FONT_SIZE,
+  DIAGRAM_TITLE_FONT_SIZE,
+  ensureFontLoaded,
+} from "./diagramFont";
+import { formatUiFontFamily } from "./systemFonts";
+import {
+  drawExportHeaderPills,
+  layoutExportHeader,
+  type ExportHeaderConfig,
+} from "./exportHeader";
 
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Failed to load export image"));
+    image.src = src;
+  });
+}
+
+async function compositeExportHeader(
+  stageDataUrl: string,
+  crop: Bounds,
+  pixelRatio: number,
+  headerLayout: NonNullable<ReturnType<typeof layoutExportHeader>>,
+  fontFamily: string,
+): Promise<string> {
+  const image = await loadImage(stageDataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(crop.width * pixelRatio));
+  canvas.height = Math.max(1, Math.round(crop.height * pixelRatio));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return stageDataUrl;
+
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  drawExportHeaderPills(ctx, headerLayout, fontFamily, crop, pixelRatio);
+  return canvas.toDataURL("image/png");
+}
 
 export interface ExportOptions {
   bounds: Bounds;
   pixelRatio: number;
   backgroundColor?: RGB | null;
+  header?: ExportHeaderConfig;
+  viewportScale?: number;
 }
 
 function normalizeBounds(bounds: Bounds): Bounds {
@@ -75,17 +116,36 @@ export function getAutoExportBounds(
   return computeDiagramBounds(diagram, padding, viewportScale);
 }
 
-export function exportStageToPng(
+export async function exportStageToPng(
   stage: Konva.Stage,
   options: ExportOptions,
-): string {
-  const { bounds, pixelRatio, backgroundColor } = options;
+): Promise<string> {
+  const { bounds, pixelRatio, backgroundColor, header, viewportScale = 1 } =
+    options;
+
+  if (header?.showHeader) {
+    await ensureFontLoaded(header.fontFamily);
+    const formattedFamily = formatUiFontFamily(header.fontFamily);
+    await Promise.all([
+      document.fonts.load(
+        `normal ${DIAGRAM_TITLE_FONT_SIZE}px ${formattedFamily}`,
+      ),
+      document.fonts.load(
+        `normal ${DIAGRAM_SUBTITLE_FONT_SIZE}px ${formattedFamily}`,
+      ),
+    ]);
+    await document.fonts.ready;
+  }
+
   const resolvedBackground = resolveDiagramBackground(backgroundColor);
   const position = stage.position();
   const scale = { x: stage.scaleX(), y: stage.scaleY() };
   const crop = normalizeBounds(bounds);
   const layer = stage.getLayers()[0];
+  const tempNodes: KonvaLib.Node[] = [];
   let backgroundRect: KonvaLib.Rect | null = null;
+  const headerLayout =
+    header && layer ? layoutExportHeader(crop, header, viewportScale) : null;
 
   stage.position({ x: 0, y: 0 });
   stage.scale({ x: 1, y: 1 });
@@ -102,12 +162,14 @@ export function exportStageToPng(
     });
     layer.add(backgroundRect);
     backgroundRect.moveToBottom();
+    tempNodes.push(backgroundRect);
   }
 
   stage.batchDraw();
 
+  let stageDataUrl: string;
   try {
-    return stage.toDataURL({
+    stageDataUrl = stage.toDataURL({
       x: crop.x,
       y: crop.y,
       width: crop.width,
@@ -116,11 +178,25 @@ export function exportStageToPng(
       mimeType: "image/png",
     });
   } finally {
-    backgroundRect?.destroy();
+    for (const node of tempNodes) {
+      node.destroy();
+    }
     stage.position(position);
     stage.scale(scale);
     stage.batchDraw();
   }
+
+  if (!headerLayout || !header) {
+    return stageDataUrl;
+  }
+
+  return compositeExportHeader(
+    stageDataUrl,
+    crop,
+    pixelRatio,
+    headerLayout,
+    header.fontFamily,
+  );
 }
 
 export function formatBytes(bytes: number): string {

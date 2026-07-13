@@ -21,10 +21,13 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
+  const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
+  const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagram = {
     schemaVersion: 1 as const,
     title: diagramTitle || undefined,
+    subtitle: diagramSubtitle || undefined,
     fontFamily: isDefaultDiagramFont(diagramFontFamily)
       ? undefined
       : diagramFontFamily,
@@ -70,6 +73,14 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const activeBounds: Bounds | null =
     mode === "custom" ? exportBounds : autoBounds;
 
+  const exportHeader = {
+    title: diagramTitle,
+    subtitle: diagramSubtitle,
+    showHeader: showDiagramHeader,
+    fontFamily: diagramFontFamily,
+    diagram,
+  };
+
   useEffect(() => {
     if (!open) return;
     const stage = stageRef.current;
@@ -77,13 +88,40 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
       setPreviewSize(null);
       return;
     }
-    const dataUrl = exportStageToPng(stage, {
+
+    let cancelled = false;
+    void exportStageToPng(stage, {
       bounds: activeBounds,
       pixelRatio,
       backgroundColor: diagramBackgroundColor,
+      header: exportHeader,
+      viewportScale,
+    }).then((dataUrl) => {
+      if (!cancelled) {
+        estimateDataUrlSize(dataUrl).then(setPreviewSize);
+      }
     });
-    estimateDataUrlSize(dataUrl).then(setPreviewSize);
-  }, [open, stageRef, activeBounds, pixelRatio, mode, exportBounds, diagramBackgroundColor]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    stageRef,
+    activeBounds,
+    pixelRatio,
+    mode,
+    exportBounds,
+    diagramBackgroundColor,
+    diagramTitle,
+    diagramSubtitle,
+    showDiagramHeader,
+    diagramFontFamily,
+    viewportScale,
+    characters,
+    lines,
+    groups,
+  ]);
 
   if (!open) return null;
 
@@ -92,13 +130,15 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     ? Math.round(activeBounds.height * pixelRatio)
     : 0;
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const stage = stageRef.current;
     if (!stage || !activeBounds) return;
-    const dataUrl = exportStageToPng(stage, {
+    const dataUrl = await exportStageToPng(stage, {
       bounds: activeBounds,
       pixelRatio,
       backgroundColor: diagramBackgroundColor,
+      header: exportHeader,
+      viewportScale,
     });
     downloadDataUrl(dataUrl, getDefaultExportFilename(diagramTitle));
     onClose();

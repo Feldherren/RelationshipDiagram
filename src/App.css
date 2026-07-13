@@ -171,7 +171,10 @@ body,
 
 .diagram-title-pill,
 .diagram-subtitle-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   padding: 6px 16px;
   background: #fff;
   border: 1px solid #c8c8c8;
@@ -181,15 +184,15 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: normal;
+  font-synthesis: none;
 }
 
 .diagram-title-pill {
-  font-weight: bold;
   color: #1f1f1f;
 }
 
 .diagram-subtitle-pill {
-  font-weight: normal;
   color: #5c5c5c;
 }
 

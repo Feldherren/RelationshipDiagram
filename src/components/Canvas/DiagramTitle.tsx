@@ -1,8 +1,8 @@
 import { useDiagramStore } from "../../store/diagramStore";
 import {
-  DIAGRAM_SUBTITLE_FONT_SIZE,
-  DIAGRAM_TITLE_FONT_SIZE,
-} from "../../utils/diagramFont";
+  getDiagramHeaderPillClassName,
+  getDiagramHeaderPillFontSize,
+} from "../../utils/diagramHeaderPill";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 
 export function DiagramTitle() {
@@ -22,10 +22,10 @@ export function DiagramTitle() {
     <div className="diagram-title-bar">
       {title && (
         <span
-          className="diagram-title-pill"
+          className={getDiagramHeaderPillClassName("title")}
           style={{
             fontFamily,
-            fontSize: DIAGRAM_TITLE_FONT_SIZE,
+            fontSize: getDiagramHeaderPillFontSize("title"),
           }}
         >
           {title}
@@ -33,10 +33,10 @@ export function DiagramTitle() {
       )}
       {subtitle && (
         <span
-          className="diagram-subtitle-pill"
+          className={getDiagramHeaderPillClassName("subtitle")}
           style={{
             fontFamily,
-            fontSize: DIAGRAM_SUBTITLE_FONT_SIZE,
+            fontSize: getDiagramHeaderPillFontSize("subtitle"),
           }}
         >
           {subtitle}

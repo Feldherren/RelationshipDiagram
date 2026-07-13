@@ -9,6 +9,43 @@ import {
 } from "./geometry";
 import { getLineBounds } from "./lineRouting";
 
+export function collectContentObstacles(
+  diagram: Diagram,
+  viewportScale = 1,
+): Bounds[] {
+  const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const obstacles: Bounds[] = [];
+
+  for (const character of diagram.characters) {
+    const inCollapsedGroup = diagram.groups.some(
+      (g) => g.collapsed && g.memberCharacterIds.includes(character.id),
+    );
+    if (inCollapsedGroup) continue;
+    obstacles.push(getCharacterBounds(character, fontFamily, viewportScale));
+  }
+
+  for (const group of diagram.groups) {
+    if (group.collapsed) {
+      obstacles.push(getCollapsedGroupBounds(group, fontFamily));
+    } else {
+      const bounds = getGroupMemberBounds(
+        group,
+        diagram.characters,
+        fontFamily,
+        viewportScale,
+      );
+      if (bounds) obstacles.push(bounds);
+    }
+  }
+
+  for (const line of diagram.lines) {
+    const bounds = getLineBounds(line, diagram, fontFamily);
+    if (bounds) obstacles.push(bounds);
+  }
+
+  return obstacles;
+}
+
 export function computeContentBounds(
   diagram: Diagram,
   viewportScale = 1,

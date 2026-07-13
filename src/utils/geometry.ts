@@ -418,6 +418,15 @@ export function mergeBounds(a: Bounds, b: Bounds): Bounds {
   return { x, y, width: maxX - x, height: maxY - y };
 }
 
+export function boundsIntersect(a: Bounds, b: Bounds): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
 export function expandBounds(bounds: Bounds, padding: number): Bounds {
   return {
     x: bounds.x - padding,

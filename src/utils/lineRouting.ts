@@ -353,7 +353,7 @@ export function getLineBounds(
     const pill = getPillLabelSize(
       displayLabel,
       LINE_LABEL_FONT_SIZE,
-      "bold",
+      "normal",
       fontFamily,
     );
     const margin = LINE_ARROW_MARGIN;

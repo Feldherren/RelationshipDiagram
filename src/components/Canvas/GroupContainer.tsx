@@ -324,7 +324,6 @@ export function GroupContainer({
           text={group.name}
           y={-(size + getPillLabelHeight(12) / 2 + 6)}
           fontSize={12}
-          fontStyle="bold"
           selected={selected}
         />
         <Text
@@ -454,7 +453,6 @@ export function GroupContainer({
         x={bounds.x + bounds.width / 2}
         y={bounds.y + 14}
         fontSize={12}
-        fontStyle="bold"
         selected={selected}
       />
       {showConnectHandle && (

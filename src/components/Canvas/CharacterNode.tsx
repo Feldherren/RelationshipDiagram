@@ -184,7 +184,6 @@ export function CharacterNode({
           y={subtitleOffset}
           anchor="top"
           fontSize={nameFontSize}
-          fontStyle="bold"
           paddingX={CHARACTER_LABEL_PADDING_X}
           paddingY={CHARACTER_LABEL_PADDING_Y}
           strokeWidth={1.5}

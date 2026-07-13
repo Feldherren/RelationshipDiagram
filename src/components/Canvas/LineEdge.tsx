@@ -183,7 +183,6 @@ export function LineEdge({
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}
-          fontStyle="bold"
           textFill={color}
           selected={selected}
           selectedStroke="#c62828"

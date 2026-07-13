@@ -86,7 +86,7 @@ export function getCharacterBounds(
     const nameSize = getPillLabelSize(
       character.name,
       CHARACTER_NAME_FONT_SIZE,
-      "bold",
+      "normal",
       fontFamily,
       CHARACTER_LABEL_PADDING_X,
       CHARACTER_LABEL_PADDING_Y,
@@ -156,7 +156,7 @@ export function getCollapsedGroupBounds(
   let maxY = center.y + size;
 
   if (group.name) {
-    const pill = getPillLabelSize(group.name, 12, "bold", fontFamily);
+    const pill = getPillLabelSize(group.name, 12, "normal", fontFamily);
     const pillCenterY = center.y - (size + pill.height / 2 + 6);
     minX = Math.min(minX, center.x - pill.width / 2);
     maxX = Math.max(maxX, center.x + pill.width / 2);

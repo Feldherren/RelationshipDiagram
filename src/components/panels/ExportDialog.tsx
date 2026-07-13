@@ -91,21 +91,24 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     }
 
     let cancelled = false;
-    void exportStageToPng(stage, {
-      bounds: activeBounds,
-      pixelRatio,
-      backgroundColor: diagramBackgroundColor,
-      showGrid,
-      header: exportHeader,
-      viewportScale,
-    }).then((dataUrl) => {
-      if (!cancelled) {
-        estimateDataUrlSize(dataUrl).then(setPreviewSize);
-      }
-    });
+    const timer = window.setTimeout(() => {
+      void exportStageToPng(stage, {
+        bounds: activeBounds,
+        pixelRatio,
+        backgroundColor: diagramBackgroundColor,
+        showGrid,
+        header: exportHeader,
+        viewportScale,
+      }).then((dataUrl) => {
+        if (!cancelled) {
+          estimateDataUrlSize(dataUrl).then(setPreviewSize);
+        }
+      });
+    }, 250);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [
     open,

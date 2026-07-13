@@ -27,6 +27,55 @@ import {
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
 export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
+export const HOVER_AURA_NODE_NAME = "diagram-hover-aura";
+export const SELECTION_PILL_NODE_NAME = "diagram-selection-pill";
+export const EXPORT_CONNECT_HANDLE_NODE_NAME = "diagram-connect-handle";
+
+interface ExportUiRestoreState {
+  node: Konva.Node;
+  visible?: boolean;
+  stroke?: string | CanvasGradient;
+  strokeWidth?: number;
+}
+
+function suppressExportUi(layer: KonvaLib.Layer): ExportUiRestoreState[] {
+  const restored: ExportUiRestoreState[] = [];
+
+  for (const node of layer.find(`.${HOVER_AURA_NODE_NAME}`)) {
+    restored.push({ node, visible: node.visible() });
+    node.visible(false);
+  }
+
+  for (const node of layer.find(`.${EXPORT_CONNECT_HANDLE_NODE_NAME}`)) {
+    restored.push({ node, visible: node.visible() });
+    node.visible(false);
+  }
+
+  for (const node of layer.find(`.${SELECTION_PILL_NODE_NAME}`)) {
+    if (!(node instanceof KonvaLib.Rect)) continue;
+    restored.push({
+      node,
+      stroke: node.stroke(),
+      strokeWidth: node.strokeWidth(),
+    });
+    node.stroke(node.getAttr("exportUnselectedStroke") ?? "#d0d0d0");
+    node.strokeWidth(node.getAttr("exportUnselectedStrokeWidth") ?? 1);
+  }
+
+  return restored;
+}
+
+function restoreExportUi(states: ExportUiRestoreState[]): void {
+  for (const { node, visible, stroke, strokeWidth } of states) {
+    if (visible !== undefined) node.visible(visible);
+    if (stroke !== undefined && node instanceof KonvaLib.Shape) {
+      node.stroke(stroke);
+    }
+    if (strokeWidth !== undefined && node instanceof KonvaLib.Shape) {
+      node.strokeWidth(strokeWidth);
+    }
+  }
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -156,6 +205,7 @@ export async function exportStageToPng(
     (node: KonvaLib.Node) => node.name() === GRID_NODE_NAME,
   );
   const gridWasVisible = existingGrid?.visible() ?? true;
+  let hiddenExportUi: ExportUiRestoreState[] = [];
   const headerLayout =
     header && layer ? layoutExportHeader(crop, header, viewportScale) : null;
 
@@ -164,6 +214,10 @@ export async function exportStageToPng(
 
   if (existingGrid) {
     existingGrid.visible(false);
+  }
+
+  if (layer) {
+    hiddenExportUi = suppressExportUi(layer);
   }
 
   if (resolvedBackground !== null && layer) {
@@ -229,6 +283,7 @@ export async function exportStageToPng(
     if (existingGrid) {
       existingGrid.visible(gridWasVisible);
     }
+    restoreExportUi(hiddenExportUi);
     stage.position(position);
     stage.scale(scale);
     stage.batchDraw();

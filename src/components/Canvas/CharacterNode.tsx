@@ -6,8 +6,6 @@ import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import {
-  CONNECT_HANDLE_FONT_SIZE,
-  CONNECT_HANDLE_SCREEN_RADIUS,
   getConnectHandleOffset,
 } from "../../utils/connection";
 import { useDiagramStore } from "../../store/diagramStore";
@@ -19,6 +17,7 @@ import {
   CHARACTER_SUBTITLE_FONT_SIZE,
 } from "../../utils/labelMetrics";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
+import { ConnectHandle } from "./ConnectHandle";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import {
   RadialAuraCircle,
@@ -114,8 +113,6 @@ export function CharacterNode({
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const handleOffset = getConnectHandleOffset(size);
-  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
-  const handleFontSize = CONNECT_HANDLE_FONT_SIZE / viewportScale;
   const showConnectHandle = selected || hovered || isConnectSource;
   const showAura = shouldShowAura(hovered, selected);
 
@@ -217,43 +214,13 @@ export function CharacterNode({
         />
       )}
       {showConnectHandle && (
-        <Group
+        <ConnectHandle
           x={handleOffset.x}
           y={handleOffset.y}
-          onMouseDown={(e) => {
-            e.cancelBubble = true;
-            onConnectHandleDown(e);
-          }}
-          onClick={(e) => {
-            e.cancelBubble = true;
-          }}
-          onTap={(e) => {
-            e.cancelBubble = true;
-          }}
-        >
-          <Circle
-            radius={handleRadius}
-            fill={isConnectSource ? "#2f6fb3" : "#4a90d9"}
-            stroke="#ffffff"
-            strokeWidth={2 / viewportScale}
-            shadowColor="rgba(0,0,0,0.25)"
-            shadowBlur={4 / viewportScale}
-            shadowOffset={{ x: 0, y: 1 / viewportScale }}
-          />
-          <Text
-            text="+"
-            fontSize={handleFontSize}
-            fontStyle="bold"
-            fill="#ffffff"
-            align="center"
-            verticalAlign="middle"
-            width={handleRadius * 2}
-            height={handleRadius * 2}
-            offsetX={handleRadius}
-            offsetY={handleRadius}
-            listening={false}
-          />
-        </Group>
+          viewportScale={viewportScale}
+          isConnectSource={isConnectSource}
+          onMouseDown={onConnectHandleDown}
+        />
       )}
     </Group>
   );

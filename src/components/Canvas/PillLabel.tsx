@@ -10,6 +10,7 @@ import {
   LABEL_PADDING_Y,
   getPillLabelSize,
 } from "../../utils/labelMetrics";
+import { SELECTION_PILL_NODE_NAME } from "../../utils/export";
 
 interface PillLabelProps {
   text: string;
@@ -79,6 +80,9 @@ export function PillLabel({
       onTap={onTap}
     >
       <Rect
+        name={selected ? SELECTION_PILL_NODE_NAME : undefined}
+        exportUnselectedStroke={unselectedStroke}
+        exportUnselectedStrokeWidth={strokeWidth}
         x={rectX}
         y={rectY}
         width={width}

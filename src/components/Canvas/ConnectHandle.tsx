@@ -4,6 +4,7 @@ import {
   CONNECT_HANDLE_FONT_SIZE,
   CONNECT_HANDLE_SCREEN_RADIUS,
 } from "../../utils/connection";
+import { EXPORT_CONNECT_HANDLE_NODE_NAME } from "../../utils/export";
 
 interface ConnectHandleProps {
   x: number;
@@ -25,6 +26,7 @@ export function ConnectHandle({
 
   return (
     <Group
+      name={EXPORT_CONNECT_HANDLE_NODE_NAME}
       x={x}
       y={y}
       onMouseDown={(e) => {

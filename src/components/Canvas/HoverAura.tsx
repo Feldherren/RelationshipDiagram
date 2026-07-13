@@ -3,6 +3,7 @@ import { Circle, Group, Line, Rect } from "react-konva";
 import type Konva from "konva";
 import type { RGB } from "../../models/types";
 import { rgbaWithAlpha } from "../../utils/geometry";
+import { HOVER_AURA_NODE_NAME } from "../../utils/export";
 
 const AURA_OUTER_PADDING = 20;
 const LINE_AURA_OUTER_WIDTH = 14;
@@ -60,6 +61,7 @@ export function RadialAuraCircle({
 
   return (
     <Circle
+      name={HOVER_AURA_NODE_NAME}
       x={x}
       y={y}
       radius={outerRadius}
@@ -153,7 +155,7 @@ export function RoundedRectAura({
   const rings = buildAuraRings(AURA_OUTER_PADDING, peakOpacity);
 
   return (
-    <Group listening={false}>
+    <Group name={HOVER_AURA_NODE_NAME} listening={false}>
       {rings.map((ring) => (
         <RoundedRectAuraRing
           key={ring.pad}
@@ -242,7 +244,7 @@ export function LineAura({
   const rings = buildAuraRings(LINE_AURA_MAX_PAD, peakOpacity);
 
   return (
-    <Group listening={false}>
+    <Group name={HOVER_AURA_NODE_NAME} listening={false}>
       {rings.map((ring) => (
         <LineAuraRing
           key={ring.pad}

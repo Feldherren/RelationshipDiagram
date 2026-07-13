@@ -4,6 +4,10 @@ import { COLLAPSED_GROUP_SIZE } from "../models/types";
 import { resolveGroupBounds } from "./geometry";
 import { getCollapsedGroupForCharacter } from "./lineEndpoints";
 
+/** Matches RoundedRectAura outer padding in HoverAura.tsx */
+const GROUP_CONNECTION_HIT_PADDING = 20;
+const CHARACTER_CONNECTION_HIT_PADDING = 14;
+
 function isCharacterHidden(characterId: string, groups: Group[]): boolean {
   return getCollapsedGroupForCharacter(characterId, groups) != null;
 }
@@ -12,19 +16,16 @@ export function sameNodeRef(a: NodeRef, b: NodeRef): boolean {
   return a.id === b.id && a.kind === b.kind;
 }
 
-function pointInBounds(point: Point, bounds: Bounds): boolean {
-  return (
-    point.x >= bounds.x &&
-    point.x <= bounds.x + bounds.width &&
-    point.y >= bounds.y &&
-    point.y <= bounds.y + bounds.height
+function distanceToRect(point: Point, bounds: Bounds): number {
+  const closestX = Math.max(
+    bounds.x,
+    Math.min(point.x, bounds.x + bounds.width),
   );
-}
-
-function distanceToBoundsCenter(point: Point, bounds: Bounds): number {
-  const cx = bounds.x + bounds.width / 2;
-  const cy = bounds.y + bounds.height / 2;
-  return Math.hypot(point.x - cx, point.y - cy);
+  const closestY = Math.max(
+    bounds.y,
+    Math.min(point.y, bounds.y + bounds.height),
+  );
+  return Math.hypot(point.x - closestX, point.y - closestY);
 }
 
 export function findConnectionTargetAt(
@@ -40,7 +41,7 @@ export function findConnectionTargetAt(
       point.x - character.position.x,
       point.y - character.position.y,
     );
-    const hitRadius = character.size + 14;
+    const hitRadius = character.size + CHARACTER_CONNECTION_HIT_PADDING;
     if (dist <= hitRadius && (!best || dist < best.dist)) {
       best = { ref: { id: character.id, kind: "character" }, dist };
     }
@@ -50,7 +51,7 @@ export function findConnectionTargetAt(
     if (group.collapsed) {
       const pos = group.collapsedPosition ?? { x: 0, y: 0 };
       const dist = Math.hypot(point.x - pos.x, point.y - pos.y);
-      const hitRadius = COLLAPSED_GROUP_SIZE + 14;
+      const hitRadius = COLLAPSED_GROUP_SIZE + CHARACTER_CONNECTION_HIT_PADDING;
       if (dist <= hitRadius && (!best || dist < best.dist)) {
         best = { ref: { id: group.id, kind: "group" }, dist };
       }
@@ -58,9 +59,12 @@ export function findConnectionTargetAt(
     }
 
     const bounds = resolveGroupBounds(group, characters);
-    if (!bounds || !pointInBounds(point, bounds)) continue;
-    const dist = distanceToBoundsCenter(point, bounds);
-    if (!best || dist < best.dist) {
+    if (!bounds) continue;
+    const dist = distanceToRect(point, bounds);
+    if (
+      dist <= GROUP_CONNECTION_HIT_PADDING &&
+      (!best || dist < best.dist)
+    ) {
       best = { ref: { id: group.id, kind: "group" }, dist };
     }
   }

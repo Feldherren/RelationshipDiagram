@@ -15,17 +15,37 @@ export function parseDiagram(json: string): Diagram {
   return data;
 }
 
-function getDefaultDiagramFilename(diagram: Diagram): string {
-  const raw = diagram.title?.trim();
-  if (!raw) return "diagram.rdiagram";
+function getDefaultFilenameFromTitle(
+  title: string | undefined,
+  extension: string,
+  fallback: string,
+): string {
+  const raw = title?.trim();
+  if (!raw) return fallback;
 
   const sanitized = raw
     .replace(/[\\/:*?"<>|]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!sanitized) return "diagram.rdiagram";
+  if (!sanitized) return fallback;
 
-  return `${sanitized}.rdiagram`;
+  return `${sanitized}.${extension}`;
+}
+
+function getDefaultDiagramFilename(diagram: Diagram): string {
+  return getDefaultFilenameFromTitle(
+    diagram.title,
+    "rdiagram",
+    "diagram.rdiagram",
+  );
+}
+
+export function getDefaultExportFilename(title?: string): string {
+  return getDefaultFilenameFromTitle(
+    title,
+    "png",
+    "relationship-diagram.png",
+  );
 }
 
 export async function saveDiagramToFile(diagram: Diagram, filename?: string): Promise<void> {

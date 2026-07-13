@@ -6,7 +6,7 @@ import {
   formatBytes,
   getAutoExportBounds,
 } from "../../utils/export";
-import { downloadDataUrl, estimateDataUrlSize } from "../../utils/persistence";
+import { downloadDataUrl, estimateDataUrlSize, getDefaultExportFilename } from "../../utils/persistence";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import type { Bounds } from "../../models/types";
 
@@ -100,7 +100,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
       pixelRatio,
       backgroundColor: diagramBackgroundColor,
     });
-    downloadDataUrl(dataUrl, "relationship-diagram.png");
+    downloadDataUrl(dataUrl, getDefaultExportFilename(diagramTitle));
     onClose();
   };
 

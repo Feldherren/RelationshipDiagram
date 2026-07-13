@@ -28,12 +28,25 @@ function distanceToRect(point: Point, bounds: Bounds): number {
   return Math.hypot(point.x - closestX, point.y - closestY);
 }
 
+/** Distance to the group border; 0 on the stroke, larger toward the interior. */
+function distanceToExpandedGroupOutline(point: Point, bounds: Bounds): number {
+  const outsideDist = distanceToRect(point, bounds);
+  if (outsideDist > 0) return outsideDist;
+
+  return Math.min(
+    point.x - bounds.x,
+    bounds.x + bounds.width - point.x,
+    point.y - bounds.y,
+    bounds.y + bounds.height - point.y,
+  );
+}
+
 export function findConnectionTargetAt(
   point: Point,
   characters: Character[],
   groups: Group[],
 ): NodeRef | null {
-  let best: { ref: NodeRef; dist: number } | null = null;
+  let bestCharacter: { ref: NodeRef; dist: number } | null = null;
 
   for (const character of characters) {
     if (isCharacterHidden(character.id, groups)) continue;
@@ -42,34 +55,40 @@ export function findConnectionTargetAt(
       point.y - character.position.y,
     );
     const hitRadius = character.size + CHARACTER_CONNECTION_HIT_PADDING;
-    if (dist <= hitRadius && (!best || dist < best.dist)) {
-      best = { ref: { id: character.id, kind: "character" }, dist };
+    if (dist <= hitRadius && (!bestCharacter || dist < bestCharacter.dist)) {
+      bestCharacter = { ref: { id: character.id, kind: "character" }, dist };
     }
   }
+
+  if (bestCharacter) {
+    return bestCharacter.ref;
+  }
+
+  let bestGroup: { ref: NodeRef; dist: number } | null = null;
 
   for (const group of groups) {
     if (group.collapsed) {
       const pos = group.collapsedPosition ?? { x: 0, y: 0 };
       const dist = Math.hypot(point.x - pos.x, point.y - pos.y);
       const hitRadius = COLLAPSED_GROUP_SIZE + CHARACTER_CONNECTION_HIT_PADDING;
-      if (dist <= hitRadius && (!best || dist < best.dist)) {
-        best = { ref: { id: group.id, kind: "group" }, dist };
+      if (dist <= hitRadius && (!bestGroup || dist < bestGroup.dist)) {
+        bestGroup = { ref: { id: group.id, kind: "group" }, dist };
       }
       continue;
     }
 
     const bounds = resolveGroupBounds(group, characters);
     if (!bounds) continue;
-    const dist = distanceToRect(point, bounds);
+    const dist = distanceToExpandedGroupOutline(point, bounds);
     if (
       dist <= GROUP_CONNECTION_HIT_PADDING &&
-      (!best || dist < best.dist)
+      (!bestGroup || dist < bestGroup.dist)
     ) {
-      best = { ref: { id: group.id, kind: "group" }, dist };
+      bestGroup = { ref: { id: group.id, kind: "group" }, dist };
     }
   }
 
-  return best?.ref ?? null;
+  return bestGroup?.ref ?? null;
 }
 
 export const CONNECT_HANDLE_SCREEN_RADIUS = 14;

@@ -69,7 +69,7 @@ export function findConnectionTargetAt(
     if (group.collapsed) {
       const pos = group.collapsedPosition ?? { x: 0, y: 0 };
       const bounds = getCollapsedGroupSquareBounds(pos);
-      const dist = distanceToExpandedGroupOutline(point, bounds);
+      const dist = distanceToRect(point, bounds);
       if (
         dist <= GROUP_CONNECTION_HIT_PADDING &&
         (!bestGroup || dist < bestGroup.dist)

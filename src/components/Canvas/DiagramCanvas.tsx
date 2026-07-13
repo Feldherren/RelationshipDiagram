@@ -360,17 +360,38 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           {lines
             .filter((line) => shouldRenderLine(line, diagram))
             .map((line) => (
-            <LineEdge
-              key={line.id}
-              line={line}
-              diagram={diagram}
-              selected={selection?.type === "line" && selection.id === line.id}
-              onSelect={() =>
-                setSelection({ type: "line", id: line.id })
-              }
-              onBendChange={(bend) => updateLine(line.id, { bend })}
-            />
-          ))}
+              <LineEdge
+                key={line.id}
+                line={line}
+                diagram={diagram}
+                selected={
+                  selection?.type === "line" && selection.id === line.id
+                }
+                onSelect={() =>
+                  setSelection({ type: "line", id: line.id })
+                }
+                onBendChange={(bend) => updateLine(line.id, { bend })}
+                part="stroke"
+              />
+            ))}
+
+          {lines
+            .filter((line) => shouldRenderLine(line, diagram))
+            .map((line) => (
+              <LineEdge
+                key={`${line.id}-label`}
+                line={line}
+                diagram={diagram}
+                selected={
+                  selection?.type === "line" && selection.id === line.id
+                }
+                onSelect={() =>
+                  setSelection({ type: "line", id: line.id })
+                }
+                onBendChange={(bend) => updateLine(line.id, { bend })}
+                part="label"
+              />
+            ))}
 
           {connectDrag && (
             <Line

@@ -23,6 +23,7 @@ interface LineEdgeProps {
   selected: boolean;
   onSelect: () => void;
   onBendChange: (bend: number) => void;
+  part?: "full" | "stroke" | "label";
 }
 
 interface BendDragStart {
@@ -38,6 +39,7 @@ export function LineEdge({
   selected,
   onSelect,
   onBendChange,
+  part = "full",
 }: LineEdgeProps) {
   const routed = routeLine(line, diagram);
   const displayLabel = getLineDisplayLabel(line, diagram);
@@ -110,18 +112,22 @@ export function LineEdge({
     onSelect();
   };
 
+  const showStroke = part === "full" || part === "stroke";
+  const showLabel = (part === "full" || part === "label") && displayLabel;
+
   return (
     <Group
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {shouldShowAura(hovered, selected) && (
+      {showStroke && shouldShowAura(hovered, selected) && (
         <LineAura
           points={routed.points}
           color={line.color}
           dash={dash}
         />
       )}
+      {showStroke && (
       <Arrow
         points={routed.points}
         stroke={color}
@@ -148,7 +154,8 @@ export function LineEdge({
           beginBendDrag(e);
         }}
       />
-      {fromResolved.hiddenCharacterId && routed.points.length >= 2 && (
+      )}
+      {showStroke && fromResolved.hiddenCharacterId && routed.points.length >= 2 && (
         <Circle
           x={routed.points[0]}
           y={routed.points[1]}
@@ -159,7 +166,7 @@ export function LineEdge({
           listening={false}
         />
       )}
-      {toResolved.hiddenCharacterId && routed.points.length >= 2 && (
+      {showStroke && toResolved.hiddenCharacterId && routed.points.length >= 2 && (
         <Circle
           x={routed.points[routed.points.length - 2]}
           y={routed.points[routed.points.length - 1]}
@@ -170,9 +177,9 @@ export function LineEdge({
           listening={false}
         />
       )}
-      {displayLabel && (
+      {showLabel && (
         <PillLabel
-          text={displayLabel}
+          text={displayLabel!}
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}

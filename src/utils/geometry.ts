@@ -121,6 +121,16 @@ export function getCharacterBounds(
   };
 }
 
+export function getCollapsedGroupSquareBounds(center: Point): Bounds {
+  const half = COLLAPSED_GROUP_SIZE;
+  return {
+    x: center.x - half,
+    y: center.y - half,
+    width: half * 2,
+    height: half * 2,
+  };
+}
+
 export function getCollapsedGroupBounds(
   group: Group,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
@@ -388,12 +398,12 @@ export function getGroupEdgePoint(
 ): Point {
   if (group.collapsed) {
     const center = group.collapsedPosition ?? { x: 0, y: 0 };
-    return circleEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
+    return squareEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
   }
   const bounds = resolveGroupBounds(group, characters);
   if (!bounds) {
     const center = group.collapsedPosition ?? { x: 0, y: 0 };
-    return circleEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
+    return squareEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
   }
   return rectEdgePoint(bounds, toward);
 }
@@ -463,8 +473,10 @@ export function isPointInsideNode(
   if (!group) return false;
   if (group.collapsed) {
     const center = group.collapsedPosition ?? { x: 0, y: 0 };
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
     return (
-      Math.hypot(point.x - center.x, point.y - center.y) <= COLLAPSED_GROUP_SIZE
+      Math.max(Math.abs(dx), Math.abs(dy)) <= COLLAPSED_GROUP_SIZE
     );
   }
   const bounds = resolveGroupBounds(group, diagram.characters);

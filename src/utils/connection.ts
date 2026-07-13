@@ -1,7 +1,6 @@
 import type { Point } from "../models/types";
 import type { Bounds, Character, Group, NodeRef } from "../models/types";
-import { COLLAPSED_GROUP_SIZE } from "../models/types";
-import { resolveGroupBounds } from "./geometry";
+import { resolveGroupBounds, getCollapsedGroupSquareBounds } from "./geometry";
 import { getCollapsedGroupForCharacter } from "./lineEndpoints";
 
 /** Matches RoundedRectAura outer padding in HoverAura.tsx */
@@ -69,9 +68,12 @@ export function findConnectionTargetAt(
   for (const group of groups) {
     if (group.collapsed) {
       const pos = group.collapsedPosition ?? { x: 0, y: 0 };
-      const dist = Math.hypot(point.x - pos.x, point.y - pos.y);
-      const hitRadius = COLLAPSED_GROUP_SIZE + CHARACTER_CONNECTION_HIT_PADDING;
-      if (dist <= hitRadius && (!bestGroup || dist < bestGroup.dist)) {
+      const bounds = getCollapsedGroupSquareBounds(pos);
+      const dist = distanceToExpandedGroupOutline(point, bounds);
+      if (
+        dist <= GROUP_CONNECTION_HIT_PADDING &&
+        (!bestGroup || dist < bestGroup.dist)
+      ) {
         bestGroup = { ref: { id: group.id, kind: "group" }, dist };
       }
       continue;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Circle, Group, Rect, Text } from "react-konva";
+import { Group, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import type {
   Bounds,
@@ -28,7 +28,6 @@ import {
 } from "../../utils/connection";
 import { ConnectHandle } from "./ConnectHandle";
 import {
-  RadialAuraCircle,
   RoundedRectAura,
   shouldShowAura,
 } from "./HoverAura";
@@ -302,13 +301,24 @@ export function GroupContainer({
         onMouseDown={(e) => beginMove(e)}
       >
         {showAura && (
-          <RadialAuraCircle innerRadius={size} color={group.borderColor} />
+          <RoundedRectAura
+            x={-size}
+            y={-size}
+            width={size * 2}
+            height={size * 2}
+            cornerRadius={4}
+            color={group.borderColor}
+          />
         )}
-        <Circle
-          radius={size}
+        <Rect
+          x={-size}
+          y={-size}
+          width={size * 2}
+          height={size * 2}
           stroke={color}
           strokeWidth={3}
           fill={rgbaWithAlpha(group.borderColor, 0.15)}
+          cornerRadius={4}
         />
         <PillLabel
           text={group.name}

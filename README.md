@@ -18,6 +18,37 @@ npm run build
 npm run preview
 ```
 
+## Desktop app (Tauri)
+
+This project includes a [Tauri](https://v2.tauri.app/) shell for running as a native desktop app on Windows, macOS, and Linux.
+
+### Prerequisites
+
+1. [Node.js](https://nodejs.org/) (for the frontend)
+2. [Rust](https://www.rust-lang.org/tools/install) (`rustup` is recommended)
+3. **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled on Windows 10/11)
+
+### Run in development
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+### Build installer
+
+```bash
+npm run tauri:build
+```
+
+Installers and binaries are written to `src-tauri/target/release/bundle/`.
+
+### Troubleshooting
+
+**`cargo metadata` / `program not found`** — Rust is installed but the terminal does not see it yet. Either restart Cursor (or open a new terminal), or use the provided `npm run tauri:dev` script which prepends `~/.cargo/bin` to `PATH` automatically.
+
+**`Port 5173 is already in use`** — Stop any other Vite dev server (`npm run dev`) before starting `npm run tauri:dev`.
+
 ## Usage
 
 | Action | How |

@@ -22,7 +22,7 @@ import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import {
   RadialAuraCircle,
-  shouldShowHoverAura,
+  shouldShowAura,
 } from "./HoverAura";
 
 interface CharacterNodeProps {
@@ -117,7 +117,7 @@ export function CharacterNode({
   const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
   const handleFontSize = CONNECT_HANDLE_FONT_SIZE / viewportScale;
   const showConnectHandle = selected || hovered || isConnectSource;
-  const showAura = shouldShowHoverAura(hovered, selected);
+  const showAura = shouldShowAura(hovered, selected);
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
@@ -150,17 +150,6 @@ export function CharacterNode({
         <RadialAuraCircle
           innerRadius={size}
           color={character.borderColor}
-        />
-      )}
-      {selected && (
-        <Circle
-          x={0}
-          y={0}
-          radius={size + 6}
-          stroke="#4a90d9"
-          strokeWidth={2}
-          dash={[6, 4]}
-          listening={false}
         />
       )}
       <ShapeOutline

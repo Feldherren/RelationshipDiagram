@@ -10,7 +10,7 @@ import { useDiagramStore } from "../../store/diagramStore";
 import {
   RadialAuraCircle,
   RoundedRectAura,
-  shouldShowHoverAura,
+  shouldShowAura,
 } from "./HoverAura";
 
 interface GroupContainerProps {
@@ -30,7 +30,7 @@ export function GroupContainer({
 }: GroupContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const [hovered, setHovered] = useState(false);
-  const showAura = shouldShowHoverAura(hovered, selected);
+  const showAura = shouldShowAura(hovered, selected);
 
   if (group.collapsed) {
     const pos = group.collapsedPosition ?? { x: 0, y: 0 };
@@ -62,15 +62,6 @@ export function GroupContainer({
       >
         {showAura && (
           <RadialAuraCircle innerRadius={size} color={group.borderColor} />
-        )}
-        {selected && (
-          <Circle
-            radius={size + 6}
-            stroke="#4a90d9"
-            strokeWidth={2}
-            dash={[6, 4]}
-            listening={false}
-          />
         )}
         <Circle
           radius={size}
@@ -140,9 +131,8 @@ export function GroupContainer({
         y={bounds.y}
         width={bounds.width}
         height={bounds.height}
-        stroke={selected ? "#4a90d9" : color}
-        strokeWidth={selected ? 3 : 2}
-        dash={selected ? [6, 4] : undefined}
+        stroke={color}
+        strokeWidth={2}
         fill={rgbaWithAlpha(group.borderColor, 0.08)}
         cornerRadius={12}
       />

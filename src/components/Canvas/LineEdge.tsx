@@ -11,7 +11,7 @@ import {
 } from "../../utils/lineRouting";
 import { useDiagramStore } from "../../store/diagramStore";
 import { PillLabel } from "./PillLabel";
-import { LineAura, shouldShowHoverAura } from "./HoverAura";
+import { LineAura, shouldShowAura } from "./HoverAura";
 
 interface LineEdgeProps {
   line: Line;
@@ -107,7 +107,7 @@ export function LineEdge({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {shouldShowHoverAura(hovered, selected) && (
+      {shouldShowAura(hovered, selected) && (
         <LineAura
           points={routed.points}
           color={line.color}
@@ -118,7 +118,7 @@ export function LineEdge({
         points={routed.points}
         stroke={color}
         fill={color}
-        strokeWidth={selected ? 3 : 2}
+        strokeWidth={2}
         dash={dash}
         pointerLength={10}
         pointerWidth={8}

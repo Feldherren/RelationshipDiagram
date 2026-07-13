@@ -258,9 +258,9 @@ export function LineAura({
   );
 }
 
-export function shouldShowHoverAura(
+export function shouldShowAura(
   hovered: boolean,
   selected: boolean,
 ): boolean {
-  return hovered && !selected;
+  return hovered || selected;
 }

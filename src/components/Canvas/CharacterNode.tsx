@@ -23,13 +23,22 @@ import {
   RadialAuraCircle,
   shouldShowAura,
 } from "./HoverAura";
+import {
+  MembershipChips,
+  type MembershipChipItem,
+} from "./MembershipChips";
 
 interface CharacterNodeProps {
   character: Character;
   selected: boolean;
   draggable: boolean;
   isConnectSource: boolean;
+  membershipGroups: MembershipChipItem[];
+  highlightedGroupId?: string | null;
+  dimmed?: boolean;
+  membershipEmphasized?: boolean;
   onSelect: () => void;
+  onSelectGroup?: (groupId: string) => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
@@ -94,7 +103,12 @@ export function CharacterNode({
   selected,
   draggable,
   isConnectSource,
+  membershipGroups,
+  highlightedGroupId = null,
+  dimmed = false,
+  membershipEmphasized = false,
   onSelect,
+  onSelectGroup,
   onDragMove,
   onDragEnd,
   onConnectHandleDown,
@@ -116,7 +130,8 @@ export function CharacterNode({
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const handleOffset = getConnectHandleOffset(size);
   const showConnectHandle = selected || hovered || isConnectSource;
-  const showAura = shouldShowAura(hovered, selected);
+  const showAura =
+    shouldShowAura(hovered, selected) || membershipEmphasized;
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
@@ -128,6 +143,7 @@ export function CharacterNode({
     <Group
       x={character.position.x}
       y={character.position.y}
+      opacity={dimmed ? 0.28 : 1}
       draggable={draggable}
       onMouseDown={(e) => {
         allowNodeDragRef.current = e.evt.button === 0;
@@ -193,6 +209,13 @@ export function CharacterNode({
           listening={false}
         />
       )}
+      <MembershipChips
+        groups={membershipGroups}
+        characterSize={size}
+        borderShape={character.borderShape}
+        highlightedGroupId={highlightedGroupId}
+        onChipClick={onSelectGroup}
+      />
       {character.name && (
         <PillLabel
           text={character.name}

@@ -1,38 +1,48 @@
-import type { Diagram, Group, Line, NodeRef } from "../models/types";
-import { getCharacterById } from "./geometry";
+import type { Box, Character, Diagram, Line, NodeRef } from "../models/types";
+import {
+  getCharacterById,
+  isCharacterContainedInBox,
+} from "./geometry";
 
 export interface ResolvedLineEndpoint {
   logical: NodeRef;
-  anchorKind: "character" | "group";
+  anchorKind: "character" | "box";
   anchorId: string;
   hiddenCharacterId?: string;
   hiddenCharacterName?: string;
 }
 
-export function getCollapsedGroupForCharacter(
+export function getCollapsedBoxForCharacter(
   characterId: string,
-  groups: Group[],
-): Group | undefined {
-  return groups.find(
-    (g) => g.collapsed && g.memberCharacterIds.includes(characterId),
+  boxes: Box[],
+  characters: Character[],
+): Box | undefined {
+  const character = characters.find((c) => c.id === characterId);
+  if (!character) return undefined;
+  return boxes.find(
+    (b) => b.collapsed && isCharacterContainedInBox(character, b),
   );
 }
 
 export function resolveLineEndpoint(
   ref: NodeRef,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): ResolvedLineEndpoint {
-  if (ref.kind === "group") {
-    return { logical: ref, anchorKind: "group", anchorId: ref.id };
+  if (ref.kind === "box") {
+    return { logical: ref, anchorKind: "box", anchorId: ref.id };
   }
 
-  const collapsedGroup = getCollapsedGroupForCharacter(ref.id, diagram.groups);
-  if (collapsedGroup) {
+  const collapsedBox = getCollapsedBoxForCharacter(
+    ref.id,
+    diagram.boxes,
+    diagram.characters,
+  );
+  if (collapsedBox) {
     const character = getCharacterById(diagram, ref.id);
     return {
       logical: ref,
-      anchorKind: "group",
-      anchorId: collapsedGroup.id,
+      anchorKind: "box",
+      anchorId: collapsedBox.id,
       hiddenCharacterId: ref.id,
       hiddenCharacterName: character?.name,
     };
@@ -41,31 +51,38 @@ export function resolveLineEndpoint(
   return { logical: ref, anchorKind: "character", anchorId: ref.id };
 }
 
-export function isLineFullyInsideCollapsedGroup(
+export function isLineFullyInsideCollapsedBox(
   line: Line,
-  groups: Group[],
+  boxes: Box[],
+  characters: Character[],
 ): boolean {
   if (line.from.kind !== "character" || line.to.kind !== "character") {
     return false;
   }
-  const fromGroup = getCollapsedGroupForCharacter(line.from.id, groups);
-  const toGroup = getCollapsedGroupForCharacter(line.to.id, groups);
-  return fromGroup != null && toGroup?.id === fromGroup.id;
+  const fromBox = getCollapsedBoxForCharacter(
+    line.from.id,
+    boxes,
+    characters,
+  );
+  const toBox = getCollapsedBoxForCharacter(line.to.id, boxes, characters);
+  return fromBox != null && toBox?.id === fromBox.id;
 }
 
 export function shouldRenderLine(
   line: Line,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): boolean {
-  if (isLineFullyInsideCollapsedGroup(line, diagram.groups)) {
+  if (
+    isLineFullyInsideCollapsedBox(line, diagram.boxes, diagram.characters)
+  ) {
     return false;
   }
 
   const from = resolveLineEndpoint(line.from, diagram);
   const to = resolveLineEndpoint(line.to, diagram);
   if (
-    from.anchorKind === "group" &&
-    to.anchorKind === "group" &&
+    from.anchorKind === "box" &&
+    to.anchorKind === "box" &&
     from.anchorId === to.anchorId &&
     !(line.from.kind === line.to.kind && line.from.id === line.to.id)
   ) {
@@ -77,7 +94,7 @@ export function shouldRenderLine(
 
 export function getLineDisplayLabel(
   line: Line,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): string | null {
   const from = resolveLineEndpoint(line.from, diagram);
   const to = resolveLineEndpoint(line.to, diagram);

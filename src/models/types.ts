@@ -6,8 +6,8 @@ export interface RGB {
 
 export type BorderShape = "circle" | "square" | "pentagon" | "hexagon";
 export type LineStyle = "straight" | "wavy" | "dotted" | "jagged";
-export type NodeKind = "character" | "group";
-export type ToolMode = "select" | "exportBounds";
+export type NodeKind = "character" | "box";
+export type ToolMode = "select" | "exportBounds" | "editGroupMembers";
 
 export interface ConnectDrag {
   from: NodeRef;
@@ -47,15 +47,117 @@ export interface Line {
   bend?: number;
 }
 
+/** Built-in glyph drawn on membership chips. */
+export type MembershipSymbol =
+  | "none"
+  | "star"
+  | "moon"
+  | "heart"
+  | "diamond"
+  | "circle"
+  | "ring"
+  | "square"
+  | "triangle"
+  | "hexagon"
+  | "plus"
+  | "cross"
+  | "slash"
+  | "music"
+  | "sword"
+  | "flame"
+  | "droplet"
+  | "breeze"
+  | "rock";
+
+/** Visual identity for a membership group chip. */
+export interface MembershipAppearance {
+  backgroundColor: RGB;
+  symbol: MembershipSymbol;
+  symbolColor: RGB;
+  borderColor: RGB;
+}
+
+export const MEMBERSHIP_SYMBOLS: {
+  value: MembershipSymbol;
+  label: string;
+}[] = [
+  { value: "none", label: "None" },
+  { value: "star", label: "Star" },
+  { value: "moon", label: "Moon" },
+  { value: "heart", label: "Heart" },
+  { value: "diamond", label: "Diamond" },
+  { value: "circle", label: "Circle" },
+  { value: "ring", label: "Ring" },
+  { value: "square", label: "Square" },
+  { value: "triangle", label: "Triangle" },
+  { value: "hexagon", label: "Hexagon" },
+  { value: "plus", label: "Plus" },
+  { value: "cross", label: "Cross" },
+  { value: "slash", label: "Slash" },
+  { value: "music", label: "Music note" },
+  { value: "sword", label: "Sword" },
+  { value: "flame", label: "Flame" },
+  { value: "droplet", label: "Droplet" },
+  { value: "breeze", label: "Breeze" },
+  { value: "rock", label: "Rock" },
+];
+
+export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
+  return (
+    typeof value === "string" &&
+    MEMBERSHIP_SYMBOLS.some((entry) => entry.value === value)
+  );
+}
+
+export function defaultMembershipAppearance(
+  backgroundColor: RGB = { r: 100, g: 140, b: 100 },
+): MembershipAppearance {
+  return {
+    backgroundColor: { ...backgroundColor },
+    symbol: "none",
+    symbolColor: { r: 255, g: 255, b: 255 },
+    borderColor: { r: 51, g: 51, b: 51 },
+  };
+}
+
+export function normalizeMembershipAppearance(
+  appearance: Partial<MembershipAppearance> | undefined,
+  fallbackBackground: RGB = { r: 100, g: 140, b: 100 },
+): MembershipAppearance {
+  const defaults = defaultMembershipAppearance(fallbackBackground);
+  return {
+    backgroundColor: appearance?.backgroundColor
+      ? { ...appearance.backgroundColor }
+      : defaults.backgroundColor,
+    symbol: isMembershipSymbol(appearance?.symbol)
+      ? appearance.symbol
+      : defaults.symbol,
+    symbolColor: appearance?.symbolColor
+      ? { ...appearance.symbolColor }
+      : defaults.symbolColor,
+    borderColor: appearance?.borderColor
+      ? { ...appearance.borderColor }
+      : defaults.borderColor,
+  };
+}
+
+/** Semantic membership group — chips / highlight only; not a canvas connect target. */
 export interface Group {
   id: string;
   name: string;
   memberCharacterIds: string[];
+  appearance: MembershipAppearance;
+}
+
+/** Organisational region — labelled box, geometric containment, collapse. */
+export interface Box {
+  id: string;
+  name: string;
+  borderColor: RGB;
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
   anchorPosition?: { x: number; y: number };
   bounds?: Bounds;
-  borderColor: RGB;
 }
 
 export interface Viewport {
@@ -65,7 +167,7 @@ export interface Viewport {
 }
 
 export interface Diagram {
-  schemaVersion: 1;
+  schemaVersion: 2;
   title?: string;
   subtitle?: string;
   showHeader?: boolean;
@@ -74,6 +176,7 @@ export interface Diagram {
   characters: Character[];
   lines: Line[];
   groups: Group[];
+  boxes: Box[];
   viewport?: Viewport;
 }
 
@@ -81,6 +184,7 @@ export type Selection =
   | { type: "character"; id: string }
   | { type: "line"; id: string }
   | { type: "group"; id: string }
+  | { type: "box"; id: string }
   | null;
 
 export interface Bounds {
@@ -97,14 +201,16 @@ export interface Point {
 
 export const DEFAULT_CHARACTER_SIZE = 40;
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
-export const GROUP_PADDING = 48;
-export const GROUP_HEADER_HEIGHT = 28;
-export const COLLAPSED_GROUP_SIZE = 44;
-export const MIN_GROUP_WIDTH = 120;
-export const MIN_GROUP_HEIGHT = GROUP_HEADER_HEIGHT + 32;
-export const GROUP_RESIZE_HANDLE_SCREEN_SIZE = 8;
+export const BOX_PADDING = 48;
+export const BOX_HEADER_HEIGHT = 28;
+export const COLLAPSED_BOX_SIZE = 44;
+export const MIN_BOX_WIDTH = 120;
+export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
+export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
+export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
+export const MEMBERSHIP_CHIP_RADIUS = 9;
 
-export type GroupResizeEdge =
+export type BoxResizeEdge =
   | "n"
   | "s"
   | "e"

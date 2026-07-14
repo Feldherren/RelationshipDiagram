@@ -4,7 +4,7 @@ import type Konva from "konva";
 import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
 import { LineEdge } from "./LineEdge";
-import { GroupContainer } from "./GroupContainer";
+import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
@@ -14,12 +14,12 @@ import {
 } from "./CanvasContextMenu";
 import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
-import { getExpandedGroupBounds } from "../../store/diagramStore";
 import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
+import { getGroupsForCharacter } from "../../utils/geometry";
+import { toChipItems } from "./MembershipChips";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
-import { isPointOverCollapsedGroup } from "../../utils/geometry";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -87,6 +87,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     characters,
     lines,
     groups,
+    boxes,
     selection,
     toolMode,
     connectFrom,
@@ -100,14 +101,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     setExportBounds,
     moveCharacter,
     handleNodeClick,
-    addCharacterToGroup,
-    removeCharacterFromGroup,
-    toggleGroupCollapse,
-    updateGroup,
-    moveGroup,
+    toggleBoxCollapse,
+    updateBox,
+    moveBox,
     screenToWorld,
     addCharacterAt,
-    addGroupAt,
+    addBoxAt,
+    addGroup,
     startConnectDrag,
     updateConnectDrag,
     endConnectDrag,
@@ -117,6 +117,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       characters: s.characters,
       lines: s.lines,
       groups: s.groups,
+      boxes: s.boxes,
       selection: s.selection,
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
@@ -130,14 +131,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       setExportBounds: s.setExportBounds,
       moveCharacter: s.moveCharacter,
       handleNodeClick: s.handleNodeClick,
-      addCharacterToGroup: s.addCharacterToGroup,
-      removeCharacterFromGroup: s.removeCharacterFromGroup,
-      toggleGroupCollapse: s.toggleGroupCollapse,
-      updateGroup: s.updateGroup,
-      moveGroup: s.moveGroup,
+      toggleBoxCollapse: s.toggleBoxCollapse,
+      updateBox: s.updateBox,
+      moveBox: s.moveBox,
       screenToWorld: s.screenToWorld,
       addCharacterAt: s.addCharacterAt,
-      addGroupAt: s.addGroupAt,
+      addBoxAt: s.addBoxAt,
+      addGroup: s.addGroup,
       startConnectDrag: s.startConnectDrag,
       updateConnectDrag: s.updateConnectDrag,
       endConnectDrag: s.endConnectDrag,
@@ -159,21 +159,31 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     x: number;
     y: number;
   } | null>(null);
-  const [isResizingGroup, setIsResizingGroup] = useState(false);
-  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
-  const isInteractingWithGroup = isResizingGroup || isDraggingGroup;
+  const [isResizingBox, setIsResizingBox] = useState(false);
+  const [isDraggingBox, setIsDraggingBox] = useState(false);
+  const isInteractingWithBox = isResizingBox || isDraggingBox;
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
     null,
   );
 
+  const highlightedGroupId =
+    selection?.type === "group" ? selection.id : null;
+  const highlightedMemberIds =
+    highlightedGroupId != null
+      ? new Set(
+          groups.find((g) => g.id === highlightedGroupId)?.memberCharacterIds ??
+            [],
+        )
+      : null;
+
   useEffect(() => {
-    const clearGroupInteraction = () => {
-      setIsResizingGroup(false);
-      setIsDraggingGroup(false);
+    const clearBoxInteraction = () => {
+      setIsResizingBox(false);
+      setIsDraggingBox(false);
     };
-    window.addEventListener("mouseup", clearGroupInteraction);
-    return () => window.removeEventListener("mouseup", clearGroupInteraction);
+    window.addEventListener("mouseup", clearBoxInteraction);
+    return () => window.removeEventListener("mouseup", clearBoxInteraction);
   }, []);
 
   useEffect(() => {
@@ -275,7 +285,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   );
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (connectDrag || isInteractingWithGroup) return;
+    if (connectDrag || isInteractingWithBox) return;
 
     const isStage = e.target === e.target.getStage();
 
@@ -302,7 +312,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // Window listener owns pan moves; avoid doubling store updates.
-    if (!isPanningView && !connectDrag && !isInteractingWithGroup) {
+    if (!isPanningView && !connectDrag && !isInteractingWithBox) {
       movePan(e.evt.clientX, e.evt.clientY);
     }
     if (isDrawingExport && drawStart) {
@@ -312,7 +322,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseUp = () => {
-    if (connectDrag || isInteractingWithGroup) return;
+    if (connectDrag || isInteractingWithBox) return;
 
     if (endPan()) {
       suppressClick.current = true;
@@ -340,6 +350,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     if (shouldPan(e.evt.button)) return;
     if (toolMode === "exportBounds") return;
     if (e.target === e.target.getStage()) {
+      if (toolMode === "editGroupMembers") {
+        useDiagramStore.setState({ toolMode: "select" });
+        return;
+      }
       setSelection(null);
       useDiagramStore.getState().cancelConnect();
     }
@@ -347,7 +361,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
-    if (connectDrag || toolMode === "exportBounds") return;
+    if (connectDrag || toolMode === "exportBounds" || toolMode === "editGroupMembers")
+      return;
     if (e.target !== e.target.getStage()) return;
 
     const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
@@ -359,44 +374,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     });
   };
 
-  const onCharacterDragEnd = useCallback(
-    (characterId: string, pos: { x: number; y: number }) => {
-      moveCharacter(characterId, pos);
-      for (const group of groups) {
-        if (group.collapsed) {
-          if (isPointOverCollapsedGroup(pos, group)) {
-            addCharacterToGroup(characterId, group.id);
-          }
-          continue;
-        }
-
-        const bounds = getExpandedGroupBounds(group, characters);
-        if (!bounds) continue;
-        const inside =
-          pos.x >= bounds.x &&
-          pos.x <= bounds.x + bounds.width &&
-          pos.y >= bounds.y &&
-          pos.y <= bounds.y + bounds.height;
-
-        if (group.memberCharacterIds.includes(characterId)) {
-          if (!inside) {
-            removeCharacterFromGroup(characterId, group.id);
-          }
-        } else if (inside) {
-          addCharacterToGroup(characterId, group.id);
-        }
-      }
-    },
-    [
-      moveCharacter,
-      groups,
-      characters,
-      addCharacterToGroup,
-      removeCharacterFromGroup,
-    ],
-  );
-
-  const diagram = { schemaVersion: 1 as const, characters, lines, groups };
+  const diagram = {
+    schemaVersion: 2 as const,
+    characters,
+    lines,
+    groups,
+    boxes,
+  };
 
   const previewBounds =
     isDrawingExport && drawStart && drawCurrent
@@ -411,7 +395,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${isInteractingWithGroup ? " resizing-group" : ""}${
+      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${toolMode === "editGroupMembers" ? " editing-members" : ""}${isInteractingWithBox ? " resizing-group" : ""}${
         diagramBackgroundColor === null ? " canvas-checkerboard" : ""
       }`}
       style={
@@ -426,12 +410,18 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         menu={contextMenu}
         onClose={() => setContextMenu(null)}
         onAddCharacter={addCharacterAt}
-        onAddGroup={addGroupAt}
+        onAddBox={addBoxAt}
+        onAddGroup={() => addGroup()}
       />
       {connectFrom && (
         <div className="connect-hint">
-          Click a character or group to connect, or the same one for a self-loop
+          Click a character or box to connect, or the same one for a self-loop
           (Esc to cancel)
+        </div>
+      )}
+      {toolMode === "editGroupMembers" && !connectFrom && (
+        <div className="connect-hint">
+          Click characters to toggle membership (Esc when done)
         </div>
       )}
       <ViewportStage
@@ -452,31 +442,31 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             />
           )}
 
-          {groups
-            .filter((g) => !g.collapsed)
-            .map((group) => (
-              <GroupContainer
-                key={`${group.id}-bg`}
-                group={group}
+          {boxes
+            .filter((b) => !b.collapsed)
+            .map((box) => (
+              <BoxContainer
+                key={`${box.id}-bg`}
+                box={box}
                 characters={characters}
                 selected={
-                  selection?.type === "group" && selection.id === group.id
+                  selection?.type === "box" && selection.id === box.id
                 }
                 isConnectSource={isConnectSource({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
-                onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
-                onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
-                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
-                onResizeStart={() => setIsResizingGroup(true)}
-                onResizeEnd={() => setIsResizingGroup(false)}
-                onDragStart={() => setIsDraggingGroup(true)}
-                onDragEnd={() => setIsDraggingGroup(false)}
+                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onResizeStart={() => setIsResizingBox(true)}
+                onResizeEnd={() => setIsResizingBox(false)}
+                onDragStart={() => setIsDraggingBox(true)}
+                onDragEnd={() => setIsDraggingBox(false)}
                 onConnectHandleDown={handleConnectHandleDown({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
                 part="background"
               />
@@ -544,87 +534,110 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           )}
 
           {characters
-            .filter((c) => !isCharacterHidden(c.id, groups))
-            .map((character) => (
-              <CharacterNode
-                key={character.id}
-                character={character}
-                selected={
-                  selection?.type === "character" &&
-                  selection.id === character.id
-                }
-                isConnectSource={isConnectSource({
-                  id: character.id,
-                  kind: "character",
-                })}
-                draggable={toolMode !== "exportBounds" && !connectDrag}
-                onSelect={() =>
-                  handleNodeClick({ id: character.id, kind: "character" })
-                }
-                onConnectHandleDown={handleConnectHandleDown({
-                  id: character.id,
-                  kind: "character",
-                })}
-                onDragMove={(pos) => moveCharacter(character.id, pos)}
-                onDragEnd={(pos) => onCharacterDragEnd(character.id, pos)}
-              />
-            ))}
+            .filter((c) => !isCharacterHidden(c.id, boxes, characters))
+            .map((character) => {
+              const memberOf = getGroupsForCharacter(character.id, groups);
+              const isMember =
+                highlightedMemberIds?.has(character.id) ?? false;
+              return (
+                <CharacterNode
+                  key={character.id}
+                  character={character}
+                  selected={
+                    selection?.type === "character" &&
+                    selection.id === character.id
+                  }
+                  isConnectSource={isConnectSource({
+                    id: character.id,
+                    kind: "character",
+                  })}
+                  membershipGroups={toChipItems(memberOf)}
+                  highlightedGroupId={highlightedGroupId}
+                  dimmed={highlightedMemberIds != null && !isMember}
+                  membershipEmphasized={isMember}
+                  draggable={
+                    toolMode !== "exportBounds" &&
+                    toolMode !== "editGroupMembers" &&
+                    !connectDrag
+                  }
+                  onSelect={() =>
+                    handleNodeClick({ id: character.id, kind: "character" })
+                  }
+                  onSelectGroup={
+                    toolMode === "editGroupMembers"
+                      ? () =>
+                          handleNodeClick({
+                            id: character.id,
+                            kind: "character",
+                          })
+                      : (groupId) =>
+                          setSelection({ type: "group", id: groupId })
+                  }
+                  onConnectHandleDown={handleConnectHandleDown({
+                    id: character.id,
+                    kind: "character",
+                  })}
+                  onDragMove={(pos) => moveCharacter(character.id, pos)}
+                  onDragEnd={(pos) => moveCharacter(character.id, pos)}
+                />
+              );
+            })}
 
-          {groups
-            .filter((g) => !g.collapsed)
-            .map((group) => (
-              <GroupContainer
-                key={`${group.id}-fg`}
-                group={group}
+          {boxes
+            .filter((b) => !b.collapsed)
+            .map((box) => (
+              <BoxContainer
+                key={`${box.id}-fg`}
+                box={box}
                 characters={characters}
                 selected={
-                  selection?.type === "group" && selection.id === group.id
+                  selection?.type === "box" && selection.id === box.id
                 }
                 isConnectSource={isConnectSource({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
-                onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
-                onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
-                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
-                onResizeStart={() => setIsResizingGroup(true)}
-                onResizeEnd={() => setIsResizingGroup(false)}
-                onDragStart={() => setIsDraggingGroup(true)}
-                onDragEnd={() => setIsDraggingGroup(false)}
+                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onResizeStart={() => setIsResizingBox(true)}
+                onResizeEnd={() => setIsResizingBox(false)}
+                onDragStart={() => setIsDraggingBox(true)}
+                onDragEnd={() => setIsDraggingBox(false)}
                 onConnectHandleDown={handleConnectHandleDown({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
                 part="foreground"
               />
             ))}
 
-          {groups
-            .filter((g) => g.collapsed)
-            .map((group) => (
-              <GroupContainer
-                key={group.id}
-                group={group}
+          {boxes
+            .filter((b) => b.collapsed)
+            .map((box) => (
+              <BoxContainer
+                key={box.id}
+                box={box}
                 characters={characters}
                 selected={
-                  selection?.type === "group" && selection.id === group.id
+                  selection?.type === "box" && selection.id === box.id
                 }
                 isConnectSource={isConnectSource({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
-                onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
-                onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
-                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
-                onResizeStart={() => setIsResizingGroup(true)}
-                onResizeEnd={() => setIsResizingGroup(false)}
-                onDragStart={() => setIsDraggingGroup(true)}
-                onDragEnd={() => setIsDraggingGroup(false)}
+                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onResizeStart={() => setIsResizingBox(true)}
+                onResizeEnd={() => setIsResizingBox(false)}
+                onDragStart={() => setIsDraggingBox(true)}
+                onDragEnd={() => setIsDraggingBox(false)}
                 onConnectHandleDown={handleConnectHandleDown({
-                  id: group.id,
-                  kind: "group",
+                  id: box.id,
+                  kind: "box",
                 })}
               />
             ))}

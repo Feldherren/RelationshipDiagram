@@ -1,20 +1,21 @@
 import type {
   Bounds,
+  Box,
+  BoxResizeEdge,
   Character,
   Diagram,
   Group,
-  GroupResizeEdge,
   Point,
   RGB,
 } from "../models/types";
 import {
   CHARACTER_BORDER_STROKE_WIDTH,
-  COLLAPSED_GROUP_SIZE,
+  COLLAPSED_BOX_SIZE,
   DEFAULT_CHARACTER_SIZE,
-  GROUP_HEADER_HEIGHT,
-  GROUP_PADDING,
-  MIN_GROUP_HEIGHT,
-  MIN_GROUP_WIDTH,
+  BOX_HEADER_HEIGHT,
+  BOX_PADDING,
+  MIN_BOX_HEIGHT,
+  MIN_BOX_WIDTH,
 } from "../models/types";
 import {
   CHARACTER_LABEL_GAP,
@@ -56,6 +57,20 @@ export function getGroupById(
   id: string,
 ): Group | undefined {
   return diagram.groups.find((g) => g.id === id);
+}
+
+export function getBoxById(
+  diagram: Pick<Diagram, "boxes">,
+  id: string,
+): Box | undefined {
+  return diagram.boxes.find((b) => b.id === id);
+}
+
+export function getGroupsForCharacter(
+  characterId: string,
+  groups: Group[],
+): Group[] {
+  return groups.filter((g) => g.memberCharacterIds.includes(characterId));
 }
 
 export function getCharacterBounds(
@@ -121,20 +136,20 @@ export function getCharacterBounds(
   };
 }
 
-export function isPointOverCollapsedGroup(
+export function isPointOverCollapsedBox(
   point: Point,
-  group: Group,
+  box: Box,
   padding = 0,
 ): boolean {
-  const center = group.collapsedPosition ?? { x: 0, y: 0 };
-  const half = COLLAPSED_GROUP_SIZE + padding;
+  const center = box.collapsedPosition ?? { x: 0, y: 0 };
+  const half = COLLAPSED_BOX_SIZE + padding;
   return (
     Math.max(Math.abs(point.x - center.x), Math.abs(point.y - center.y)) <= half
   );
 }
 
-export function getCollapsedGroupSquareBounds(center: Point): Bounds {
-  const half = COLLAPSED_GROUP_SIZE;
+export function getCollapsedBoxSquareBounds(center: Point): Bounds {
+  const half = COLLAPSED_BOX_SIZE;
   return {
     x: center.x - half,
     y: center.y - half,
@@ -143,20 +158,20 @@ export function getCollapsedGroupSquareBounds(center: Point): Bounds {
   };
 }
 
-export function getCollapsedGroupBounds(
-  group: Group,
+export function getCollapsedBoxBounds(
+  box: Box,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Bounds {
-  const center = group.collapsedPosition ?? { x: 0, y: 0 };
-  const size = COLLAPSED_GROUP_SIZE;
+  const center = box.collapsedPosition ?? { x: 0, y: 0 };
+  const size = COLLAPSED_BOX_SIZE;
 
   let minX = center.x - size;
   let maxX = center.x + size;
   let minY = center.y - size;
   let maxY = center.y + size;
 
-  if (group.name) {
-    const pill = getPillLabelSize(group.name, 12, "normal", fontFamily);
+  if (box.name) {
+    const pill = getPillLabelSize(box.name, 12, "normal", fontFamily);
     const pillCenterY = center.y - (size + pill.height / 2 + 6);
     minX = Math.min(minX, center.x - pill.width / 2);
     maxX = Math.max(maxX, center.x + pill.width / 2);
@@ -172,10 +187,10 @@ export function getCollapsedGroupBounds(
   };
 }
 
-export function getEmptyGroupBounds(anchor: Point): Bounds {
+export function getEmptyBoxBounds(anchor: Point): Bounds {
   const innerSize = DEFAULT_CHARACTER_SIZE * 2;
-  const width = innerSize + GROUP_PADDING * 2;
-  const height = innerSize + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT;
+  const width = innerSize + BOX_PADDING * 2;
+  const height = innerSize + BOX_PADDING * 2 + BOX_HEADER_HEIGHT;
   return {
     x: anchor.x - width / 2,
     y: anchor.y - height / 2,
@@ -184,58 +199,41 @@ export function getEmptyGroupBounds(anchor: Point): Bounds {
   };
 }
 
-export function getGroupMemberBounds(
-  group: Group,
-  characters: Character[],
-  fontFamily: string = DEFAULT_DIAGRAM_FONT,
-  viewportScale = 1,
-): Bounds | null {
-  const members = characters.filter((c) =>
-    group.memberCharacterIds.includes(c.id),
+export function resolveBoxBounds(box: Box): Bounds | null {
+  if (box.bounds) return box.bounds;
+  if (!box.anchorPosition) return null;
+  return getEmptyBoxBounds(box.anchorPosition);
+}
+
+export function isCharacterContainedInBox(
+  character: Character,
+  box: Box,
+): boolean {
+  const bounds = resolveBoxBounds(box);
+  if (!bounds) return false;
+  const { x, y } = character.position;
+  return (
+    x >= bounds.x &&
+    x <= bounds.x + bounds.width &&
+    y >= bounds.y &&
+    y <= bounds.y + bounds.height
   );
-  if (members.length === 0) {
-    if (!group.anchorPosition) return null;
-    return getEmptyGroupBounds(group.anchorPosition);
-  }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  for (const member of members) {
-    const b = getCharacterBounds(member, fontFamily, viewportScale);
-    minX = Math.min(minX, b.x);
-    minY = Math.min(minY, b.y);
-    maxX = Math.max(maxX, b.x + b.width);
-    maxY = Math.max(maxY, b.y + b.height);
-  }
-
-  return {
-    x: minX - GROUP_PADDING,
-    y: minY - GROUP_PADDING - GROUP_HEADER_HEIGHT,
-    width: maxX - minX + GROUP_PADDING * 2,
-    height: maxY - minY + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT,
-  };
 }
 
-export function resolveGroupBounds(
-  group: Group,
+export function getCharactersContainedInBox(
+  box: Box,
   characters: Character[],
-  fontFamily: string = DEFAULT_DIAGRAM_FONT,
-  viewportScale = 1,
-): Bounds | null {
-  if (group.bounds) return group.bounds;
-  return getGroupMemberBounds(group, characters, fontFamily, viewportScale);
+): Character[] {
+  return characters.filter((c) => isCharacterContainedInBox(c, box));
 }
 
-export function resizeGroupBounds(
+export function resizeBoxBounds(
   start: Bounds,
-  edge: GroupResizeEdge,
+  edge: BoxResizeEdge,
   pointer: Point,
   startPointer: Point,
-  minWidth = MIN_GROUP_WIDTH,
-  minHeight = MIN_GROUP_HEIGHT,
+  minWidth = MIN_BOX_WIDTH,
+  minHeight = MIN_BOX_HEIGHT,
 ): Bounds {
   const dx = pointer.x - startPointer.x;
   const dy = pointer.y - startPointer.y;
@@ -262,7 +260,7 @@ export function resizeGroupBounds(
   return { x, y, width, height };
 }
 
-export function cursorForGroupResizeEdge(edge: GroupResizeEdge): string {
+export function cursorForBoxResizeEdge(edge: BoxResizeEdge): string {
   switch (edge) {
     case "n":
     case "s":
@@ -279,13 +277,13 @@ export function cursorForGroupResizeEdge(edge: GroupResizeEdge): string {
   }
 }
 
-export function getGroupCenter(group: Group, characters: Character[]): Point {
-  if (group.collapsed && group.collapsedPosition) {
-    return group.collapsedPosition;
+export function getBoxCenter(box: Box): Point {
+  if (box.collapsed && box.collapsedPosition) {
+    return box.collapsedPosition;
   }
-  const bounds = resolveGroupBounds(group, characters);
+  const bounds = resolveBoxBounds(box);
   if (!bounds) {
-    return group.collapsedPosition ?? { x: 0, y: 0 };
+    return box.collapsedPosition ?? { x: 0, y: 0 };
   }
   return {
     x: bounds.x + bounds.width / 2,
@@ -294,33 +292,33 @@ export function getGroupCenter(group: Group, characters: Character[]): Point {
 }
 
 export function getNodeCenter(
-  kind: "character" | "group",
+  kind: "character" | "box",
   id: string,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.position ?? { x: 0, y: 0 };
   }
-  const group = getGroupById(diagram, id);
-  if (!group) return { x: 0, y: 0 };
-  return getGroupCenter(group, diagram.characters);
+  const box = getBoxById(diagram, id);
+  if (!box) return { x: 0, y: 0 };
+  return getBoxCenter(box);
 }
 
 export function getNodeRadius(
-  kind: "character" | "group",
+  kind: "character" | "box",
   id: string,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): number {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.size ?? DEFAULT_CHARACTER_SIZE;
   }
-  const group = getGroupById(diagram, id);
-  if (!group) return COLLAPSED_GROUP_SIZE;
-  if (group.collapsed) return COLLAPSED_GROUP_SIZE;
-  const bounds = resolveGroupBounds(group, diagram.characters);
-  if (!bounds) return COLLAPSED_GROUP_SIZE;
+  const box = getBoxById(diagram, id);
+  if (!box) return COLLAPSED_BOX_SIZE;
+  if (box.collapsed) return COLLAPSED_BOX_SIZE;
+  const bounds = resolveBoxBounds(box);
+  if (!bounds) return COLLAPSED_BOX_SIZE;
   return Math.max(bounds.width, bounds.height) / 2;
 }
 
@@ -403,37 +401,33 @@ export function getCharacterEdgePoint(
   }
 }
 
-export function getGroupEdgePoint(
-  group: Group,
-  characters: Character[],
-  toward: Point,
-): Point {
-  if (group.collapsed) {
-    const center = group.collapsedPosition ?? { x: 0, y: 0 };
-    return squareEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
+export function getBoxEdgePoint(box: Box, toward: Point): Point {
+  if (box.collapsed) {
+    const center = box.collapsedPosition ?? { x: 0, y: 0 };
+    return squareEdgePoint(center, COLLAPSED_BOX_SIZE, toward);
   }
-  const bounds = resolveGroupBounds(group, characters);
+  const bounds = resolveBoxBounds(box);
   if (!bounds) {
-    const center = group.collapsedPosition ?? { x: 0, y: 0 };
-    return squareEdgePoint(center, COLLAPSED_GROUP_SIZE, toward);
+    const center = box.collapsedPosition ?? { x: 0, y: 0 };
+    return squareEdgePoint(center, COLLAPSED_BOX_SIZE, toward);
   }
   return rectEdgePoint(bounds, toward);
 }
 
 export function getNodeEdgePoint(
-  kind: "character" | "group",
+  kind: "character" | "box",
   id: string,
   toward: Point,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     if (!character) return toward;
     return getCharacterEdgePoint(character, toward);
   }
-  const group = getGroupById(diagram, id);
-  if (!group) return toward;
-  return getGroupEdgePoint(group, diagram.characters, toward);
+  const box = getBoxById(diagram, id);
+  if (!box) return toward;
+  return getBoxEdgePoint(box, toward);
 }
 
 function pointInRegularPolygon(
@@ -457,10 +451,10 @@ function pointInRegularPolygon(
 }
 
 export function isPointInsideNode(
-  kind: "character" | "group",
+  kind: "character" | "box",
   id: string,
   point: Point,
-  diagram: Pick<Diagram, "characters" | "groups">,
+  diagram: Pick<Diagram, "characters" | "boxes">,
 ): boolean {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
@@ -481,17 +475,15 @@ export function isPointInsideNode(
     }
   }
 
-  const group = getGroupById(diagram, id);
-  if (!group) return false;
-  if (group.collapsed) {
-    const center = group.collapsedPosition ?? { x: 0, y: 0 };
+  const box = getBoxById(diagram, id);
+  if (!box) return false;
+  if (box.collapsed) {
+    const center = box.collapsedPosition ?? { x: 0, y: 0 };
     const dx = point.x - center.x;
     const dy = point.y - center.y;
-    return (
-      Math.max(Math.abs(dx), Math.abs(dy)) <= COLLAPSED_GROUP_SIZE
-    );
+    return Math.max(Math.abs(dx), Math.abs(dy)) <= COLLAPSED_BOX_SIZE;
   }
-  const bounds = resolveGroupBounds(group, diagram.characters);
+  const bounds = resolveBoxBounds(box);
   if (!bounds) return false;
   return (
     point.x >= bounds.x &&

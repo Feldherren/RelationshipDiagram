@@ -11,13 +11,15 @@ interface CanvasContextMenuProps {
   menu: CanvasContextMenuState | null;
   onClose: () => void;
   onAddCharacter: (position: { x: number; y: number }) => void;
-  onAddGroup: (position: { x: number; y: number }) => void;
+  onAddBox: (position: { x: number; y: number }) => void;
+  onAddGroup: () => void;
 }
 
 export function CanvasContextMenu({
   menu,
   onClose,
   onAddCharacter,
+  onAddBox,
   onAddGroup,
 }: CanvasContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -67,7 +69,17 @@ export function CanvasContextMenu({
         type="button"
         role="menuitem"
         onClick={() => {
-          onAddGroup(position);
+          onAddBox(position);
+          onClose();
+        }}
+      >
+        Add box
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onAddGroup();
           onClose();
         }}
       >

@@ -46,6 +46,8 @@ interface GroupContainerProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  /** Split render: background below relationship lines, foreground above. */
+  part?: "full" | "background" | "foreground";
 }
 
 interface ResizeDragStart {
@@ -136,6 +138,7 @@ export function GroupContainer({
   onDragStart,
   onDragEnd,
   onConnectHandleDown,
+  part = "full",
 }: GroupContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
@@ -355,6 +358,8 @@ export function GroupContainer({
 
   const color = rgbToCss(group.borderColor);
   const connectHandlePos = getGroupConnectHandlePosition(bounds);
+  const showBackground = part === "full" || part === "background";
+  const showForeground = part === "full" || part === "foreground";
 
   return (
     <Group
@@ -377,7 +382,7 @@ export function GroupContainer({
         onToggleCollapse();
       }}
     >
-      {showAura && (
+      {showBackground && showAura && (
         <RoundedRectAura
           x={bounds.x}
           y={bounds.y}
@@ -386,18 +391,21 @@ export function GroupContainer({
           color={group.borderColor}
         />
       )}
-      <Rect
-        x={bounds.x}
-        y={bounds.y}
-        width={bounds.width}
-        height={bounds.height}
-        stroke={color}
-        strokeWidth={2}
-        fill={rgbaWithAlpha(group.borderColor, 0.08)}
-        cornerRadius={12}
-        listening={false}
-      />
-      {RESIZE_EDGES.map((edge) => {
+      {showBackground && (
+        <Rect
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={bounds.height}
+          stroke={color}
+          strokeWidth={2}
+          fill={rgbaWithAlpha(group.borderColor, 0.08)}
+          cornerRadius={12}
+          listening={false}
+        />
+      )}
+      {showForeground &&
+        RESIZE_EDGES.map((edge) => {
           const layout = getResizeHandleLayout(bounds, edge, handleSize);
           return (
             <Rect
@@ -421,41 +429,45 @@ export function GroupContainer({
             />
           );
         })}
-      <Rect
-        x={bounds.x}
-        y={bounds.y}
-        width={bounds.width}
-        height={GROUP_HEADER_HEIGHT}
-        fill={rgbaWithAlpha(group.borderColor, 0.2)}
-        cornerRadius={[12, 12, 0, 0]}
-        onMouseEnter={() => {
-          if (!resizing && !dragging) {
-            document.body.style.cursor = "grab";
-          }
-        }}
-        onMouseLeave={() => {
-          if (!resizing && !dragging) {
-            document.body.style.cursor = "";
-          }
-        }}
-        onMouseDown={beginMove}
-        onDblClick={(e) => {
-          e.cancelBubble = true;
-          onToggleCollapse();
-        }}
-        onDblTap={(e) => {
-          e.cancelBubble = true;
-          onToggleCollapse();
-        }}
-      />
-      <PillLabel
-        text={group.name}
-        x={bounds.x + bounds.width / 2}
-        y={bounds.y + 14}
-        fontSize={12}
-        selected={selected}
-      />
-      {showConnectHandle && (
+      {showForeground && (
+        <Rect
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={GROUP_HEADER_HEIGHT}
+          fill={rgbaWithAlpha(group.borderColor, 0.2)}
+          cornerRadius={[12, 12, 0, 0]}
+          onMouseEnter={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "grab";
+            }
+          }}
+          onMouseLeave={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "";
+            }
+          }}
+          onMouseDown={beginMove}
+          onDblClick={(e) => {
+            e.cancelBubble = true;
+            onToggleCollapse();
+          }}
+          onDblTap={(e) => {
+            e.cancelBubble = true;
+            onToggleCollapse();
+          }}
+        />
+      )}
+      {showForeground && (
+        <PillLabel
+          text={group.name}
+          x={bounds.x + bounds.width / 2}
+          y={bounds.y + 14}
+          fontSize={12}
+          selected={selected}
+        />
+      )}
+      {showForeground && showConnectHandle && (
         <ConnectHandle
           x={connectHandlePos.x}
           y={connectHandlePos.y}

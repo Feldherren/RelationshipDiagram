@@ -340,7 +340,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             .filter((g) => !g.collapsed)
             .map((group) => (
               <GroupContainer
-                key={group.id}
+                key={`${group.id}-bg`}
                 group={group}
                 characters={characters}
                 selected={
@@ -362,6 +362,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   id: group.id,
                   kind: "group",
                 })}
+                part="background"
               />
             ))}
 
@@ -452,6 +453,36 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 })}
                 onDragMove={(pos) => moveCharacter(character.id, pos)}
                 onDragEnd={(pos) => onCharacterDragEnd(character.id, pos)}
+              />
+            ))}
+
+          {groups
+            .filter((g) => !g.collapsed)
+            .map((group) => (
+              <GroupContainer
+                key={`${group.id}-fg`}
+                group={group}
+                characters={characters}
+                selected={
+                  selection?.type === "group" && selection.id === group.id
+                }
+                isConnectSource={isConnectSource({
+                  id: group.id,
+                  kind: "group",
+                })}
+                onSelect={() => handleNodeClick({ id: group.id, kind: "group" })}
+                onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                onBoundsChange={(bounds) => updateGroup(group.id, { bounds })}
+                onMoveByDelta={(delta) => moveGroup(group.id, delta)}
+                onResizeStart={() => setIsResizingGroup(true)}
+                onResizeEnd={() => setIsResizingGroup(false)}
+                onDragStart={() => setIsDraggingGroup(true)}
+                onDragEnd={() => setIsDraggingGroup(false)}
+                onConnectHandleDown={handleConnectHandleDown({
+                  id: group.id,
+                  kind: "group",
+                })}
+                part="foreground"
               />
             ))}
 

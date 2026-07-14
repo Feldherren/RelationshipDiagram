@@ -5,6 +5,7 @@ import {
   parseHexColor,
   rgbToHex,
 } from "../../models/types";
+import { useRafCoalescedCallback } from "../../hooks/useRafCoalescedCallback";
 
 const PASTEL_PALETTE: { label: string; color: RGB }[] = [
   { label: "Pastel red", color: { r: 248, g: 155, b: 155 } },
@@ -24,27 +25,50 @@ interface RgbPickerProps {
 
 export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef(value);
+  const hasPendingCommitRef = useRef(false);
+  const [draft, setDraft] = useState(value);
   const [hexDraft, setHexDraft] = useState(() => rgbToHex(value));
   const [isEditingHex, setIsEditingHex] = useState(false);
 
-  const selectedPreset = PASTEL_PALETTE.find((entry) =>
-    colorsEqual(entry.color, value),
-  );
-  const isCustom = !selectedPreset;
+  const commit = useRafCoalescedCallback(onChange);
 
   useEffect(() => {
+    if (hasPendingCommitRef.current) {
+      if (colorsEqual(value, draftRef.current)) {
+        hasPendingCommitRef.current = false;
+      }
+      return;
+    }
+    draftRef.current = value;
+    setDraft(value);
     if (!isEditingHex) {
       setHexDraft(rgbToHex(value));
     }
   }, [value, isEditingHex]);
 
+  const applyColor = (color: RGB) => {
+    hasPendingCommitRef.current = true;
+    draftRef.current = color;
+    setDraft(color);
+    if (!isEditingHex) {
+      setHexDraft(rgbToHex(color));
+    }
+    commit(color);
+  };
+
+  const selectedPreset = PASTEL_PALETTE.find((entry) =>
+    colorsEqual(entry.color, draft),
+  );
+  const isCustom = !selectedPreset;
+
   const commitHex = (text: string) => {
     const parsed = parseHexColor(text);
     if (parsed) {
-      onChange(parsed);
+      applyColor(parsed);
       setHexDraft(rgbToHex(parsed));
     } else {
-      setHexDraft(rgbToHex(value));
+      setHexDraft(rgbToHex(draft));
     }
     setIsEditingHex(false);
   };
@@ -64,7 +88,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
               aria-label={entry.label}
               aria-pressed={selected}
               style={{ backgroundColor: rgbToHex(entry.color) }}
-              onClick={() => onChange(entry.color)}
+              onClick={() => applyColor(entry.color)}
             />
           );
         })}
@@ -80,8 +104,10 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
             ref={colorInputRef}
             type="color"
             className="color-input-hidden"
-            value={rgbToHex(value)}
-            onChange={(e) => onChange(parseHexColor(e.target.value) ?? value)}
+            value={rgbToHex(draft)}
+            onChange={(e) =>
+              applyColor(parseHexColor(e.target.value) ?? draft)
+            }
             tabIndex={-1}
             aria-hidden
           />
@@ -97,7 +123,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
             const next = e.target.value;
             setHexDraft(next);
             const parsed = parseHexColor(next);
-            if (parsed) onChange(parsed);
+            if (parsed) applyColor(parsed);
           }}
           onBlur={() => commitHex(hexDraft)}
           onKeyDown={(e) => {
@@ -107,7 +133,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
               (e.target as HTMLInputElement).blur();
             }
             if (e.key === "Escape") {
-              setHexDraft(rgbToHex(value));
+              setHexDraft(rgbToHex(draft));
               setIsEditingHex(false);
               (e.target as HTMLInputElement).blur();
             }

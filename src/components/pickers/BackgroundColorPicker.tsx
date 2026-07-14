@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { RGB } from "../../models/types";
-import { parseHexColor } from "../../models/types";
+import { colorsEqual, parseHexColor } from "../../models/types";
 import type { DiagramBackgroundColor } from "../../utils/diagramBackground";
 import {
   BACKGROUND_PRESETS,
@@ -8,11 +8,20 @@ import {
   backgroundHexForPicker,
   findBackgroundPreset,
 } from "../../utils/diagramBackground";
+import { useRafCoalescedCallback } from "../../hooks/useRafCoalescedCallback";
 
 interface BackgroundColorPickerProps {
   label: string;
   value: DiagramBackgroundColor;
   onChange: (value: DiagramBackgroundColor) => void;
+}
+
+function backgroundColorsEqual(
+  a: DiagramBackgroundColor,
+  b: DiagramBackgroundColor,
+): boolean {
+  if (a === null || b === null) return a === b;
+  return colorsEqual(a, b);
 }
 
 export function BackgroundColorPicker({
@@ -21,31 +30,54 @@ export function BackgroundColorPicker({
   onChange,
 }: BackgroundColorPickerProps) {
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef(value);
+  const hasPendingCommitRef = useRef(false);
+  const [draft, setDraft] = useState(value);
   const [hexDraft, setHexDraft] = useState(() => backgroundHexForPicker(value));
   const [isEditingHex, setIsEditingHex] = useState(false);
 
-  const selectedPreset = findBackgroundPreset(value);
-  const isCustom = !selectedPreset;
+  const commit = useRafCoalescedCallback(onChange);
 
   useEffect(() => {
+    if (hasPendingCommitRef.current) {
+      if (backgroundColorsEqual(value, draftRef.current)) {
+        hasPendingCommitRef.current = false;
+      }
+      return;
+    }
+    draftRef.current = value;
+    setDraft(value);
     if (!isEditingHex) {
       setHexDraft(backgroundHexForPicker(value));
     }
   }, [value, isEditingHex]);
 
+  const applyColor = (color: DiagramBackgroundColor) => {
+    hasPendingCommitRef.current = true;
+    draftRef.current = color;
+    setDraft(color);
+    if (!isEditingHex) {
+      setHexDraft(backgroundHexForPicker(color));
+    }
+    commit(color);
+  };
+
+  const selectedPreset = findBackgroundPreset(draft);
+  const isCustom = !selectedPreset;
+
   const commitHex = (text: string) => {
     const parsed = parseHexColor(text);
     if (parsed) {
-      onChange(parsed);
+      applyColor(parsed);
       setHexDraft(backgroundHexForPicker(parsed));
     } else {
-      setHexDraft(backgroundHexForPicker(value));
+      setHexDraft(backgroundHexForPicker(draft));
     }
     setIsEditingHex(false);
   };
 
   const handleCustomColor = (color: RGB) => {
-    onChange(color);
+    applyColor(color);
   };
 
   return (
@@ -69,7 +101,7 @@ export function BackgroundColorPicker({
                   ? { backgroundColor: backgroundHexForPicker(entry.color) }
                   : undefined
               }
-              onClick={() => onChange(entry.color)}
+              onClick={() => applyColor(entry.color)}
             />
           );
         })}
@@ -85,10 +117,11 @@ export function BackgroundColorPicker({
             ref={colorInputRef}
             type="color"
             className="color-input-hidden"
-            value={backgroundHexForPicker(value)}
+            value={backgroundHexForPicker(draft)}
             onChange={(e) =>
               handleCustomColor(
-                parseHexColor(e.target.value) ?? backgroundColorForPicker(value),
+                parseHexColor(e.target.value) ??
+                  backgroundColorForPicker(draft),
               )
             }
             tabIndex={-1}
@@ -98,34 +131,34 @@ export function BackgroundColorPicker({
         <input
           type="text"
           className="color-hex-input"
-          value={value === null ? "transparent" : hexDraft}
-          readOnly={value === null}
+          value={draft === null ? "transparent" : hexDraft}
+          readOnly={draft === null}
           spellCheck={false}
           aria-label={`${label} hex code`}
           onFocus={() => {
-            if (value === null) return;
+            if (draft === null) return;
             setIsEditingHex(true);
           }}
           onChange={(e) => {
-            if (value === null) return;
+            if (draft === null) return;
             const next = e.target.value;
             setHexDraft(next);
             const parsed = parseHexColor(next);
-            if (parsed) onChange(parsed);
+            if (parsed) applyColor(parsed);
           }}
           onBlur={() => {
-            if (value === null) return;
+            if (draft === null) return;
             commitHex(hexDraft);
           }}
           onKeyDown={(e) => {
-            if (value === null) return;
+            if (draft === null) return;
             if (e.key === "Enter") {
               e.preventDefault();
               commitHex(hexDraft);
               (e.target as HTMLInputElement).blur();
             }
             if (e.key === "Escape") {
-              setHexDraft(backgroundHexForPicker(value));
+              setHexDraft(backgroundHexForPicker(draft));
               setIsEditingHex(false);
               (e.target as HTMLInputElement).blur();
             }

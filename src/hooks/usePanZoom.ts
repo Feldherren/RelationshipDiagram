@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { useDiagramStore } from "../store/diagramStore";
 
 export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
-  const viewport = useDiagramStore((s) => s.viewport);
   const setViewport = useDiagramStore((s) => s.setViewport);
   const isPanning = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
@@ -15,13 +14,14 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
 
+      const current = useDiagramStore.getState().viewport;
       const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const scaleBy = e.deltaY < 0 ? 1.08 : 1 / 1.08;
-      const newScale = Math.min(4, Math.max(0.15, viewport.scale * scaleBy));
+      const newScale = Math.min(4, Math.max(0.15, current.scale * scaleBy));
 
       const mousePointTo = {
-        x: (pointer.x - viewport.x) / viewport.scale,
-        y: (pointer.y - viewport.y) / viewport.scale,
+        x: (pointer.x - current.x) / current.scale,
+        y: (pointer.y - current.y) / current.scale,
       };
 
       setViewport({
@@ -30,7 +30,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
         y: pointer.y - mousePointTo.y * newScale,
       });
     },
-    [containerRef, setViewport, viewport.scale, viewport.x, viewport.y],
+    [containerRef, setViewport],
   );
 
   useEffect(() => {
@@ -63,34 +63,35 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const startPan = (clientX: number, clientY: number) => {
+  const startPan = useCallback((clientX: number, clientY: number) => {
     isPanning.current = true;
     didDrag.current = false;
     lastPointer.current = { x: clientX, y: clientY };
-  };
+  }, []);
 
-  const movePan = (clientX: number, clientY: number) => {
-    if (!isPanning.current) return;
-    const dx = clientX - lastPointer.current.x;
-    const dy = clientY - lastPointer.current.y;
-    if (
-      Math.abs(dx) > DRAG_THRESHOLD ||
-      Math.abs(dy) > DRAG_THRESHOLD
-    ) {
-      didDrag.current = true;
-    }
-    lastPointer.current = { x: clientX, y: clientY };
-    setViewport({ x: viewport.x + dx, y: viewport.y + dy });
-  };
+  const movePan = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isPanning.current) return;
+      const dx = clientX - lastPointer.current.x;
+      const dy = clientY - lastPointer.current.y;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+        didDrag.current = true;
+      }
+      lastPointer.current = { x: clientX, y: clientY };
+      const current = useDiagramStore.getState().viewport;
+      setViewport({ x: current.x + dx, y: current.y + dy });
+    },
+    [setViewport],
+  );
 
-  const endPan = () => {
+  const endPan = useCallback(() => {
     const dragged = didDrag.current;
     isPanning.current = false;
     didDrag.current = false;
     return dragged;
-  };
+  }, []);
 
-  const shouldPan = (button: number) => button === 1;
+  const shouldPan = useCallback((button: number) => button === 1, []);
 
   return { startPan, movePan, endPan, shouldPan };
 }

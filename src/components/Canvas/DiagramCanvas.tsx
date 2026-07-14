@@ -134,6 +134,28 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     endConnectDrag,
   ]);
 
+  useEffect(() => {
+    if (!isPanningView) return;
+
+    const onMove = (e: MouseEvent) => {
+      if (useDiagramStore.getState().connectDrag) return;
+      movePan(e.clientX, e.clientY);
+    };
+    const onUp = () => {
+      if (endPan()) {
+        suppressClick.current = true;
+      }
+      setIsPanningView(false);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isPanningView, movePan, endPan]);
+
   const stageSize = useDiagramStore((s) => s.stageSize);
 
   const handleConnectHandleDown = useCallback(
@@ -162,6 +184,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     const isStage = e.target === e.target.getStage();
 
     if (shouldPan(e.evt.button)) {
+      e.evt.preventDefault();
       startPan(e.evt.clientX, e.evt.clientY);
       setIsPanningView(true);
       return;

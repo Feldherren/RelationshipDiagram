@@ -1,5 +1,5 @@
 import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type Konva from "konva";
 import type { Character } from "../../models/types";
 import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
@@ -100,6 +100,8 @@ export function CharacterNode({
   onConnectHandleDown,
 }: CharacterNodeProps) {
   const [hovered, setHovered] = useState(false);
+  /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
+  const allowNodeDragRef = useRef(true);
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -126,6 +128,12 @@ export function CharacterNode({
       x={character.position.x}
       y={character.position.y}
       draggable={draggable}
+      onMouseDown={(e) => {
+        allowNodeDragRef.current = e.evt.button === 0;
+      }}
+      onTouchStart={() => {
+        allowNodeDragRef.current = true;
+      }}
       onClick={(e) => {
         e.cancelBubble = true;
         onSelect();
@@ -133,6 +141,11 @@ export function CharacterNode({
       onTap={(e) => {
         e.cancelBubble = true;
         onSelect();
+      }}
+      onDragStart={(e) => {
+        if (!allowNodeDragRef.current) {
+          e.target.stopDrag();
+        }
       }}
       onDragMove={(e) => {
         onDragMove({ x: e.target.x(), y: e.target.y() });

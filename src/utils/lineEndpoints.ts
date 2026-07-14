@@ -94,7 +94,7 @@ export function getLineDisplayLabel(
     parts.push(line.label.trim());
   }
   if (hiddenNames.size > 0) {
-    parts.push(`↳ ${[...hiddenNames].join(", ")}`);
+    parts.push(`→ ${[...hiddenNames].join(", ")}`);
   }
 
   return parts.length > 0 ? parts.join(" ") : null;

@@ -61,6 +61,9 @@ function chipPositionOnBorder(
   };
 }
 
+/** Matches relationship-line stroke; reads closer to character borders on small chips. */
+const MEMBERSHIP_CHIP_BORDER_STROKE_WIDTH = 2;
+
 export function MembershipChip({
   appearance,
   radius = MEMBERSHIP_CHIP_RADIUS,
@@ -79,7 +82,11 @@ export function MembershipChip({
         radius={radius}
         fill={fill}
         stroke={border}
-        strokeWidth={emphasized ? 2.75 : 2}
+        strokeWidth={
+          emphasized
+            ? MEMBERSHIP_CHIP_BORDER_STROKE_WIDTH + 0.5
+            : MEMBERSHIP_CHIP_BORDER_STROKE_WIDTH
+        }
         shadowColor="rgba(0,0,0,0.35)"
         shadowBlur={emphasized ? 4 : 3}
         shadowOpacity={1}
@@ -165,7 +172,7 @@ export function MembershipChips({
             radius={MEMBERSHIP_CHIP_RADIUS}
             fill="#e8e8e8"
             stroke="#333"
-            strokeWidth={2}
+            strokeWidth={MEMBERSHIP_CHIP_BORDER_STROKE_WIDTH}
           />
           <Text
             text={`+${overflow}`}

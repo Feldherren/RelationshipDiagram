@@ -329,12 +329,12 @@ export function GroupContainer({
         <Text
           text={`${group.memberCharacterIds.length}`}
           fontFamily={formatFontForCanvas(diagramFontFamily)}
-          fontSize={11}
+          fontSize={22}
           fill="#555"
           align="center"
           width={size * 2}
           offsetX={size}
-          offsetY={5}
+          offsetY={11}
           listening={false}
         />
         {showConnectHandle && (

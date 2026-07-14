@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Layer, Line, Rect, Stage } from "react-konva";
+import { Layer, Line, Rect } from "react-konva";
 import type Konva from "konva";
+import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
 import { LineEdge } from "./LineEdge";
 import { GroupContainer } from "./GroupContainer";
 import { GridBackground } from "./GridBackground";
+import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
 import {
   CanvasContextMenu,
@@ -23,13 +25,68 @@ interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
 }
 
+function ScaleStrokeLine({
+  points,
+  stroke,
+  dashPattern,
+}: {
+  points: number[];
+  stroke: string;
+  dashPattern: [number, number];
+}) {
+  const scale = useDiagramStore((s) => s.viewport.scale);
+  return (
+    <Line
+      points={points}
+      stroke={stroke}
+      strokeWidth={2 / scale}
+      dash={[dashPattern[0] / scale, dashPattern[1] / scale]}
+      listening={false}
+    />
+  );
+}
+
+function ScaleStrokeRect({
+  x,
+  y,
+  width,
+  height,
+  stroke,
+  fill,
+  dashPattern,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  stroke: string;
+  fill: string;
+  dashPattern: [number, number];
+}) {
+  const scale = useDiagramStore((s) => s.viewport.scale);
+  return (
+    <Rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      stroke={stroke}
+      strokeWidth={2 / scale}
+      dash={[dashPattern[0] / scale, dashPattern[1] / scale]}
+      fill={fill}
+      listening={false}
+    />
+  );
+}
+
 export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<Konva.Layer | null>(null);
+
   const {
     characters,
     lines,
     groups,
-    viewport,
     selection,
     toolMode,
     connectFrom,
@@ -37,6 +94,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     showGrid,
     exportBounds,
     diagramBackgroundColor,
+    stageSize,
     setStageSize,
     setSelection,
     setExportBounds,
@@ -54,9 +112,43 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     updateConnectDrag,
     endConnectDrag,
     updateLine,
-  } = useDiagramStore();
+  } = useDiagramStore(
+    useShallow((s) => ({
+      characters: s.characters,
+      lines: s.lines,
+      groups: s.groups,
+      selection: s.selection,
+      toolMode: s.toolMode,
+      connectFrom: s.connectFrom,
+      connectDrag: s.connectDrag,
+      showGrid: s.showGrid,
+      exportBounds: s.exportBounds,
+      diagramBackgroundColor: s.diagramBackgroundColor,
+      stageSize: s.stageSize,
+      setStageSize: s.setStageSize,
+      setSelection: s.setSelection,
+      setExportBounds: s.setExportBounds,
+      moveCharacter: s.moveCharacter,
+      handleNodeClick: s.handleNodeClick,
+      addCharacterToGroup: s.addCharacterToGroup,
+      removeCharacterFromGroup: s.removeCharacterFromGroup,
+      toggleGroupCollapse: s.toggleGroupCollapse,
+      updateGroup: s.updateGroup,
+      moveGroup: s.moveGroup,
+      screenToWorld: s.screenToWorld,
+      addCharacterAt: s.addCharacterAt,
+      addGroupAt: s.addGroupAt,
+      startConnectDrag: s.startConnectDrag,
+      updateConnectDrag: s.updateConnectDrag,
+      endConnectDrag: s.endConnectDrag,
+      updateLine: s.updateLine,
+    })),
+  );
 
-  const { startPan, movePan, endPan, shouldPan } = usePanZoom(containerRef);
+  const { startPan, movePan, endPan, shouldPan } = usePanZoom(
+    containerRef,
+    stageRef,
+  );
   const suppressClick = useRef(false);
   const [isPanningView, setIsPanningView] = useState(false);
   const [isDrawingExport, setIsDrawingExport] = useState(false);
@@ -156,7 +248,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     };
   }, [isPanningView, movePan, endPan]);
 
-  const stageSize = useDiagramStore((s) => s.stageSize);
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+    layer.listening(!isPanningView);
+  }, [isPanningView]);
 
   const handleConnectHandleDown = useCallback(
     (ref: NodeRef) => (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -205,7 +301,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   };
 
   const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!connectDrag && !isInteractingWithGroup) {
+    // Window listener owns pan moves; avoid doubling store updates.
+    if (!isPanningView && !connectDrag && !isInteractingWithGroup) {
       movePan(e.evt.clientX, e.evt.clientY);
     }
     if (isDrawingExport && drawStart) {
@@ -336,24 +433,19 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           Click another character or group to connect (Esc to cancel)
         </div>
       )}
-      <Stage
-        ref={stageRef}
+      <ViewportStage
+        stageRef={stageRef}
         width={stageSize.width}
         height={stageSize.height}
-        x={viewport.x}
-        y={viewport.y}
-        scaleX={viewport.scale}
-        scaleY={viewport.scale}
         onMouseDown={handleStageMouseDown}
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onClick={handleStageClick}
         onContextMenu={handleStageContextMenu}
       >
-        <Layer>
+        <Layer ref={layerRef}>
           {showGrid && (
             <GridBackground
-              viewport={viewport}
               stageWidth={stageSize.width}
               stageHeight={stageSize.height}
             />
@@ -438,7 +530,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             ))}
 
           {connectDrag && (
-            <Line
+            <ScaleStrokeLine
               points={[
                 connectDrag.startX,
                 connectDrag.startY,
@@ -446,9 +538,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 connectDrag.y,
               ]}
               stroke="#4a90d9"
-              strokeWidth={2 / viewport.scale}
-              dash={[8 / viewport.scale, 5 / viewport.scale]}
-              listening={false}
+              dashPattern={[8, 5]}
             />
           )}
 
@@ -539,20 +629,18 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             ))}
 
           {previewBounds && (
-            <Rect
+            <ScaleStrokeRect
               x={previewBounds.x}
               y={previewBounds.y}
               width={previewBounds.width}
               height={previewBounds.height}
               stroke="#e67e22"
-              strokeWidth={2 / viewport.scale}
-              dash={[8 / viewport.scale, 4 / viewport.scale]}
               fill="rgba(230, 126, 34, 0.08)"
-              listening={false}
+              dashPattern={[8, 4]}
             />
           )}
         </Layer>
-      </Stage>
+      </ViewportStage>
     </div>
   );
 }

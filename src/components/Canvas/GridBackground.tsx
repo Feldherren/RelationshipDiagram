@@ -1,26 +1,26 @@
 import { useMemo } from "react";
 import { Shape } from "react-konva";
-import type { Viewport } from "../../models/types";
 import {
   computeViewportGridLineBounds,
   DIAGRAM_GRID_SIZE,
   DIAGRAM_GRID_STROKE,
 } from "../../utils/gridBackground";
 import { GRID_NODE_NAME } from "../../utils/export";
+import { useDiagramStore } from "../../store/diagramStore";
 
 interface GridBackgroundProps {
-  viewport: Viewport;
   stageWidth: number;
   stageHeight: number;
   gridSize?: number;
 }
 
 export function GridBackground({
-  viewport,
   stageWidth,
   stageHeight,
   gridSize = DIAGRAM_GRID_SIZE,
 }: GridBackgroundProps) {
+  const viewport = useDiagramStore((s) => s.viewport);
+
   const bounds = useMemo(
     () =>
       computeViewportGridLineBounds(

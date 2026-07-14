@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useDiagramStore } from "../store/diagramStore";
 import {
   pickPersistedState,
+  persistedStatesEqual,
 } from "../store/autosaveState";
 import {
   flushAutosaveNow,
@@ -18,10 +19,7 @@ export function useAutosave() {
         if (!useDiagramStore.getState().autosaveEnabled) return;
         scheduleAutosave(flush);
       },
-      {
-        equalityFn: (left, right) =>
-          JSON.stringify(left) === JSON.stringify(right),
-      },
+      { equalityFn: persistedStatesEqual },
     );
 
     const flushOnHide = () => {

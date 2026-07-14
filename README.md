@@ -1,13 +1,24 @@
-# Relationship Diagram
+# Relationship Diagram Creator
 
 A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, and organise them into groups on an infinite pan/zoom canvas.
 
+## Features
+- Create characters, give them names, subtitles, graphics, customised border colour
+- Connect characters with coloured lines (and give the lines labels, a couple of styles, bend them)
+- Named groups with customisable colours! Collapse them to hide them if they're a bit large
+- Use your own installed fonts
+- Saving and loading
+- Image export (entire graphic or selected area) at two distinct levels of zoom (also it estimates the dimensions of the exported image)
+
+## Notes
 NB: this application is largely generated code. I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn react, vite, tauri, et cetera.
 I can (and do) still read the code, and I'm happy to fix reported issues and consider into feature requests, should anyone make any.
 
 Also, note that whilst screenshots (if and when I add any) will probably demonstrate the [Honey Pigeon](https://stevencolling.itch.io/honey-pigeon) font, this font is not included with the application; you can use any installed font, and I just happen to like Honey Pigeon.
 
-## Run locally
+## Setup
+
+### Run locally
 
 ```bash
 npm install
@@ -16,31 +27,31 @@ npm run dev
 
 Open the URL shown in the terminal (typically `http://localhost:5173`).
 
-## Build
+### Build
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Desktop app (Tauri)
+### Desktop app (Tauri)
 
 This project includes a [Tauri](https://v2.tauri.app/) shell for running as a native desktop app on Windows, macOS, and Linux.
 
-### Prerequisites
+#### Prerequisites
 
 1. [Node.js](https://nodejs.org/) (for the frontend)
 2. [Rust](https://www.rust-lang.org/tools/install) (`rustup` is recommended)
 3. **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled on Windows 10/11)
 
-### Run in development
+#### Run in development
 
 ```bash
 npm install
 npm run tauri:dev
 ```
 
-### Build installer
+#### Build installer
 
 ```bash
 npm run tauri:build
@@ -59,7 +70,7 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Action | How |
 |--------|-----|
 | Add character | **+ Character** in the toolbar |
-| Pan | Drag empty canvas, middle-mouse drag, or hold **Space** and drag |
+| Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character's **+** button, then click a target — or drag **+** to another character |
 | Edit properties | Select an item; use the panel on the right |

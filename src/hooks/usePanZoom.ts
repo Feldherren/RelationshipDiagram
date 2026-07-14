@@ -6,7 +6,6 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
   const setViewport = useDiagramStore((s) => s.setViewport);
   const isPanning = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
-  const spaceHeld = useRef(false);
   const didDrag = useRef(false);
   const DRAG_THRESHOLD = 3;
 
@@ -43,7 +42,6 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space") spaceHeld.current = true;
       if (e.key === "Escape") {
         useDiagramStore.getState().cancelConnect();
         useDiagramStore.setState({ toolMode: "select" });
@@ -61,15 +59,8 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
         useDiagramStore.getState().deleteSelected();
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") spaceHeld.current = false;
-    };
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   const startPan = (clientX: number, clientY: number) => {
@@ -99,7 +90,7 @@ export function usePanZoom(containerRef: React.RefObject<HTMLElement | null>) {
     return dragged;
   };
 
-  const shouldPan = (button: number) => button === 1 || spaceHeld.current;
+  const shouldPan = (button: number) => button === 1;
 
   return { startPan, movePan, endPan, shouldPan };
 }

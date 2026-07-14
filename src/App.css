@@ -160,6 +160,10 @@ body,
   pointer-events: none;
 }
 
+.canvas-container.editing-members {
+  cursor: pointer;
+}
+
 .diagram-title-bar {
   position: absolute;
   top: 12px;

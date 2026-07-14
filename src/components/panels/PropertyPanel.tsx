@@ -43,6 +43,8 @@ export function PropertyPanel() {
   const removeCharacterFromGroup = useDiagramStore(
     (s) => s.removeCharacterFromGroup,
   );
+  const toolMode = useDiagramStore((s) => s.toolMode);
+  const setToolMode = useDiagramStore((s) => s.setToolMode);
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
 
   useEffect(() => {
@@ -355,36 +357,40 @@ export function PropertyPanel() {
             {characters.length === 0 ? (
               <p className="hint">No characters to assign.</p>
             ) : (
-              <div className="membership-checklist">
-                {characters.map((character) => {
-                  const checked = group.memberCharacterIds.includes(
-                    character.id,
-                  );
-                  const label = character.name.trim() || "Nameless";
-                  return (
-                    <label
-                      key={character.id}
-                      className="field checkbox membership-row"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            addCharacterToGroup(character.id, group.id);
-                          } else {
-                            removeCharacterFromGroup(character.id, group.id);
-                          }
-                        }}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <>
+                <button
+                  type="button"
+                  className={
+                    toolMode === "editGroupMembers"
+                      ? "btn-primary"
+                      : "btn-secondary"
+                  }
+                  onClick={() =>
+                    setToolMode(
+                      toolMode === "editGroupMembers"
+                        ? "select"
+                        : "editGroupMembers",
+                    )
+                  }
+                >
+                  {toolMode === "editGroupMembers"
+                    ? "Done editing members"
+                    : "Edit members on canvas"}
+                </button>
+                <p className="hint">
+                  {toolMode === "editGroupMembers"
+                    ? "Click characters on the canvas to add or remove them."
+                    : "Enter edit mode, then click characters on the canvas to toggle membership."}
+                </p>
+              </>
             )}
           </div>
-          <button type="button" className="btn-danger" onClick={deleteSelected}>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={deleteSelected}
+            disabled={toolMode === "editGroupMembers"}
+          >
             Delete group
           </button>
         </aside>

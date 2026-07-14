@@ -350,6 +350,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     if (shouldPan(e.evt.button)) return;
     if (toolMode === "exportBounds") return;
     if (e.target === e.target.getStage()) {
+      if (toolMode === "editGroupMembers") {
+        useDiagramStore.setState({ toolMode: "select" });
+        return;
+      }
       setSelection(null);
       useDiagramStore.getState().cancelConnect();
     }
@@ -357,7 +361,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
-    if (connectDrag || toolMode === "exportBounds") return;
+    if (connectDrag || toolMode === "exportBounds" || toolMode === "editGroupMembers")
+      return;
     if (e.target !== e.target.getStage()) return;
 
     const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
@@ -390,7 +395,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${isInteractingWithBox ? " resizing-group" : ""}${
+      className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${toolMode === "editGroupMembers" ? " editing-members" : ""}${isInteractingWithBox ? " resizing-group" : ""}${
         diagramBackgroundColor === null ? " canvas-checkerboard" : ""
       }`}
       style={
@@ -412,6 +417,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         <div className="connect-hint">
           Click a character or box to connect, or the same one for a self-loop
           (Esc to cancel)
+        </div>
+      )}
+      {toolMode === "editGroupMembers" && !connectFrom && (
+        <div className="connect-hint">
+          Click characters to toggle membership (Esc when done)
         </div>
       )}
       <ViewportStage
@@ -545,12 +555,23 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   highlightedGroupId={highlightedGroupId}
                   dimmed={highlightedMemberIds != null && !isMember}
                   membershipEmphasized={isMember}
-                  draggable={toolMode !== "exportBounds" && !connectDrag}
+                  draggable={
+                    toolMode !== "exportBounds" &&
+                    toolMode !== "editGroupMembers" &&
+                    !connectDrag
+                  }
                   onSelect={() =>
                     handleNodeClick({ id: character.id, kind: "character" })
                   }
-                  onSelectGroup={(groupId) =>
-                    setSelection({ type: "group", id: groupId })
+                  onSelectGroup={
+                    toolMode === "editGroupMembers"
+                      ? () =>
+                          handleNodeClick({
+                            id: character.id,
+                            kind: "character",
+                          })
+                      : (groupId) =>
+                          setSelection({ type: "group", id: groupId })
                   }
                   onConnectHandleDown={handleConnectHandleDown({
                     id: character.id,

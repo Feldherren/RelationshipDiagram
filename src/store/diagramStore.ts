@@ -115,6 +115,7 @@ interface DiagramState {
   deleteGroup: (id: string) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
   removeCharacterFromGroup: (characterId: string, groupId: string) => void;
+  toggleCharacterInGroup: (characterId: string, groupId: string) => void;
 
   addBoxAt: (position: { x: number; y: number }) => void;
   updateBox: (id: string, patch: Partial<Box>) => void;
@@ -173,14 +174,34 @@ export const useDiagramStore = create<DiagramState>()(
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
     set((s) => ({ viewport: { ...s.viewport, ...patch } })),
-  setToolMode: (mode) =>
+  setToolMode: (mode) => {
+    if (mode === "editGroupMembers" && get().selection?.type !== "group") {
+      return;
+    }
     set({
       toolMode: mode,
       connectFrom: null,
       connectDrag: null,
       exportBounds: mode === "exportBounds" ? get().exportBounds : null,
-    }),
-  setSelection: (selection) => set({ selection }),
+    });
+  },
+  setSelection: (selection) => {
+    const { toolMode, selection: prev } = get();
+    const editingGroupId =
+      toolMode === "editGroupMembers" && prev?.type === "group"
+        ? prev.id
+        : null;
+    const stayingOnEditedGroup =
+      editingGroupId != null &&
+      selection?.type === "group" &&
+      selection.id === editingGroupId;
+    set({
+      selection,
+      ...(editingGroupId != null && !stayingOnEditedGroup
+        ? { toolMode: "select" as const }
+        : {}),
+    });
+  },
   setShowGrid: (show) => set({ showGrid: show }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
@@ -389,13 +410,20 @@ export const useDiagramStore = create<DiagramState>()(
     })),
 
   deleteGroup: (id) =>
-    set((s) => ({
-      groups: s.groups.filter((g) => g.id !== id),
-      selection:
-        s.selection?.type === "group" && s.selection.id === id
-          ? null
-          : s.selection,
-    })),
+    set((s) => {
+      const deletingEditedGroup =
+        s.toolMode === "editGroupMembers" &&
+        s.selection?.type === "group" &&
+        s.selection.id === id;
+      return {
+        groups: s.groups.filter((g) => g.id !== id),
+        selection:
+          s.selection?.type === "group" && s.selection.id === id
+            ? null
+            : s.selection,
+        ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
+      };
+    }),
 
   addCharacterToGroup: (characterId, groupId) =>
     set((s) => ({
@@ -422,6 +450,16 @@ export const useDiagramStore = create<DiagramState>()(
           : g,
       ),
     })),
+
+  toggleCharacterInGroup: (characterId, groupId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    if (group.memberCharacterIds.includes(characterId)) {
+      get().removeCharacterFromGroup(characterId, groupId);
+    } else {
+      get().addCharacterToGroup(characterId, groupId);
+    }
+  },
 
   addBoxAt: (position) => {
     const { boxes } = get();
@@ -532,9 +570,17 @@ export const useDiagramStore = create<DiagramState>()(
     }),
 
   handleNodeClick: (ref) => {
-    const { connectFrom } = get();
+    const { connectFrom, toolMode, selection } = get();
     if (connectFrom) {
       get().addLine(connectFrom, ref);
+      return;
+    }
+    if (toolMode === "editGroupMembers" && selection?.type === "group") {
+      if (ref.kind === "character") {
+        get().toggleCharacterInGroup(ref.id, selection.id);
+        return;
+      }
+      get().setSelection({ type: "box", id: ref.id });
       return;
     }
     if (ref.kind === "character") {
@@ -555,6 +601,7 @@ export const useDiagramStore = create<DiagramState>()(
       },
       connectFrom: null,
       selection: null,
+      toolMode: "select",
     }),
 
   updateConnectDrag: (point) =>

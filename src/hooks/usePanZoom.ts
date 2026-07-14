@@ -94,6 +94,9 @@ export function usePanZoom(
         ) {
           return;
         }
+        if (useDiagramStore.getState().toolMode === "editGroupMembers") {
+          return;
+        }
         e.preventDefault();
         useDiagramStore.getState().deleteSelected();
       }

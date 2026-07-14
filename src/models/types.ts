@@ -7,7 +7,7 @@ export interface RGB {
 export type BorderShape = "circle" | "square" | "pentagon" | "hexagon";
 export type LineStyle = "straight" | "wavy" | "dotted" | "jagged";
 export type NodeKind = "character" | "box";
-export type ToolMode = "select" | "exportBounds";
+export type ToolMode = "select" | "exportBounds" | "editGroupMembers";
 
 export interface ConnectDrag {
   from: NodeRef;

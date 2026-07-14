@@ -82,10 +82,10 @@ export function MembershipChip({
     <Circle
       radius={radius}
       fill={fill}
-      stroke={emphasized ? "#222" : "#fff"}
-      strokeWidth={emphasized ? 1.5 : 1}
-      shadowColor="rgba(0,0,0,0.25)"
-      shadowBlur={emphasized ? 3 : 2}
+      stroke={emphasized ? "#111" : "#333"}
+      strokeWidth={emphasized ? 2.5 : 2}
+      shadowColor="rgba(0,0,0,0.35)"
+      shadowBlur={emphasized ? 4 : 3}
       shadowOpacity={1}
       shadowEnabled
     />
@@ -162,14 +162,14 @@ export function MembershipChips({
           <Circle
             radius={MEMBERSHIP_CHIP_RADIUS}
             fill="#e8e8e8"
-            stroke="#fff"
-            strokeWidth={1}
+            stroke="#333"
+            strokeWidth={2}
           />
           <Text
             text={`+${overflow}`}
             fontFamily={formatFontForCanvas(diagramFontFamily)}
-            fontSize={7}
-            fill="#444"
+            fontSize={11}
+            fill="#333"
             align="center"
             verticalAlign="middle"
             width={MEMBERSHIP_CHIP_RADIUS * 2}

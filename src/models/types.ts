@@ -125,7 +125,7 @@ export const MIN_BOX_WIDTH = 120;
 export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
 export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
 export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
-export const MEMBERSHIP_CHIP_RADIUS = 5;
+export const MEMBERSHIP_CHIP_RADIUS = 9;
 
 export type BoxResizeEdge =
   | "n"

@@ -50,9 +50,12 @@ function App() {
   };
 
   const handleNew = async () => {
-    const { characters, lines, groups } = useDiagramStore.getState();
+    const { characters, lines, groups, boxes } = useDiagramStore.getState();
     const hasContent =
-      characters.length > 0 || lines.length > 0 || groups.length > 0;
+      characters.length > 0 ||
+      lines.length > 0 ||
+      groups.length > 0 ||
+      boxes.length > 0;
     if (
       hasContent &&
       !window.confirm(

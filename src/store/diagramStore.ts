@@ -3,11 +3,13 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
 import type {
   Bounds,
+  Box,
   Character,
   ConnectDrag,
   Diagram,
   Group,
   Line,
+  MembershipAppearance,
   NodeRef,
   RGB,
   Selection,
@@ -19,9 +21,11 @@ import {
   defaultRgb,
 } from "../models/types";
 import {
-  getEmptyGroupBounds,
-  getGroupCenter,
-  resolveGroupBounds,
+  getBoxCenter,
+  getCharactersContainedInBox,
+  getEmptyBoxBounds,
+  isCharacterContainedInBox,
+  resolveBoxBounds,
 } from "../utils/geometry";
 import {
   DEFAULT_DIAGRAM_FONT,
@@ -40,7 +44,7 @@ import {
   findConnectionTargetAt,
   sameNodeRef,
 } from "../utils/connection";
-import { getCollapsedGroupForCharacter } from "../utils/lineEndpoints";
+import { getCollapsedBoxForCharacter } from "../utils/lineEndpoints";
 import {
   createAutosaveSnapshot,
   loadAutosave,
@@ -58,6 +62,7 @@ interface DiagramState {
   characters: Character[];
   lines: Line[];
   groups: Group[];
+  boxes: Box[];
   viewport: Viewport;
   selection: Selection;
   toolMode: ToolMode;
@@ -100,13 +105,17 @@ interface DiagramState {
   updateLine: (id: string, patch: Partial<Line>) => void;
   deleteLine: (id: string) => void;
 
-  addGroupAt: (position: { x: number; y: number }) => void;
+  addGroup: (name?: string) => void;
   updateGroup: (id: string, patch: Partial<Group>) => void;
   deleteGroup: (id: string) => void;
-  toggleGroupCollapse: (id: string) => void;
-  moveGroup: (id: string, delta: { dx: number; dy: number }) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
   removeCharacterFromGroup: (characterId: string, groupId: string) => void;
+
+  addBoxAt: (position: { x: number; y: number }) => void;
+  updateBox: (id: string, patch: Partial<Box>) => void;
+  deleteBox: (id: string) => void;
+  toggleBoxCollapse: (id: string) => void;
+  moveBox: (id: string, delta: { dx: number; dy: number }) => void;
 
   handleNodeClick: (ref: NodeRef) => void;
   startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
@@ -134,11 +143,16 @@ function createDefaultCharacter(position: { x: number; y: number }): Character {
   };
 }
 
+function defaultMembershipAppearance(): MembershipAppearance {
+  return { backgroundColor: { r: 100, g: 140, b: 100 } };
+}
+
 export const useDiagramStore = create<DiagramState>()(
   subscribeWithSelector((set, get) => ({
   characters: [],
   lines: [],
   groups: [],
+  boxes: [],
   viewport: { x: 0, y: 0, scale: 1 },
   selection: null,
   toolMode: "select",
@@ -344,20 +358,14 @@ export const useDiagramStore = create<DiagramState>()(
           : s.selection,
     })),
 
-  addGroupAt: (position) => {
+  addGroup: (name) => {
     const { groups } = get();
-    const bounds = getEmptyGroupBounds(position);
     const group: Group = {
       id: uuidv4(),
-      name: `Group ${groups.length + 1}`,
+      name: name?.trim() || `Group ${groups.length + 1}`,
       memberCharacterIds: [],
-      collapsed: false,
-      anchorPosition: position,
-      collapsedPosition: position,
-      bounds,
-      borderColor: { r: 100, g: 140, b: 100 },
+      appearance: defaultMembershipAppearance(),
     };
-
     set((s) => ({
       groups: [...s.groups, group],
       selection: { type: "group", id: group.id },
@@ -366,98 +374,29 @@ export const useDiagramStore = create<DiagramState>()(
 
   updateGroup: (id, patch) =>
     set((s) => ({
-      groups: s.groups.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+      groups: s.groups.map((g) => {
+        if (g.id !== id) return g;
+        const next = { ...g, ...patch };
+        if (patch.appearance) {
+          next.appearance = { ...g.appearance, ...patch.appearance };
+        }
+        return next;
+      }),
     })),
 
   deleteGroup: (id) =>
     set((s) => ({
       groups: s.groups.filter((g) => g.id !== id),
-      lines: s.lines.filter(
-        (l) =>
-          !(l.from.kind === "group" && l.from.id === id) &&
-          !(l.to.kind === "group" && l.to.id === id),
-      ),
       selection:
         s.selection?.type === "group" && s.selection.id === id
           ? null
           : s.selection,
     })),
 
-  toggleGroupCollapse: (id) => {
-    const state = get();
-    const group = state.groups.find((g) => g.id === id);
-    if (!group) return;
-
-    if (!group.collapsed) {
-      const center = getGroupCenter(group, state.characters);
-      set((s) => ({
-        groups: s.groups.map((g) =>
-          g.id === id
-            ? { ...g, collapsed: true, collapsedPosition: center }
-            : g,
-        ),
-      }));
-    } else {
-      set((s) => ({
-        groups: s.groups.map((g) =>
-          g.id === id ? { ...g, collapsed: false } : g,
-        ),
-      }));
-    }
-  },
-
-  moveGroup: (id, delta) =>
-    set((s) => ({
-      characters: s.characters.map((c) => {
-        const inGroup = s.groups.some(
-          (g) => g.id === id && g.memberCharacterIds.includes(c.id),
-        );
-        if (!inGroup) return c;
-        return {
-          ...c,
-          position: {
-            x: c.position.x + delta.dx,
-            y: c.position.y + delta.dy,
-          },
-        };
-      }),
-      groups: s.groups.map((g) => {
-        if (g.id !== id) return g;
-        const next: Group = { ...g };
-        if (g.bounds) {
-          next.bounds = {
-            ...g.bounds,
-            x: g.bounds.x + delta.dx,
-            y: g.bounds.y + delta.dy,
-          };
-        }
-        if (g.anchorPosition) {
-          next.anchorPosition = {
-            x: g.anchorPosition.x + delta.dx,
-            y: g.anchorPosition.y + delta.dy,
-          };
-        }
-        if (g.collapsedPosition) {
-          next.collapsedPosition = {
-            x: g.collapsedPosition.x + delta.dx,
-            y: g.collapsedPosition.y + delta.dy,
-          };
-        }
-        return next;
-      }),
-    })),
-
   addCharacterToGroup: (characterId, groupId) =>
     set((s) => ({
       groups: s.groups.map((g) => {
-        if (g.id !== groupId) {
-          return {
-            ...g,
-            memberCharacterIds: g.memberCharacterIds.filter(
-              (id) => id !== characterId,
-            ),
-          };
-        }
+        if (g.id !== groupId) return g;
         if (g.memberCharacterIds.includes(characterId)) return g;
         return {
           ...g,
@@ -480,6 +419,114 @@ export const useDiagramStore = create<DiagramState>()(
       ),
     })),
 
+  addBoxAt: (position) => {
+    const { boxes } = get();
+    const bounds = getEmptyBoxBounds(position);
+    const box: Box = {
+      id: uuidv4(),
+      name: `Box ${boxes.length + 1}`,
+      collapsed: false,
+      anchorPosition: position,
+      collapsedPosition: position,
+      bounds,
+      borderColor: { r: 100, g: 140, b: 100 },
+    };
+
+    set((s) => ({
+      boxes: [...s.boxes, box],
+      selection: { type: "box", id: box.id },
+    }));
+  },
+
+  updateBox: (id, patch) =>
+    set((s) => ({
+      boxes: s.boxes.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+    })),
+
+  deleteBox: (id) =>
+    set((s) => ({
+      boxes: s.boxes.filter((b) => b.id !== id),
+      lines: s.lines.filter(
+        (l) =>
+          !(l.from.kind === "box" && l.from.id === id) &&
+          !(l.to.kind === "box" && l.to.id === id),
+      ),
+      selection:
+        s.selection?.type === "box" && s.selection.id === id
+          ? null
+          : s.selection,
+    })),
+
+  toggleBoxCollapse: (id) => {
+    const state = get();
+    const box = state.boxes.find((b) => b.id === id);
+    if (!box) return;
+
+    if (!box.collapsed) {
+      const center = getBoxCenter(box);
+      set((s) => ({
+        boxes: s.boxes.map((b) =>
+          b.id === id
+            ? { ...b, collapsed: true, collapsedPosition: center }
+            : b,
+        ),
+      }));
+    } else {
+      set((s) => ({
+        boxes: s.boxes.map((b) =>
+          b.id === id ? { ...b, collapsed: false } : b,
+        ),
+      }));
+    }
+  },
+
+  moveBox: (id, delta) =>
+    set((s) => {
+      const box = s.boxes.find((b) => b.id === id);
+      if (!box) return {};
+
+      const containedIds = new Set(
+        getCharactersContainedInBox(box, s.characters).map((c) => c.id),
+      );
+
+      return {
+        characters: s.characters.map((c) => {
+          if (!containedIds.has(c.id)) return c;
+          return {
+            ...c,
+            position: {
+              x: c.position.x + delta.dx,
+              y: c.position.y + delta.dy,
+            },
+          };
+        }),
+        boxes: s.boxes.map((b) => {
+          if (b.id !== id) return b;
+          const next: Box = { ...b };
+          if (b.bounds) {
+            next.bounds = {
+              ...b.bounds,
+              x: b.bounds.x + delta.dx,
+              y: b.bounds.y + delta.dy,
+            };
+          }
+          if (b.anchorPosition) {
+            next.anchorPosition = {
+              x: b.anchorPosition.x + delta.dx,
+              y: b.anchorPosition.y + delta.dy,
+            };
+          }
+          if (b.collapsedPosition) {
+            next.collapsedPosition = {
+              x: b.collapsedPosition.x + delta.dx,
+              y: b.collapsedPosition.y + delta.dy,
+            };
+          }
+          return next;
+        }),
+      };
+    }),
+
   handleNodeClick: (ref) => {
     const { connectFrom } = get();
     if (connectFrom) {
@@ -489,7 +536,7 @@ export const useDiagramStore = create<DiagramState>()(
     if (ref.kind === "character") {
       set({ selection: { type: "character", id: ref.id } });
     } else {
-      set({ selection: { type: "group", id: ref.id } });
+      set({ selection: { type: "box", id: ref.id } });
     }
   },
 
@@ -514,14 +561,14 @@ export const useDiagramStore = create<DiagramState>()(
     ),
 
   endConnectDrag: (point) => {
-    const { connectDrag, characters, groups } = get();
+    const { connectDrag, characters, boxes } = get();
     if (!connectDrag) return;
 
     const moved = Math.hypot(
       point.x - connectDrag.startX,
       point.y - connectDrag.startY,
     );
-    const target = findConnectionTargetAt(point, characters, groups);
+    const target = findConnectionTargetAt(point, characters, boxes);
 
     if (target) {
       if (sameNodeRef(connectDrag.from, target)) {
@@ -553,6 +600,7 @@ export const useDiagramStore = create<DiagramState>()(
     if (selection.type === "character") get().deleteCharacter(selection.id);
     if (selection.type === "line") get().deleteLine(selection.id);
     if (selection.type === "group") get().deleteGroup(selection.id);
+    if (selection.type === "box") get().deleteBox(selection.id);
   },
 
   loadDiagram: async (diagram, options) => {
@@ -569,6 +617,7 @@ export const useDiagramStore = create<DiagramState>()(
       characters: diagram.characters,
       lines: diagram.lines,
       groups: diagram.groups,
+      boxes: diagram.boxes,
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
@@ -594,6 +643,7 @@ export const useDiagramStore = create<DiagramState>()(
       characters,
       lines,
       groups,
+      boxes,
       viewport,
       diagramTitle,
       diagramSubtitle,
@@ -602,7 +652,7 @@ export const useDiagramStore = create<DiagramState>()(
       diagramBackgroundColor,
     } = get();
     return {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,
@@ -614,6 +664,7 @@ export const useDiagramStore = create<DiagramState>()(
       characters,
       lines,
       groups,
+      boxes,
       viewport,
     };
   },
@@ -627,13 +678,16 @@ export function getCharacterInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export function isCharacterHidden(characterId: string, groups: Group[]): boolean {
-  return getCollapsedGroupForCharacter(characterId, groups) != null;
+export function isCharacterHidden(
+  characterId: string,
+  boxes: Box[],
+  characters: Character[],
+): boolean {
+  return getCollapsedBoxForCharacter(characterId, boxes, characters) != null;
 }
 
-export function getExpandedGroupBounds(
-  group: Group,
-  characters: Character[],
-) {
-  return resolveGroupBounds(group, characters);
+export function getExpandedBoxBounds(box: Box) {
+  return resolveBoxBounds(box);
 }
+
+export { isCharacterContainedInBox };

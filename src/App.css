@@ -245,6 +245,27 @@ body,
   align-items: center;
 }
 
+.membership-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.membership-row {
+  margin: 0;
+  gap: 8px;
+}
+
+.membership-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
 .field input[type="range"] {
   width: 100%;
 }

@@ -3,8 +3,9 @@ import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
   expandBounds,
   getCharacterBounds,
-  getCollapsedGroupBounds,
-  resolveGroupBounds,
+  getCollapsedBoxBounds,
+  isCharacterContainedInBox,
+  resolveBoxBounds,
   mergeBounds,
 } from "./geometry";
 import { getLineBounds } from "./lineRouting";
@@ -18,23 +19,18 @@ export function collectContentObstacles(
   const obstacles: Bounds[] = [];
 
   for (const character of diagram.characters) {
-    const inCollapsedGroup = diagram.groups.some(
-      (g) => g.collapsed && g.memberCharacterIds.includes(character.id),
+    const inCollapsedBox = diagram.boxes.some(
+      (b) => b.collapsed && isCharacterContainedInBox(character, b),
     );
-    if (inCollapsedGroup) continue;
+    if (inCollapsedBox) continue;
     obstacles.push(getCharacterBounds(character, fontFamily, viewportScale));
   }
 
-  for (const group of diagram.groups) {
-    if (group.collapsed) {
-      obstacles.push(getCollapsedGroupBounds(group, fontFamily));
+  for (const box of diagram.boxes) {
+    if (box.collapsed) {
+      obstacles.push(getCollapsedBoxBounds(box, fontFamily));
     } else {
-      const bounds = resolveGroupBounds(
-        group,
-        diagram.characters,
-        fontFamily,
-        viewportScale,
-      );
+      const bounds = resolveBoxBounds(box);
       if (bounds) obstacles.push(bounds);
     }
   }
@@ -56,25 +52,20 @@ export function computeContentBounds(
   let result: Bounds | null = null;
 
   for (const character of diagram.characters) {
-    const inCollapsedGroup = diagram.groups.some(
-      (g) => g.collapsed && g.memberCharacterIds.includes(character.id),
+    const inCollapsedBox = diagram.boxes.some(
+      (b) => b.collapsed && isCharacterContainedInBox(character, b),
     );
-    if (inCollapsedGroup) continue;
+    if (inCollapsedBox) continue;
     const bounds = getCharacterBounds(character, fontFamily, viewportScale);
     result = result ? mergeBounds(result, bounds) : bounds;
   }
 
-  for (const group of diagram.groups) {
-    if (group.collapsed) {
-      const bounds = getCollapsedGroupBounds(group, fontFamily);
+  for (const box of diagram.boxes) {
+    if (box.collapsed) {
+      const bounds = getCollapsedBoxBounds(box, fontFamily);
       result = result ? mergeBounds(result, bounds) : bounds;
     } else {
-      const bounds = resolveGroupBounds(
-        group,
-        diagram.characters,
-        fontFamily,
-        viewportScale,
-      );
+      const bounds = resolveBoxBounds(box);
       if (bounds) result = result ? mergeBounds(result, bounds) : bounds;
     }
   }

@@ -6,7 +6,7 @@ export interface RGB {
 
 export type BorderShape = "circle" | "square" | "pentagon" | "hexagon";
 export type LineStyle = "straight" | "wavy" | "dotted" | "jagged";
-export type NodeKind = "character" | "group";
+export type NodeKind = "character" | "box";
 export type ToolMode = "select" | "exportBounds";
 
 export interface ConnectDrag {
@@ -47,15 +47,34 @@ export interface Line {
   bend?: number;
 }
 
+/**
+ * Visual identity for a membership group chip.
+ * `symbol` / `symbolColor` are reserved for a future icon picker and are
+ * ignored by the current renderer.
+ */
+export interface MembershipAppearance {
+  backgroundColor: RGB;
+  symbol?: string;
+  symbolColor?: RGB;
+}
+
+/** Semantic membership group — chips / highlight only; not a canvas connect target. */
 export interface Group {
   id: string;
   name: string;
   memberCharacterIds: string[];
+  appearance: MembershipAppearance;
+}
+
+/** Organisational region — labelled box, geometric containment, collapse. */
+export interface Box {
+  id: string;
+  name: string;
+  borderColor: RGB;
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
   anchorPosition?: { x: number; y: number };
   bounds?: Bounds;
-  borderColor: RGB;
 }
 
 export interface Viewport {
@@ -65,7 +84,7 @@ export interface Viewport {
 }
 
 export interface Diagram {
-  schemaVersion: 1;
+  schemaVersion: 2;
   title?: string;
   subtitle?: string;
   showHeader?: boolean;
@@ -74,6 +93,7 @@ export interface Diagram {
   characters: Character[];
   lines: Line[];
   groups: Group[];
+  boxes: Box[];
   viewport?: Viewport;
 }
 
@@ -81,6 +101,7 @@ export type Selection =
   | { type: "character"; id: string }
   | { type: "line"; id: string }
   | { type: "group"; id: string }
+  | { type: "box"; id: string }
   | null;
 
 export interface Bounds {
@@ -97,14 +118,16 @@ export interface Point {
 
 export const DEFAULT_CHARACTER_SIZE = 40;
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
-export const GROUP_PADDING = 48;
-export const GROUP_HEADER_HEIGHT = 28;
-export const COLLAPSED_GROUP_SIZE = 44;
-export const MIN_GROUP_WIDTH = 120;
-export const MIN_GROUP_HEIGHT = GROUP_HEADER_HEIGHT + 32;
-export const GROUP_RESIZE_HANDLE_SCREEN_SIZE = 8;
+export const BOX_PADDING = 48;
+export const BOX_HEADER_HEIGHT = 28;
+export const COLLAPSED_BOX_SIZE = 44;
+export const MIN_BOX_WIDTH = 120;
+export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
+export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
+export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
+export const MEMBERSHIP_CHIP_RADIUS = 5;
 
-export type GroupResizeEdge =
+export type BoxResizeEdge =
   | "n"
   | "s"
   | "e"

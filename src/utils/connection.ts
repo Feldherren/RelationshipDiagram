@@ -1,14 +1,18 @@
 import type { Point } from "../models/types";
-import type { Bounds, Character, Group, NodeRef } from "../models/types";
-import { resolveGroupBounds, getCollapsedGroupSquareBounds } from "./geometry";
-import { getCollapsedGroupForCharacter } from "./lineEndpoints";
+import type { Bounds, Box, Character, NodeRef } from "../models/types";
+import { resolveBoxBounds, getCollapsedBoxSquareBounds } from "./geometry";
+import { getCollapsedBoxForCharacter } from "./lineEndpoints";
 
 /** Matches RoundedRectAura outer padding in HoverAura.tsx */
-const GROUP_CONNECTION_HIT_PADDING = 20;
+const BOX_CONNECTION_HIT_PADDING = 20;
 const CHARACTER_CONNECTION_HIT_PADDING = 14;
 
-function isCharacterHidden(characterId: string, groups: Group[]): boolean {
-  return getCollapsedGroupForCharacter(characterId, groups) != null;
+function isCharacterHidden(
+  characterId: string,
+  boxes: Box[],
+  characters: Character[],
+): boolean {
+  return getCollapsedBoxForCharacter(characterId, boxes, characters) != null;
 }
 
 export function sameNodeRef(a: NodeRef, b: NodeRef): boolean {
@@ -27,8 +31,8 @@ function distanceToRect(point: Point, bounds: Bounds): number {
   return Math.hypot(point.x - closestX, point.y - closestY);
 }
 
-/** Distance to the group border; 0 on the stroke, larger toward the interior. */
-function distanceToExpandedGroupOutline(point: Point, bounds: Bounds): number {
+/** Distance to the box border; 0 on the stroke, larger toward the interior. */
+function distanceToExpandedBoxOutline(point: Point, bounds: Bounds): number {
   const outsideDist = distanceToRect(point, bounds);
   if (outsideDist > 0) return outsideDist;
 
@@ -43,12 +47,12 @@ function distanceToExpandedGroupOutline(point: Point, bounds: Bounds): number {
 export function findConnectionTargetAt(
   point: Point,
   characters: Character[],
-  groups: Group[],
+  boxes: Box[],
 ): NodeRef | null {
   let bestCharacter: { ref: NodeRef; dist: number } | null = null;
 
   for (const character of characters) {
-    if (isCharacterHidden(character.id, groups)) continue;
+    if (isCharacterHidden(character.id, boxes, characters)) continue;
     const dist = Math.hypot(
       point.x - character.position.x,
       point.y - character.position.y,
@@ -63,34 +67,34 @@ export function findConnectionTargetAt(
     return bestCharacter.ref;
   }
 
-  let bestGroup: { ref: NodeRef; dist: number } | null = null;
+  let bestBox: { ref: NodeRef; dist: number } | null = null;
 
-  for (const group of groups) {
-    if (group.collapsed) {
-      const pos = group.collapsedPosition ?? { x: 0, y: 0 };
-      const bounds = getCollapsedGroupSquareBounds(pos);
+  for (const box of boxes) {
+    if (box.collapsed) {
+      const pos = box.collapsedPosition ?? { x: 0, y: 0 };
+      const bounds = getCollapsedBoxSquareBounds(pos);
       const dist = distanceToRect(point, bounds);
       if (
-        dist <= GROUP_CONNECTION_HIT_PADDING &&
-        (!bestGroup || dist < bestGroup.dist)
+        dist <= BOX_CONNECTION_HIT_PADDING &&
+        (!bestBox || dist < bestBox.dist)
       ) {
-        bestGroup = { ref: { id: group.id, kind: "group" }, dist };
+        bestBox = { ref: { id: box.id, kind: "box" }, dist };
       }
       continue;
     }
 
-    const bounds = resolveGroupBounds(group, characters);
+    const bounds = resolveBoxBounds(box);
     if (!bounds) continue;
-    const dist = distanceToExpandedGroupOutline(point, bounds);
+    const dist = distanceToExpandedBoxOutline(point, bounds);
     if (
-      dist <= GROUP_CONNECTION_HIT_PADDING &&
-      (!bestGroup || dist < bestGroup.dist)
+      dist <= BOX_CONNECTION_HIT_PADDING &&
+      (!bestBox || dist < bestBox.dist)
     ) {
-      bestGroup = { ref: { id: group.id, kind: "group" }, dist };
+      bestBox = { ref: { id: box.id, kind: "box" }, dist };
     }
   }
 
-  return bestGroup?.ref ?? null;
+  return bestBox?.ref ?? null;
 }
 
 export const CONNECT_HANDLE_SCREEN_RADIUS = 14;
@@ -104,18 +108,14 @@ export function getConnectHandleOffset(size: number): Point {
   return { x: axisOffset, y: -axisOffset };
 }
 
-export function getGroupConnectHandlePosition(
-  bounds: Bounds,
-): Point {
+export function getBoxConnectHandlePosition(bounds: Bounds): Point {
   return {
     x: bounds.x + bounds.width - 10,
     y: bounds.y + 14,
   };
 }
 
-export function getCollapsedGroupConnectHandlePosition(
-  size: number,
-): Point {
+export function getCollapsedBoxConnectHandlePosition(size: number): Point {
   const offset = getConnectHandleOffset(size);
   return { x: offset.x, y: offset.y };
 }

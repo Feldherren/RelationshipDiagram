@@ -1,14 +1,15 @@
 # Relationship Diagram Creator
 
-A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, and organise them into groups on an infinite pan/zoom canvas.
+A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
 
 ## Features
 - Create characters, give them names, subtitles, graphics, customised border colour
-- Connect characters with coloured lines (and give the lines labels, a couple of styles, bend them)
-- Named groups with customisable colours! Collapse them to hide them if they're a bit large
+- Connect characters (and boxes) with coloured lines (and give the lines labels, a couple of styles, bend them)
+- **Groups** - semantic membership (a character can belong to many groups). Shown as coloured chips on each character’s border; select a group to highlight its members
+- **Boxes** - labelled organisational regions with customisable colours. Drag characters into a box by position; collapse a box to hide whoever is inside it
 - Saving and loading
 - Image export (entire graphic or selected area) at two distinct levels of zoom (also it estimates the dimensions of the exported image)
-- Customise the overall diagram - title and subtitle, grid or no grid, background colour, font 
+- Customise the overall diagram - title and subtitle, grid or no grid, background colour, font
 
 ## Notes
 NB: this application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
@@ -69,17 +70,30 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 
 | Action | How |
 |--------|-----|
-| Add character | **+ Character** in the toolbar |
+| Add character | **+ Character** in the toolbar, or right-click canvas → **Add character** |
+| Add box | Right-click canvas → **Add box** |
+| Add group | Right-click canvas → **Add group** |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
-| Connect nodes | Click a character's **+** button, then click a target (same character for a self-loop) — or drag **+** to a character |
+| Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
 | Edit properties | Select an item; use the panel on the right |
-| Group | Select a character → **+ Group**; drag characters into an expanded group |
-| Collapse group | Double-click the group, or use **Collapse group** in the panel |
+| Assign group membership | Select a character → check groups in the panel, or select a group → check members |
+| Highlight group | Select a group (panel or click a membership chip) — members stay prominent, others dim |
+| Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |
+| Collapse box | Double-click the box, or use **Collapse box** in the panel |
 | Delete | Select an item → **Delete** key |
 | Save / Open | **Save** / **Open** (`.rdiagram` JSON files) |
 | Export PNG | **Export** — auto content bounds or draw a custom region |
 
+## Groups vs boxes
+
+| | **Group** | **Box** |
+|--|-----------|---------|
+| Purpose | “Who belongs together” (factions, families, etc.) | Layout / clutter control on the canvas |
+| Membership | Explicit list; multi-membership allowed | Whoever’s position is currently inside the rectangle |
+| On canvas | Coloured chips on characters | Labelled rectangle (connectable, collapsible) |
+| Highlight | Selecting a group emphasises its members | — |
+
 ## File format
 
-Diagrams are saved as `.rdiagram` JSON with `schemaVersion: 1`. Images are embedded as base64 data URLs for single-file portability.
+Diagrams are saved as `.rdiagram` JSON with `schemaVersion: 2` (`groups` for membership, `boxes` for organisational regions). Images are embedded as base64 data URLs for single-file portability. Opening a `schemaVersion: 1` file migrates each old combined group into one box (same id, so lines keep working) plus one membership group.

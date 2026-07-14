@@ -3,28 +3,29 @@ import { Group, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import type {
   Bounds,
-  Group as GroupType,
-  GroupResizeEdge,
+  Box as BoxType,
+  BoxResizeEdge,
+  Character,
 } from "../../models/types";
-import type { Character } from "../../models/types";
 import {
-  COLLAPSED_GROUP_SIZE,
-  GROUP_HEADER_HEIGHT,
-  GROUP_RESIZE_HANDLE_SCREEN_SIZE,
+  COLLAPSED_BOX_SIZE,
+  BOX_HEADER_HEIGHT,
+  BOX_RESIZE_HANDLE_SCREEN_SIZE,
   rgbToCss,
 } from "../../models/types";
 import {
-  cursorForGroupResizeEdge,
+  cursorForBoxResizeEdge,
+  getCharactersContainedInBox,
   rgbaWithAlpha,
-  resolveGroupBounds,
-  resizeGroupBounds,
+  resolveBoxBounds,
+  resizeBoxBounds,
 } from "../../utils/geometry";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
-  getCollapsedGroupConnectHandlePosition,
-  getGroupConnectHandlePosition,
+  getCollapsedBoxConnectHandlePosition,
+  getBoxConnectHandlePosition,
 } from "../../utils/connection";
 import { ConnectHandle } from "./ConnectHandle";
 import {
@@ -32,8 +33,8 @@ import {
   shouldShowAura,
 } from "./HoverAura";
 
-interface GroupContainerProps {
-  group: GroupType;
+interface BoxContainerProps {
+  box: BoxType;
   characters: Character[];
   selected: boolean;
   isConnectSource: boolean;
@@ -53,14 +54,14 @@ interface GroupContainerProps {
 interface ResizeDragStart {
   bounds: Bounds;
   pointer: { x: number; y: number };
-  edge: GroupResizeEdge;
+  edge: BoxResizeEdge;
 }
 
 interface MoveDragStart {
   pointer: { x: number; y: number };
 }
 
-const RESIZE_EDGES: GroupResizeEdge[] = [
+const RESIZE_EDGES: BoxResizeEdge[] = [
   "n",
   "e",
   "s",
@@ -73,7 +74,7 @@ const RESIZE_EDGES: GroupResizeEdge[] = [
 
 function getResizeHandleLayout(
   bounds: Bounds,
-  edge: GroupResizeEdge,
+  edge: BoxResizeEdge,
   handleSize: number,
 ): { x: number; y: number; width: number; height: number } {
   const { x, y, width, height } = bounds;
@@ -83,7 +84,7 @@ function getResizeHandleLayout(
     case "n":
       return {
         x,
-        y: y + GROUP_HEADER_HEIGHT - half,
+        y: y + BOX_HEADER_HEIGHT - half,
         width,
         height: handleSize,
       };
@@ -96,14 +97,14 @@ function getResizeHandleLayout(
     case "ne":
       return {
         x: x + width - half,
-        y: y + GROUP_HEADER_HEIGHT - half,
+        y: y + BOX_HEADER_HEIGHT - half,
         width: handleSize,
         height: handleSize,
       };
     case "nw":
       return {
         x: x - half,
-        y: y + GROUP_HEADER_HEIGHT - half,
+        y: y + BOX_HEADER_HEIGHT - half,
         width: handleSize,
         height: handleSize,
       };
@@ -124,8 +125,8 @@ function getResizeHandleLayout(
   }
 }
 
-export function GroupContainer({
-  group,
+export function BoxContainer({
+  box,
   characters,
   selected,
   isConnectSource,
@@ -139,7 +140,7 @@ export function GroupContainer({
   onDragEnd,
   onConnectHandleDown,
   part = "full",
-}: GroupContainerProps) {
+}: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
@@ -159,7 +160,8 @@ export function GroupContainer({
   onDragEndRef.current = onDragEnd;
   const showAura = shouldShowAura(hovered, selected);
   const showConnectHandle = selected || hovered || isConnectSource;
-  const handleSize = GROUP_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
+  const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
+  const containedCount = getCharactersContainedInBox(box, characters).length;
 
   useEffect(() => {
     if (!resizing) return;
@@ -175,7 +177,7 @@ export function GroupContainer({
         y: e.clientY - rect.top,
       });
 
-      const newBounds = resizeGroupBounds(
+      const newBounds = resizeBoxBounds(
         dragStart.bounds,
         dragStart.edge,
         pointer,
@@ -237,7 +239,7 @@ export function GroupContainer({
 
   const beginResize = (
     e: Konva.KonvaEventObject<MouseEvent>,
-    edge: GroupResizeEdge,
+    edge: BoxResizeEdge,
     bounds: Bounds,
   ) => {
     if (e.evt.button !== 0) return;
@@ -251,7 +253,7 @@ export function GroupContainer({
       pointer: screenToWorld(pointer),
       edge,
     };
-    document.body.style.cursor = cursorForGroupResizeEdge(edge);
+    document.body.style.cursor = cursorForBoxResizeEdge(edge);
     setResizing(true);
     onResizeStart();
     onSelect();
@@ -273,11 +275,11 @@ export function GroupContainer({
     onSelect();
   };
 
-  if (group.collapsed) {
-    const pos = group.collapsedPosition ?? { x: 0, y: 0 };
-    const color = rgbToCss(group.borderColor);
-    const size = COLLAPSED_GROUP_SIZE;
-    const connectHandlePos = getCollapsedGroupConnectHandlePosition(size);
+  if (box.collapsed) {
+    const pos = box.collapsedPosition ?? { x: 0, y: 0 };
+    const color = rgbToCss(box.borderColor);
+    const size = COLLAPSED_BOX_SIZE;
+    const connectHandlePos = getCollapsedBoxConnectHandlePosition(size);
 
     return (
       <Group
@@ -312,7 +314,7 @@ export function GroupContainer({
             width={size * 2}
             height={size * 2}
             cornerRadius={4}
-            color={group.borderColor}
+            color={box.borderColor}
           />
         )}
         <Rect
@@ -322,17 +324,17 @@ export function GroupContainer({
           height={size * 2}
           stroke={color}
           strokeWidth={3}
-          fill={rgbaWithAlpha(group.borderColor, 0.15)}
+          fill={rgbaWithAlpha(box.borderColor, 0.15)}
           cornerRadius={4}
         />
         <PillLabel
-          text={group.name}
+          text={box.name}
           y={-(size + getPillLabelHeight(12) / 2 + 6)}
           fontSize={12}
           selected={selected}
         />
         <Text
-          text={`${group.memberCharacterIds.length}`}
+          text={`${containedCount}`}
           fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={22}
           fill="#555"
@@ -355,11 +357,11 @@ export function GroupContainer({
     );
   }
 
-  const bounds = resolveGroupBounds(group, characters);
+  const bounds = resolveBoxBounds(box);
   if (!bounds) return null;
 
-  const color = rgbToCss(group.borderColor);
-  const connectHandlePos = getGroupConnectHandlePosition(bounds);
+  const color = rgbToCss(box.borderColor);
+  const connectHandlePos = getBoxConnectHandlePosition(bounds);
   const showBackground = part === "full" || part === "background";
   const showForeground = part === "full" || part === "foreground";
 
@@ -392,7 +394,7 @@ export function GroupContainer({
           y={bounds.y}
           width={bounds.width}
           height={bounds.height}
-          color={group.borderColor}
+          color={box.borderColor}
         />
       )}
       {showBackground && (
@@ -403,7 +405,7 @@ export function GroupContainer({
           height={bounds.height}
           stroke={color}
           strokeWidth={2}
-          fill={rgbaWithAlpha(group.borderColor, 0.08)}
+          fill={rgbaWithAlpha(box.borderColor, 0.08)}
           cornerRadius={12}
           listening={false}
         />
@@ -421,7 +423,7 @@ export function GroupContainer({
               fill="transparent"
               onMouseEnter={() => {
                 if (!resizing && !dragging) {
-                  document.body.style.cursor = cursorForGroupResizeEdge(edge);
+                  document.body.style.cursor = cursorForBoxResizeEdge(edge);
                 }
               }}
               onMouseLeave={() => {
@@ -438,8 +440,8 @@ export function GroupContainer({
           x={bounds.x}
           y={bounds.y}
           width={bounds.width}
-          height={GROUP_HEADER_HEIGHT}
-          fill={rgbaWithAlpha(group.borderColor, 0.2)}
+          height={BOX_HEADER_HEIGHT}
+          fill={rgbaWithAlpha(box.borderColor, 0.2)}
           cornerRadius={[12, 12, 0, 0]}
           onMouseEnter={() => {
             if (!resizing && !dragging) {
@@ -464,7 +466,7 @@ export function GroupContainer({
       )}
       {showForeground && (
         <PillLabel
-          text={group.name}
+          text={box.name}
           x={bounds.x + bounds.width / 2}
           y={bounds.y + 14}
           fontSize={12}

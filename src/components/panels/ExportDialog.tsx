@@ -16,12 +16,13 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
+  const boxes = useDiagramStore((s) => s.boxes);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagram = {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     title: diagramTitle || undefined,
     subtitle: diagramSubtitle || undefined,
     fontFamily: isDefaultDiagramFont(diagramFontFamily)
@@ -30,6 +31,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     characters,
     lines,
     groups,
+    boxes,
   };
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
@@ -63,6 +65,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     characters,
     lines,
     groups,
+    boxes,
     diagramFontFamily,
   ]);
 

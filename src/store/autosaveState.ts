@@ -4,6 +4,7 @@ export interface PersistedDiagramState {
   characters: Diagram["characters"];
   lines: Diagram["lines"];
   groups: Diagram["groups"];
+  boxes: Diagram["boxes"];
   viewport: Diagram["viewport"];
   diagramTitle: string;
   diagramSubtitle: string;
@@ -20,6 +21,7 @@ export function pickPersistedState(
     characters: state.characters,
     lines: state.lines,
     groups: state.groups,
+    boxes: state.boxes,
     viewport: state.viewport,
     diagramTitle: state.diagramTitle,
     diagramSubtitle: state.diagramSubtitle,
@@ -41,6 +43,7 @@ export function persistedStatesEqual(
     a.characters === b.characters &&
     a.lines === b.lines &&
     a.groups === b.groups &&
+    a.boxes === b.boxes &&
     a.diagramTitle === b.diagramTitle &&
     a.diagramSubtitle === b.diagramSubtitle &&
     a.showDiagramHeader === b.showDiagramHeader &&
@@ -64,9 +67,10 @@ export function hasPersistedStateChanged(
 }
 
 export const EMPTY_DIAGRAM: Diagram = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   characters: [],
   lines: [],
   groups: [],
+  boxes: [],
   viewport: { x: 0, y: 0, scale: 1 },
 };

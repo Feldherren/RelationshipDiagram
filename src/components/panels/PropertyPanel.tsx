@@ -3,9 +3,15 @@ import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
 import type { LineStyle } from "../../models/types";
-import { getCharacterById, getGroupById } from "../../utils/geometry";
+import {
+  getBoxById,
+  getCharacterById,
+  getCharactersContainedInBox,
+  getGroupById,
+} from "../../utils/geometry";
 import { DEFAULT_IMAGE_FOCUS } from "../../utils/imageLayout";
 import { ImageFocusControls } from "./ImageFocusControls";
+import { rgbToCss } from "../../models/types";
 
 const LINE_STYLES: { value: LineStyle; label: string }[] = [
   { value: "straight", label: "Straight" },
@@ -20,10 +26,16 @@ export function PropertyPanel() {
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
+  const boxes = useDiagramStore((s) => s.boxes);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
   const updateLine = useDiagramStore((s) => s.updateLine);
   const updateGroup = useDiagramStore((s) => s.updateGroup);
-  const toggleGroupCollapse = useDiagramStore((s) => s.toggleGroupCollapse);
+  const updateBox = useDiagramStore((s) => s.updateBox);
+  const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
+  const addCharacterToGroup = useDiagramStore((s) => s.addCharacterToGroup);
+  const removeCharacterFromGroup = useDiagramStore(
+    (s) => s.removeCharacterFromGroup,
+  );
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
 
   if (!selection) {
@@ -132,6 +144,41 @@ export function PropertyPanel() {
             }
           />
         </label>
+        <div className="field">
+          <span>Groups</span>
+          {groups.length === 0 ? (
+            <p className="hint">No groups yet. Right-click the canvas to add one.</p>
+          ) : (
+            <div className="membership-checklist">
+              {groups.map((group) => {
+                const checked = group.memberCharacterIds.includes(character.id);
+                return (
+                  <label key={group.id} className="field checkbox membership-row">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          addCharacterToGroup(character.id, group.id);
+                        } else {
+                          removeCharacterFromGroup(character.id, group.id);
+                        }
+                      }}
+                    />
+                    <span
+                      className="membership-swatch"
+                      style={{
+                        background: rgbToCss(group.appearance.backgroundColor),
+                      }}
+                      aria-hidden
+                    />
+                    <span>{group.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           Delete character
         </button>
@@ -210,37 +257,109 @@ export function PropertyPanel() {
     );
   }
 
-  const group = getGroupById({ groups }, selection.id);
-  if (!group) return null;
+  if (selection.type === "box") {
+    const box = getBoxById({ boxes }, selection.id);
+    if (!box) return null;
+    const contained = getCharactersContainedInBox(box, characters);
 
-  return (
-    <aside className="property-panel">
-      <h2>Group</h2>
-      <label className="field">
-        <span>Name</span>
-        <input
-          type="text"
-          value={group.name}
-          onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+    return (
+      <aside className="property-panel">
+        <h2>Box</h2>
+        <label className="field">
+          <span>Name</span>
+          <input
+            type="text"
+            value={box.name}
+            onChange={(e) => updateBox(box.id, { name: e.target.value })}
+          />
+        </label>
+        <RgbPicker
+          label="Border colour"
+          value={box.borderColor}
+          onChange={(borderColor) => updateBox(box.id, { borderColor })}
         />
-      </label>
-      <RgbPicker
-        label="Border colour"
-        value={group.borderColor}
-        onChange={(borderColor) => updateGroup(group.id, { borderColor })}
-      />
-      <p className="hint">{group.memberCharacterIds.length} member(s)</p>
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={() => toggleGroupCollapse(group.id)}
-      >
-        {group.collapsed ? "Expand group" : "Collapse group"}
-      </button>
-      <p className="hint">Double-click group on canvas to toggle collapse.</p>
-      <button type="button" className="btn-danger" onClick={deleteSelected}>
-        Delete group
-      </button>
-    </aside>
-  );
+        <p className="hint">
+          {contained.length} character(s) inside (by position)
+        </p>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => toggleBoxCollapse(box.id)}
+        >
+          {box.collapsed ? "Expand box" : "Collapse box"}
+        </button>
+        <p className="hint">Double-click box on canvas to toggle collapse.</p>
+        <button type="button" className="btn-danger" onClick={deleteSelected}>
+          Delete box
+        </button>
+      </aside>
+    );
+  }
+
+  if (selection.type === "group") {
+    const group = getGroupById({ groups }, selection.id);
+    if (!group) return null;
+
+    return (
+      <aside className="property-panel">
+        <h2>Group</h2>
+        <p className="hint">
+          Membership chips appear on characters. Selecting a group highlights
+          its members.
+        </p>
+        <label className="field">
+          <span>Name</span>
+          <input
+            type="text"
+            value={group.name}
+            onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+          />
+        </label>
+        <RgbPicker
+          label="Chip colour"
+          value={group.appearance.backgroundColor}
+          onChange={(backgroundColor) =>
+            updateGroup(group.id, { appearance: { backgroundColor } })
+          }
+        />
+        <div className="field">
+          <span>Members ({group.memberCharacterIds.length})</span>
+          {characters.length === 0 ? (
+            <p className="hint">No characters to assign.</p>
+          ) : (
+            <div className="membership-checklist">
+              {characters.map((character) => {
+                const checked = group.memberCharacterIds.includes(character.id);
+                const label = character.name.trim() || "Nameless";
+                return (
+                  <label
+                    key={character.id}
+                    className="field checkbox membership-row"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          addCharacterToGroup(character.id, group.id);
+                        } else {
+                          removeCharacterFromGroup(character.id, group.id);
+                        }
+                      }}
+                    />
+                    <span>{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <button type="button" className="btn-danger" onClick={deleteSelected}>
+          Delete group
+        </button>
+      </aside>
+    );
+  }
+
+  return null;
 }

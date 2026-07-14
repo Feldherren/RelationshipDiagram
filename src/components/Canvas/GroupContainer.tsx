@@ -287,6 +287,7 @@ export function GroupContainer({
         onMouseLeave={() => setHovered(false)}
         onClick={(e) => {
           e.cancelBubble = true;
+          if (e.evt.button !== 0) return;
           onSelect();
         }}
         onTap={(e) => {
@@ -295,6 +296,7 @@ export function GroupContainer({
         }}
         onDblClick={(e) => {
           e.cancelBubble = true;
+          if (e.evt.button !== 0) return;
           onToggleCollapse();
         }}
         onDblTap={(e) => {
@@ -367,6 +369,7 @@ export function GroupContainer({
       onMouseLeave={() => setHovered(false)}
       onClick={(e) => {
         e.cancelBubble = true;
+        if (e.evt.button !== 0) return;
         onSelect();
       }}
       onTap={(e) => {
@@ -375,6 +378,7 @@ export function GroupContainer({
       }}
       onDblClick={(e) => {
         e.cancelBubble = true;
+        if (e.evt.button !== 0) return;
         onToggleCollapse();
       }}
       onDblTap={(e) => {

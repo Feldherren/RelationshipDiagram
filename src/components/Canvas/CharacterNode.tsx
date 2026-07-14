@@ -120,6 +120,7 @@ export function CharacterNode({
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
+    if ("button" in e.evt && e.evt.button !== 0) return;
     onSelect();
   };
 
@@ -136,6 +137,7 @@ export function CharacterNode({
       }}
       onClick={(e) => {
         e.cancelBubble = true;
+        if (e.evt.button !== 0) return;
         onSelect();
       }}
       onTap={(e) => {

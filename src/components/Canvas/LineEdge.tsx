@@ -153,6 +153,7 @@ export function LineEdge({
         lineJoin="round"
         onClick={(e) => {
           e.cancelBubble = true;
+          if (e.evt.button !== 0) return;
           onSelect();
         }}
         onTap={(e) => {
@@ -198,6 +199,7 @@ export function LineEdge({
           selectedStroke="#c62828"
           onClick={(e) => {
             e.cancelBubble = true;
+            if (e.evt.button !== 0) return;
             onSelect();
           }}
           onTap={(e) => {

@@ -66,7 +66,8 @@ export function shouldRenderLine(
   if (
     from.anchorKind === "group" &&
     to.anchorKind === "group" &&
-    from.anchorId === to.anchorId
+    from.anchorId === to.anchorId &&
+    !(line.from.kind === line.to.kind && line.from.id === line.to.id)
   ) {
     return false;
   }

@@ -2,6 +2,7 @@ import type { Bounds, Diagram, Line, Point } from "../models/types";
 import {
   getNodeCenter,
   getNodeEdgePoint,
+  getNodeRadius,
   isPointInsideNode,
   mergeBounds,
   normalize,
@@ -16,11 +17,17 @@ const LINE_LABEL_FONT_SIZE = 12;
 
 const AUTO_BEND_STEP = 28;
 const SAMPLE_SEGMENTS = 48;
+/** Minimum loop reach beyond the node rim (bend ≈ 0). */
+const SELF_LOOP_BASE_OUTSET = 36;
 
 export interface RoutedLine {
   points: number[];
   labelPoint: Point;
   bendHandlePoint: Point;
+}
+
+export function isSelfConnection(line: Pick<Line, "from" | "to">): boolean {
+  return line.from.kind === line.to.kind && line.from.id === line.to.id;
 }
 
 export function getDirectedPairKey(line: Line): string {
@@ -34,9 +41,47 @@ export function initialBendForRouteIndex(routeIndex: number): number {
   return side * magnitude;
 }
 
+/** Default signed bend for a new self-loop (positive size; side comes from routeIndex). */
+export function initialSelfLoopBend(routeIndex: number): number {
+  return (
+    SELF_LOOP_BASE_OUTSET + Math.floor(routeIndex / 2) * AUTO_BEND_STEP
+  );
+}
+
 export function resolveLineBend(line: Line): number {
   if (line.bend !== undefined) return line.bend;
+  if (isSelfConnection(line)) return initialSelfLoopBend(line.routeIndex);
   return initialBendForRouteIndex(line.routeIndex);
+}
+
+/** Minimum self-loop bend so drag never flips geometry through zero. */
+export const MIN_SELF_LOOP_BEND = 8;
+
+/**
+ * Attachment and apex angles for a self-loop (canvas: 0 = east, −π/2 = north).
+ * Side/rotation come from routeIndex only — bend is size, never mirroring.
+ */
+export function getSelfLoopAngles(routeIndex: number): {
+  exitAngle: number;
+  enterAngle: number;
+  midAngle: number;
+} {
+  const side = routeIndex % 2 === 0 ? 1 : -1;
+  const rotation = Math.floor(routeIndex / 2) * (Math.PI / 2);
+  // Default: leave at 270° (top), clockwise to 0° (right).
+  const exitAngle = -Math.PI / 2 + rotation;
+  const enterAngle = exitAngle + side * (Math.PI / 2);
+  const midAngle = exitAngle + side * (Math.PI / 4);
+  return { exitAngle, enterAngle, midAngle };
+}
+
+export function getSelfLoopMidAngle(routeIndex: number): number {
+  return getSelfLoopAngles(routeIndex).midAngle;
+}
+
+export function getSelfLoopDirection(routeIndex: number): Point {
+  const angle = getSelfLoopMidAngle(routeIndex);
+  return { x: Math.cos(angle), y: Math.sin(angle) };
 }
 
 export function getControlPoint(
@@ -57,12 +102,88 @@ export function getControlPoint(
   return { x: mid.x + perp.x * bend, y: mid.y + perp.y * bend };
 }
 
+/**
+ * Loop-circle center for a 3/4 self-loop with radial end meetings:
+ * intersection of the outline tangents at the exit and enter points.
+ */
+function selfLoopCircleCenter(
+  nodeCenter: Point,
+  exit: Point,
+  enter: Point,
+): Point | null {
+  const exitDir = normalize({
+    x: exit.x - nodeCenter.x,
+    y: exit.y - nodeCenter.y,
+  });
+  const enterDir = normalize({
+    x: enter.x - nodeCenter.x,
+    y: enter.y - nodeCenter.y,
+  });
+  const exitTan = perpendicular(exitDir);
+  const enterTan = perpendicular(enterDir);
+  const det = exitTan.x * enterTan.y - exitTan.y * enterTan.x;
+  if (Math.abs(det) < 1e-6) return null;
+  const dx = enter.x - exit.x;
+  const dy = enter.y - exit.y;
+  const a = (dx * enterTan.y - dy * enterTan.x) / det;
+  return {
+    x: exit.x + a * exitTan.x,
+    y: exit.y + a * exitTan.y,
+  };
+}
+
+function majorArcSweep(startAng: number, endAng: number): number {
+  let sweep = (endAng - startAng + Math.PI * 2) % (Math.PI * 2);
+  // Prefer the long way (~3/4 circle) between attachment points.
+  if (sweep < Math.PI) sweep -= Math.PI * 2;
+  return sweep;
+}
+
+export function getSelfLoopApex(
+  center: Point,
+  nodeRadius: number,
+  bend: number,
+  routeIndex: number,
+): Point {
+  const { exitAngle, enterAngle } = getSelfLoopAngles(routeIndex);
+  const exitDir = { x: Math.cos(exitAngle), y: Math.sin(exitAngle) };
+  const enterDir = { x: Math.cos(enterAngle), y: Math.sin(enterAngle) };
+  const exit = {
+    x: center.x + exitDir.x * nodeRadius,
+    y: center.y + exitDir.y * nodeRadius,
+  };
+  const enter = {
+    x: center.x + enterDir.x * nodeRadius,
+    y: center.y + enterDir.y * nodeRadius,
+  };
+  const path = sampleSelfLoopPath(center, exit, enter, bend, "straight");
+  if (path.length === 0) {
+    const mid = getSelfLoopDirection(routeIndex);
+    const dist = nodeRadius + Math.abs(bend);
+    return { x: center.x + mid.x * dist, y: center.y + mid.y * dist };
+  }
+  return path[Math.floor(path.length / 2)];
+}
+
 export function bendDeltaFromDrag(
   fromCenter: Point,
   toCenter: Point,
   fromWorld: Point,
   toWorld: Point,
+  options?: { selfLoop?: boolean; bend?: number; routeIndex?: number },
 ): number {
+  if (
+    options?.selfLoop ||
+    (Math.abs(fromCenter.x - toCenter.x) < 0.01 &&
+      Math.abs(fromCenter.y - toCenter.y) < 0.01)
+  ) {
+    const routeIndex = options?.routeIndex ?? 0;
+    const dir = getSelfLoopDirection(routeIndex);
+    return (
+      (toWorld.x - fromWorld.x) * dir.x + (toWorld.y - fromWorld.y) * dir.y
+    );
+  }
+
   const dir = normalize({
     x: toCenter.x - fromCenter.x,
     y: toCenter.y - fromCenter.y,
@@ -105,6 +226,127 @@ function sampleQuadratic(p0: Point, p1: Point, p2: Point, segments: number): Poi
     points.push(quadraticPointAt(p0, p1, p2, i / segments));
   }
   return points;
+}
+
+function applyPathStyle(base: Point[], style: Line["style"]): Point[] {
+  if (base.length < 2) return base;
+
+  if (style === "wavy") {
+    const points: Point[] = [];
+    const amplitude = 8;
+    for (let i = 0; i < base.length; i++) {
+      const t = i / (base.length - 1);
+      const prev = base[Math.max(0, i - 1)];
+      const next = base[Math.min(base.length - 1, i + 1)];
+      const tangent = normalize({ x: next.x - prev.x, y: next.y - prev.y });
+      const perp = perpendicular(tangent);
+      const wave = Math.sin(t * Math.PI * 8) * amplitude;
+      if (i === 0 || i === base.length - 1) {
+        points.push(base[i]);
+      } else {
+        points.push({
+          x: base[i].x + perp.x * wave,
+          y: base[i].y + perp.y * wave,
+        });
+      }
+    }
+    return points;
+  }
+
+  if (style === "jagged") {
+    const points: Point[] = [base[0]];
+    const zig = 12;
+    for (let i = 1; i < base.length - 1; i++) {
+      const prev = base[i - 1];
+      const next = base[i + 1];
+      const tangent = normalize({ x: next.x - prev.x, y: next.y - prev.y });
+      const perp = perpendicular(tangent);
+      const side = i % 2 === 0 ? 1 : -1;
+      points.push({
+        x: base[i].x + perp.x * side * zig,
+        y: base[i].y + perp.y * side * zig,
+      });
+    }
+    points.push(base[base.length - 1]);
+    return points;
+  }
+
+  return base;
+}
+
+/**
+ * Self-loop: leave at 270° (top), sweep a ~3/4 circle clockwise to 0° (right).
+ * Ends stay on the rim; bend moves the circle center along the chord bisector
+ * so the arc stays a true circle through both endpoints (no radial stubs/kinks).
+ */
+function sampleSelfLoopPath(
+  center: Point,
+  exit: Point,
+  enter: Point,
+  bend: number,
+  style: Line["style"],
+): Point[] {
+  const exitDir = normalize({ x: exit.x - center.x, y: exit.y - center.y });
+  const enterDir = normalize({ x: enter.x - center.x, y: enter.y - center.y });
+  const C0 = selfLoopCircleCenter(center, exit, enter);
+
+  if (!C0) {
+    const mid = normalize({
+      x: exitDir.x + enterDir.x,
+      y: exitDir.y + enterDir.y,
+    });
+    const dist =
+      Math.hypot(exit.x - center.x, exit.y - center.y) +
+      Math.max(SELF_LOOP_BASE_OUTSET, Math.abs(bend));
+    const apex = {
+      x: center.x + mid.x * dist,
+      y: center.y + mid.y * dist,
+    };
+    const points: Point[] = [];
+    for (let i = 0; i <= SAMPLE_SEGMENTS; i++) {
+      points.push(quadraticPointAt(exit, apex, enter, i / SAMPLE_SEGMENTS));
+    }
+    return applyPathStyle(points, style);
+  }
+
+  const mid = {
+    x: (exit.x + enter.x) / 2,
+    y: (exit.y + enter.y) / 2,
+  };
+  let bis = normalize(
+    perpendicular({ x: enter.x - exit.x, y: enter.y - exit.y }),
+  );
+  // Point the bisector outward (away from the node center).
+  if ((mid.x - center.x) * bis.x + (mid.y - center.y) * bis.y < 0) {
+    bis = { x: -bis.x, y: -bis.y };
+  }
+  const t0 = (C0.x - mid.x) * bis.x + (C0.y - mid.y) * bis.y;
+  // Default bend (≈ BASE) sits at the radial-tangent circle; more bend grows out.
+  const grow = Math.max(0, Math.abs(bend) - SELF_LOOP_BASE_OUTSET);
+  const C = {
+    x: mid.x + bis.x * (t0 + grow),
+    y: mid.y + bis.y * (t0 + grow),
+  };
+  const R = Math.hypot(C.x - exit.x, C.y - exit.y) || 1;
+
+  const startAng = Math.atan2(exit.y - C.y, exit.x - C.x);
+  const endAng = Math.atan2(enter.y - C.y, enter.x - C.x);
+  const sweep = majorArcSweep(startAng, endAng);
+
+  const points: Point[] = [];
+  for (let i = 0; i <= SAMPLE_SEGMENTS; i++) {
+    const t = i / SAMPLE_SEGMENTS;
+    const ang = startAng + sweep * t;
+    points.push({
+      x: C.x + Math.cos(ang) * R,
+      y: C.y + Math.sin(ang) * R,
+    });
+  }
+  // Exact rim endpoints (covers float drift).
+  points[0] = exit;
+  points[points.length - 1] = enter;
+
+  return applyPathStyle(points, style);
 }
 
 function sampleStyledCenterPath(
@@ -296,8 +538,49 @@ export function routeLine(line: Line, diagram: Diagram): RoutedLine {
   const fromCenter = getNodeCenter(from.anchorKind, from.anchorId, diagram);
   const toCenter = getNodeCenter(to.anchorKind, to.anchorId, diagram);
   const bend = resolveLineBend(line);
-  const control = getControlPoint(fromCenter, toCenter, bend);
 
+  if (
+    isSelfConnection(line) ||
+    (from.anchorKind === to.anchorKind && from.anchorId === to.anchorId)
+  ) {
+    const nodeRadius = getNodeRadius(from.anchorKind, from.anchorId, diagram);
+    const { exitAngle, enterAngle } = getSelfLoopAngles(line.routeIndex);
+    const exitToward = {
+      x: fromCenter.x + Math.cos(exitAngle) * (nodeRadius + 100),
+      y: fromCenter.y + Math.sin(exitAngle) * (nodeRadius + 100),
+    };
+    const enterToward = {
+      x: fromCenter.x + Math.cos(enterAngle) * (nodeRadius + 100),
+      y: fromCenter.y + Math.sin(enterAngle) * (nodeRadius + 100),
+    };
+    const exit = getNodeEdgePoint(
+      from.anchorKind,
+      from.anchorId,
+      exitToward,
+      diagram,
+    );
+    const enter = getNodeEdgePoint(
+      to.anchorKind,
+      to.anchorId,
+      enterToward,
+      diagram,
+    );
+    const path = sampleSelfLoopPath(
+      fromCenter,
+      exit,
+      enter,
+      bend,
+      line.style,
+    );
+    const apex = getSelfLoopApex(fromCenter, nodeRadius, bend, line.routeIndex);
+    return {
+      points: flattenPoints(path),
+      labelPoint: midpointAlongPath(path),
+      bendHandlePoint: apex,
+    };
+  }
+
+  const control = getControlPoint(fromCenter, toCenter, bend);
   const fullPath = sampleStyledCenterPath(
     fromCenter,
     control,

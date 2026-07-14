@@ -11,7 +11,7 @@ A browser-based editor for character relationship diagrams. Create characters, c
 - Customise the overall diagram - title and subtitle, grid or no grid, background colour, font 
 
 ## Notes
-NB: this application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri and so forth). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn everything.
+NB: this application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
 I can (and do) still read the code, and I'm happy to fix reported issues and consider into feature requests, should anyone make any.
 
 Also, note that whilst screenshots (if and when I add any) will probably demonstrate the [Honey Pigeon](https://stevencolling.itch.io/honey-pigeon) font, this font is not included with the application; you can use any installed font, and I just happen to like Honey Pigeon.
@@ -72,7 +72,7 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Add character | **+ Character** in the toolbar |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
-| Connect nodes | Click a character's **+** button, then click a target — or drag **+** to another character |
+| Connect nodes | Click a character's **+** button, then click a target (same character for a self-loop) — or drag **+** to a character |
 | Edit properties | Select an item; use the panel on the right |
 | Group | Select a character → **+ Group**; drag characters into an expanded group |
 | Collapse group | Double-click the group, or use **Collapse group** in the panel |

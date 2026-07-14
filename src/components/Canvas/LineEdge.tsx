@@ -6,6 +6,8 @@ import { rgbToCss } from "../../models/types";
 import {
   bendDeltaFromDrag,
   getLineAnchors,
+  isSelfConnection,
+  MIN_SELF_LOOP_BEND,
   resolveLineBend,
   routeLine,
 } from "../../utils/lineRouting";
@@ -88,8 +90,18 @@ export function LineEdge({
         dragStart.toCenter,
         dragStart.world,
         world,
+        {
+          selfLoop: isSelfConnection(line),
+          bend: dragStart.bend,
+          routeIndex: line.routeIndex,
+        },
       );
-      onBendChange(dragStart.bend + delta);
+      const nextBend = dragStart.bend + delta;
+      onBendChange(
+        isSelfConnection(line)
+          ? Math.max(MIN_SELF_LOOP_BEND, nextBend)
+          : nextBend,
+      );
     };
 
     const onUp = () => {

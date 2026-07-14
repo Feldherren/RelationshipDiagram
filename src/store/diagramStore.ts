@@ -32,6 +32,8 @@ import {
 import { isDeprecatedFontFamily } from "../utils/systemFonts";
 import {
   initialBendForRouteIndex,
+  initialSelfLoopBend,
+  isSelfConnection,
   nextRouteIndex,
 } from "../utils/lineRouting";
 import {
@@ -304,9 +306,9 @@ export const useDiagramStore = create<DiagramState>()(
     })),
 
   addLine: (from, to) => {
-    if (from.id === to.id && from.kind === to.kind) return;
     const existingLines = get().lines;
     const routeIndex = nextRouteIndex(from, to, existingLines);
+    const self = isSelfConnection({ from, to });
     const line: Line = {
       id: uuidv4(),
       from,
@@ -316,7 +318,9 @@ export const useDiagramStore = create<DiagramState>()(
       startArrow: false,
       endArrow: true,
       routeIndex,
-      bend: initialBendForRouteIndex(routeIndex),
+      bend: self
+        ? initialSelfLoopBend(routeIndex)
+        : initialBendForRouteIndex(routeIndex),
     };
     set((s) => ({
       lines: [...s.lines, line],
@@ -479,10 +483,6 @@ export const useDiagramStore = create<DiagramState>()(
   handleNodeClick: (ref) => {
     const { connectFrom } = get();
     if (connectFrom) {
-      if (sameNodeRef(connectFrom, ref)) {
-        set({ connectFrom: null });
-        return;
-      }
       get().addLine(connectFrom, ref);
       return;
     }
@@ -523,7 +523,16 @@ export const useDiagramStore = create<DiagramState>()(
     );
     const target = findConnectionTargetAt(point, characters, groups);
 
-    if (target && !sameNodeRef(connectDrag.from, target)) {
+    if (target) {
+      if (sameNodeRef(connectDrag.from, target)) {
+        // Short click on + keeps click-to-connect mode; drag onto self = self-loop.
+        if (moved >= 6) {
+          get().addLine(connectDrag.from, target);
+        } else {
+          set({ connectFrom: connectDrag.from, connectDrag: null });
+        }
+        return;
+      }
       get().addLine(connectDrag.from, target);
       return;
     }

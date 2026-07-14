@@ -430,7 +430,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       />
       {connectFrom && (
         <div className="connect-hint">
-          Click another character or group to connect (Esc to cancel)
+          Click a character or group to connect, or the same one for a self-loop
+          (Esc to cancel)
         </div>
       )}
       <ViewportStage

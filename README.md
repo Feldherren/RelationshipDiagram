@@ -6,9 +6,9 @@ A browser-based editor for character relationship diagrams. Create characters, c
 - Create characters, give them names, subtitles, graphics, customised border colour
 - Connect characters with coloured lines (and give the lines labels, a couple of styles, bend them)
 - Named groups with customisable colours! Collapse them to hide them if they're a bit large
-- Use your own installed fonts
 - Saving and loading
 - Image export (entire graphic or selected area) at two distinct levels of zoom (also it estimates the dimensions of the exported image)
+- Customise the overall diagram - title and subtitle, grid or no grid, background colour, font 
 
 ## Notes
 NB: this application is largely generated code. I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn react, vite, tauri, et cetera.

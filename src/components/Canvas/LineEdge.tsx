@@ -24,6 +24,9 @@ interface LineEdgeProps {
   onSelect: () => void;
   onBendChange: (bend: number) => void;
   part?: "full" | "stroke" | "label";
+  /** Shared hover when stroke and label are rendered as separate instances. */
+  hovered?: boolean;
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 interface BendDragStart {
@@ -40,6 +43,8 @@ export function LineEdge({
   onSelect,
   onBendChange,
   part = "full",
+  hovered: hoveredProp,
+  onHoverChange,
 }: LineEdgeProps) {
   const routed = routeLine(line, diagram);
   const displayLabel = getLineDisplayLabel(line, diagram);
@@ -49,7 +54,12 @@ export function LineEdge({
   const dash = line.style === "dotted" ? [8, 6] : undefined;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
-  const [hovered, setHovered] = useState(false);
+  const [localHovered, setLocalHovered] = useState(false);
+  const hovered = hoveredProp ?? localHovered;
+  const setHovered = (value: boolean) => {
+    if (onHoverChange) onHoverChange(value);
+    else setLocalHovered(value);
+  };
   const [bendDragging, setBendDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
   const lineIdRef = useRef(line.id);

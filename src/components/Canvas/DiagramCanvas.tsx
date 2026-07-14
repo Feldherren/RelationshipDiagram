@@ -70,6 +70,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const [isResizingGroup, setIsResizingGroup] = useState(false);
   const [isDraggingGroup, setIsDraggingGroup] = useState(false);
   const isInteractingWithGroup = isResizingGroup || isDraggingGroup;
+  const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
     null,
   );
@@ -379,6 +380,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 }
                 onBendChange={(bend) => updateLine(line.id, { bend })}
                 part="stroke"
+                hovered={hoveredLineId === line.id}
+                onHoverChange={(hovered) =>
+                  setHoveredLineId((current) =>
+                    hovered ? line.id : current === line.id ? null : current,
+                  )
+                }
               />
             ))}
 
@@ -397,6 +404,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 }
                 onBendChange={(bend) => updateLine(line.id, { bend })}
                 part="label"
+                hovered={hoveredLineId === line.id}
+                onHoverChange={(hovered) =>
+                  setHoveredLineId((current) =>
+                    hovered ? line.id : current === line.id ? null : current,
+                  )
+                }
               />
             ))}
 

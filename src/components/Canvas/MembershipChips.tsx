@@ -30,15 +30,16 @@ interface MembershipChipsProps {
 
 function chipPositionOnBorder(
   index: number,
-  count: number,
   size: number,
   shape: BorderShape,
 ): Point {
-  // Fan chips along the lower-left arc, away from the connect handle (top-right).
-  const startAngle = (Math.PI * 2) / 3; // 120°
-  const endAngle = (Math.PI * 11) / 8; // 247.5°
-  const t = count === 1 ? 0.5 : index / (count - 1);
-  const angle = startAngle + (endAngle - startAngle) * t;
+  // First chip at upper-left; each next chip is one step counter-clockwise.
+  // Konva y is down, so visual CCW decreases angle.
+  const startAngle = (-3 * Math.PI) / 4;
+  const spacing =
+    MEMBERSHIP_CHIP_RADIUS * 2 + Math.max(2, MEMBERSHIP_CHIP_RADIUS * 0.25);
+  const angleStep = spacing / Math.max(size, 1);
+  const angle = startAngle - index * angleStep;
 
   let radius = size;
   if (shape === "square") {
@@ -113,17 +114,11 @@ export function MembershipChips({
 
   const visible = groups.slice(0, MEMBERSHIP_CHIP_MAX_VISIBLE);
   const overflow = groups.length - visible.length;
-  const chipCount = visible.length + (overflow > 0 ? 1 : 0);
 
   return (
     <Group listening={!!onChipClick}>
       {visible.map((group, index) => {
-        const pos = chipPositionOnBorder(
-          index,
-          chipCount,
-          characterSize,
-          borderShape,
-        );
+        const pos = chipPositionOnBorder(index, characterSize, borderShape);
         return (
           <Group
             key={group.id}
@@ -151,20 +146,10 @@ export function MembershipChips({
       {overflow > 0 && (
         <Group
           x={
-            chipPositionOnBorder(
-              visible.length,
-              chipCount,
-              characterSize,
-              borderShape,
-            ).x
+            chipPositionOnBorder(visible.length, characterSize, borderShape).x
           }
           y={
-            chipPositionOnBorder(
-              visible.length,
-              chipCount,
-              characterSize,
-              borderShape,
-            ).y
+            chipPositionOnBorder(visible.length, characterSize, borderShape).y
           }
           listening={false}
         >

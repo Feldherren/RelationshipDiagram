@@ -121,7 +121,7 @@ function sampleStyledCenterPath(
       const base = quadraticPointAt(fromCenter, control, toCenter, t);
       const tangent = quadraticTangentAt(fromCenter, control, toCenter, t);
       const perp = perpendicular(tangent);
-      const wave = Math.sin(t * Math.PI * 4) * amplitude;
+      const wave = Math.sin(t * Math.PI * 8) * amplitude;
       points.push({
         x: base.x + perp.x * wave,
         y: base.y + perp.y * wave,
@@ -134,7 +134,7 @@ function sampleStyledCenterPath(
 
   if (style === "jagged") {
     const points: Point[] = [fromCenter];
-    const segments = 8;
+    const segments = 16;
     const zig = 12;
     for (let i = 1; i < segments; i++) {
       const t = i / segments;

@@ -10,6 +10,7 @@ import type {
   Point,
   RGB,
 } from "../models/types";
+import { normalizeMembershipAppearance } from "../models/types";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -57,19 +58,6 @@ function migrateLines(lines: Line[]): Line[] {
   }));
 }
 
-function normalizeAppearance(
-  appearance: MembershipAppearance | undefined,
-  fallback: RGB,
-): MembershipAppearance {
-  return {
-    backgroundColor: appearance?.backgroundColor ?? fallback,
-    ...(appearance?.symbol !== undefined ? { symbol: appearance.symbol } : {}),
-    ...(appearance?.symbolColor !== undefined
-      ? { symbolColor: appearance.symbolColor }
-      : {}),
-  };
-}
-
 function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
   const boxes: Box[] = [];
   const groups: Group[] = [];
@@ -88,7 +76,10 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
       id: uuidv4(),
       name: g.name,
       memberCharacterIds: [...(g.memberCharacterIds ?? [])],
-      appearance: { backgroundColor: { ...g.borderColor } },
+      appearance: normalizeMembershipAppearance({
+        backgroundColor: { ...g.borderColor },
+        borderColor: { ...g.borderColor },
+      }),
     });
   }
 
@@ -117,8 +108,8 @@ function normalizeV2(data: Diagram): Diagram {
       id: g.id,
       name: g.name,
       memberCharacterIds: [...(g.memberCharacterIds ?? [])],
-      appearance: normalizeAppearance(
-        g.appearance,
+      appearance: normalizeMembershipAppearance(
+        g.appearance as Partial<MembershipAppearance> | undefined,
         { r: 100, g: 140, b: 100 },
       ),
     })),

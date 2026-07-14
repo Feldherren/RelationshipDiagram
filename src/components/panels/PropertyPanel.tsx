@@ -1,8 +1,13 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Stage, Layer, Group as KonvaGroup } from "react-konva";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
 import type { LineStyle } from "../../models/types";
+import {
+  MEMBERSHIP_CHIP_RADIUS,
+  rgbToCss,
+} from "../../models/types";
 import {
   getBoxById,
   getCharacterById,
@@ -11,7 +16,8 @@ import {
 } from "../../utils/geometry";
 import { DEFAULT_IMAGE_FOCUS } from "../../utils/imageLayout";
 import { ImageFocusControls } from "./ImageFocusControls";
-import { rgbToCss } from "../../models/types";
+import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
+import { MembershipChip } from "../Canvas/MembershipChips";
 
 const LINE_STYLES: { value: LineStyle; label: string }[] = [
   { value: "straight", label: "Straight" },
@@ -22,6 +28,7 @@ const LINE_STYLES: { value: LineStyle; label: string }[] = [
 
 export function PropertyPanel() {
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [chipAppearanceOpen, setChipAppearanceOpen] = useState(false);
   const selection = useDiagramStore((s) => s.selection);
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
@@ -37,6 +44,10 @@ export function PropertyPanel() {
     (s) => s.removeCharacterFromGroup,
   );
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
+
+  useEffect(() => {
+    setChipAppearanceOpen(false);
+  }, [selection?.type, selection && "id" in selection ? selection.id : null]);
 
   if (!selection) {
     return null;
@@ -300,64 +311,89 @@ export function PropertyPanel() {
     const group = getGroupById({ groups }, selection.id);
     if (!group) return null;
 
+    const previewSize = (MEMBERSHIP_CHIP_RADIUS + 4) * 2;
+
     return (
-      <aside className="property-panel">
-        <h2>Group</h2>
-        <p className="hint">
-          Membership chips appear on characters. Selecting a group highlights
-          its members.
-        </p>
-        <label className="field">
-          <span>Name</span>
-          <input
-            type="text"
-            value={group.name}
-            onChange={(e) => updateGroup(group.id, { name: e.target.value })}
-          />
-        </label>
-        <RgbPicker
-          label="Chip colour"
-          value={group.appearance.backgroundColor}
-          onChange={(backgroundColor) =>
-            updateGroup(group.id, { appearance: { backgroundColor } })
-          }
-        />
-        <div className="field">
-          <span>Members ({group.memberCharacterIds.length})</span>
-          {characters.length === 0 ? (
-            <p className="hint">No characters to assign.</p>
-          ) : (
-            <div className="membership-checklist">
-              {characters.map((character) => {
-                const checked = group.memberCharacterIds.includes(character.id);
-                const label = character.name.trim() || "Nameless";
-                return (
-                  <label
-                    key={character.id}
-                    className="field checkbox membership-row"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          addCharacterToGroup(character.id, group.id);
-                        } else {
-                          removeCharacterFromGroup(character.id, group.id);
-                        }
-                      }}
-                    />
-                    <span>{label}</span>
-                  </label>
-                );
-              })}
+      <>
+        <aside className="property-panel">
+          <h2>Group</h2>
+          <p className="hint">
+            Membership chips appear on characters. Selecting a group highlights
+            its members.
+          </p>
+          <label className="field">
+            <span>Name</span>
+            <input
+              type="text"
+              value={group.name}
+              onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+            />
+          </label>
+          <div className="field">
+            <span>Chip</span>
+            <div className="membership-chip-summary">
+              <div className="membership-chip-preview">
+                <Stage width={previewSize} height={previewSize}>
+                  <Layer>
+                    <KonvaGroup x={previewSize / 2} y={previewSize / 2}>
+                      <MembershipChip appearance={group.appearance} />
+                    </KonvaGroup>
+                  </Layer>
+                </Stage>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setChipAppearanceOpen(true)}
+              >
+                Customise chip…
+              </button>
             </div>
-          )}
-        </div>
-        <button type="button" className="btn-danger" onClick={deleteSelected}>
-          Delete group
-        </button>
-      </aside>
+          </div>
+          <div className="field">
+            <span>Members ({group.memberCharacterIds.length})</span>
+            {characters.length === 0 ? (
+              <p className="hint">No characters to assign.</p>
+            ) : (
+              <div className="membership-checklist">
+                {characters.map((character) => {
+                  const checked = group.memberCharacterIds.includes(
+                    character.id,
+                  );
+                  const label = character.name.trim() || "Nameless";
+                  return (
+                    <label
+                      key={character.id}
+                      className="field checkbox membership-row"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            addCharacterToGroup(character.id, group.id);
+                          } else {
+                            removeCharacterFromGroup(character.id, group.id);
+                          }
+                        }}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn-danger" onClick={deleteSelected}>
+            Delete group
+          </button>
+        </aside>
+        <MembershipAppearanceDialog
+          groupId={group.id}
+          open={chipAppearanceOpen}
+          onClose={() => setChipAppearanceOpen(false)}
+        />
+      </>
     );
   }
 

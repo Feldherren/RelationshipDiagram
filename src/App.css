@@ -266,6 +266,23 @@ body,
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
+.membership-chip-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 0;
+}
+
+.membership-chip-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.membership-chip-summary .membership-chip-preview {
+  padding: 0;
+}
+
 .field input[type="range"] {
   width: 100%;
 }
@@ -320,6 +337,34 @@ body,
 }
 
 .color-swatch.selected {
+  border-color: #2f3a45;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2f3a45;
+}
+
+.symbol-picker-row {
+  gap: 6px;
+}
+
+.symbol-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid #d8dde3;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.symbol-swatch:hover {
+  border-color: #9aa3ad;
+  background: #f7f8fa;
+}
+
+.symbol-swatch.selected {
   border-color: #2f3a45;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2f3a45;
 }

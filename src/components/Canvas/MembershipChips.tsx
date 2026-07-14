@@ -12,6 +12,7 @@ import {
 } from "../../models/types";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
+import { MembershipChipSymbol } from "./MembershipChipSymbol";
 
 export interface MembershipChipItem {
   id: string;
@@ -60,10 +61,6 @@ function chipPositionOnBorder(
   };
 }
 
-/**
- * Renders a membership chip. Uses `appearance.backgroundColor` today;
- * `symbol` / `symbolColor` are reserved for a future icon overlay.
- */
 export function MembershipChip({
   appearance,
   radius = MEMBERSHIP_CHIP_RADIUS,
@@ -74,21 +71,26 @@ export function MembershipChip({
   emphasized?: boolean;
 }) {
   const fill = rgbToCss(appearance.backgroundColor);
-  // Future: if appearance.symbol, draw glyph with appearance.symbolColor over fill.
-  void appearance.symbol;
-  void appearance.symbolColor;
+  const border = rgbToCss(appearance.borderColor);
 
   return (
-    <Circle
-      radius={radius}
-      fill={fill}
-      stroke={emphasized ? "#111" : "#333"}
-      strokeWidth={emphasized ? 2.5 : 2}
-      shadowColor="rgba(0,0,0,0.35)"
-      shadowBlur={emphasized ? 4 : 3}
-      shadowOpacity={1}
-      shadowEnabled
-    />
+    <Group>
+      <Circle
+        radius={radius}
+        fill={fill}
+        stroke={border}
+        strokeWidth={emphasized ? 2.75 : 2}
+        shadowColor="rgba(0,0,0,0.35)"
+        shadowBlur={emphasized ? 4 : 3}
+        shadowOpacity={1}
+        shadowEnabled
+      />
+      <MembershipChipSymbol
+        symbol={appearance.symbol}
+        color={appearance.symbolColor}
+        chipRadius={radius}
+      />
+    </Group>
   );
 }
 

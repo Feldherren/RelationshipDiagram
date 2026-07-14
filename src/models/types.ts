@@ -47,15 +47,98 @@ export interface Line {
   bend?: number;
 }
 
-/**
- * Visual identity for a membership group chip.
- * `symbol` / `symbolColor` are reserved for a future icon picker and are
- * ignored by the current renderer.
- */
+/** Built-in glyph drawn on membership chips. */
+export type MembershipSymbol =
+  | "none"
+  | "star"
+  | "moon"
+  | "heart"
+  | "diamond"
+  | "circle"
+  | "ring"
+  | "square"
+  | "triangle"
+  | "hexagon"
+  | "plus"
+  | "cross"
+  | "slash"
+  | "music"
+  | "sword"
+  | "flame"
+  | "droplet"
+  | "breeze"
+  | "rock";
+
+/** Visual identity for a membership group chip. */
 export interface MembershipAppearance {
   backgroundColor: RGB;
-  symbol?: string;
-  symbolColor?: RGB;
+  symbol: MembershipSymbol;
+  symbolColor: RGB;
+  borderColor: RGB;
+}
+
+export const MEMBERSHIP_SYMBOLS: {
+  value: MembershipSymbol;
+  label: string;
+}[] = [
+  { value: "none", label: "None" },
+  { value: "star", label: "Star" },
+  { value: "moon", label: "Moon" },
+  { value: "heart", label: "Heart" },
+  { value: "diamond", label: "Diamond" },
+  { value: "circle", label: "Circle" },
+  { value: "ring", label: "Ring" },
+  { value: "square", label: "Square" },
+  { value: "triangle", label: "Triangle" },
+  { value: "hexagon", label: "Hexagon" },
+  { value: "plus", label: "Plus" },
+  { value: "cross", label: "Cross" },
+  { value: "slash", label: "Slash" },
+  { value: "music", label: "Music note" },
+  { value: "sword", label: "Sword" },
+  { value: "flame", label: "Flame" },
+  { value: "droplet", label: "Droplet" },
+  { value: "breeze", label: "Breeze" },
+  { value: "rock", label: "Rock" },
+];
+
+export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
+  return (
+    typeof value === "string" &&
+    MEMBERSHIP_SYMBOLS.some((entry) => entry.value === value)
+  );
+}
+
+export function defaultMembershipAppearance(
+  backgroundColor: RGB = { r: 100, g: 140, b: 100 },
+): MembershipAppearance {
+  return {
+    backgroundColor: { ...backgroundColor },
+    symbol: "none",
+    symbolColor: { r: 255, g: 255, b: 255 },
+    borderColor: { r: 51, g: 51, b: 51 },
+  };
+}
+
+export function normalizeMembershipAppearance(
+  appearance: Partial<MembershipAppearance> | undefined,
+  fallbackBackground: RGB = { r: 100, g: 140, b: 100 },
+): MembershipAppearance {
+  const defaults = defaultMembershipAppearance(fallbackBackground);
+  return {
+    backgroundColor: appearance?.backgroundColor
+      ? { ...appearance.backgroundColor }
+      : defaults.backgroundColor,
+    symbol: isMembershipSymbol(appearance?.symbol)
+      ? appearance.symbol
+      : defaults.symbol,
+    symbolColor: appearance?.symbolColor
+      ? { ...appearance.symbolColor }
+      : defaults.symbolColor,
+    borderColor: appearance?.borderColor
+      ? { ...appearance.borderColor }
+      : defaults.borderColor,
+  };
 }
 
 /** Semantic membership group — chips / highlight only; not a canvas connect target. */

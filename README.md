@@ -79,6 +79,7 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Edit properties | Select an item; use the panel on the right |
 | Assign group membership | Select a character → check groups in the panel, or select a group → check members |
 | Highlight group | Select a group (panel or click a membership chip) — members stay prominent, others dim |
+| Customise group chip | Select a group → **Customise chip…** |
 | Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |
 | Collapse box | Double-click the box, or use **Collapse box** in the panel |
 | Delete | Select an item → **Delete** key |
@@ -91,9 +92,20 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 |--|-----------|---------|
 | Purpose | “Who belongs together” (factions, families, etc.) | Layout / clutter control on the canvas |
 | Membership | Explicit list; multi-membership allowed | Whoever’s position is currently inside the rectangle |
-| On canvas | Coloured chips on characters | Labelled rectangle (connectable, collapsible) |
+| On canvas | Coloured chips on characters (background, symbol, colours) | Labelled rectangle (connectable, collapsible) |
 | Highlight | Selecting a group emphasises its members | — |
 
 ## File format
 
 Diagrams are saved as `.rdiagram` JSON with `schemaVersion: 2` (`groups` for membership, `boxes` for organisational regions). Images are embedded as base64 data URLs for single-file portability. Opening a `schemaVersion: 1` file migrates each old combined group into one box (same id, so lines keep working) plus one membership group.
+
+# Licensing Information
+
+## Resources Used
+
+Droplet SVG: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Flame Symbol SVG: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
+Music Note SVG: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+Stone Block SVG: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+Sword F SVG: https://www.svgrepo.com/svg/360818/sword-f (michaelampr, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Wind SVG: https://www.svgrepo.com/svg/394565/wind (Kenan Gundogan, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))

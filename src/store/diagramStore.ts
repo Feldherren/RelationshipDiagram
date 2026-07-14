@@ -9,7 +9,6 @@ import type {
   Diagram,
   Group,
   Line,
-  MembershipAppearance,
   NodeRef,
   RGB,
   Selection,
@@ -18,6 +17,7 @@ import type {
 } from "../models/types";
 import {
   DEFAULT_CHARACTER_SIZE,
+  defaultMembershipAppearance,
   defaultRgb,
 } from "../models/types";
 import {
@@ -106,7 +106,12 @@ interface DiagramState {
   deleteLine: (id: string) => void;
 
   addGroup: (name?: string) => void;
-  updateGroup: (id: string, patch: Partial<Group>) => void;
+  updateGroup: (
+    id: string,
+    patch: Partial<Omit<Group, "appearance">> & {
+      appearance?: Partial<Group["appearance"]>;
+    },
+  ) => void;
   deleteGroup: (id: string) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
   removeCharacterFromGroup: (characterId: string, groupId: string) => void;
@@ -141,10 +146,6 @@ function createDefaultCharacter(position: { x: number; y: number }): Character {
     borderColor: defaultRgb(),
     size: DEFAULT_CHARACTER_SIZE,
   };
-}
-
-function defaultMembershipAppearance(): MembershipAppearance {
-  return { backgroundColor: { r: 100, g: 140, b: 100 } };
 }
 
 export const useDiagramStore = create<DiagramState>()(
@@ -376,11 +377,14 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       groups: s.groups.map((g) => {
         if (g.id !== id) return g;
-        const next = { ...g, ...patch };
-        if (patch.appearance) {
-          next.appearance = { ...g.appearance, ...patch.appearance };
-        }
-        return next;
+        const { appearance: appearancePatch, ...rest } = patch;
+        return {
+          ...g,
+          ...rest,
+          appearance: appearancePatch
+            ? { ...g.appearance, ...appearancePatch }
+            : g.appearance,
+        };
       }),
     })),
 

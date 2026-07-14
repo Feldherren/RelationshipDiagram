@@ -8,6 +8,8 @@ import {
 import { useRafCoalescedCallback } from "../../hooks/useRafCoalescedCallback";
 
 const PASTEL_PALETTE: { label: string; color: RGB }[] = [
+  { label: "White", color: { r: 255, g: 255, b: 255 } },
+  { label: "Black", color: { r: 0, g: 0, b: 0 } },
   { label: "Pastel red", color: { r: 248, g: 155, b: 155 } },
   { label: "Pastel orange", color: { r: 250, g: 197, b: 149 } },
   { label: "Pastel yellow", color: { r: 245, g: 226, b: 145 } },

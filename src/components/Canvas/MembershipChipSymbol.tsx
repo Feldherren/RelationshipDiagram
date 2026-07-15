@@ -14,6 +14,8 @@ import {
   MUSIC_NOTE_PATH,
   ROCK_LAYOUT,
   ROCK_PATH,
+  SKULL_LAYOUT,
+  SKULL_PATH,
   SPARKLE_LAYOUT,
   SPARKLE_PATH,
   SWORD_LAYOUT,
@@ -274,6 +276,21 @@ export function MembershipChipSymbol({
           scaleY={scale}
           offsetX={SPARKLE_LAYOUT.centerX}
           offsetY={SPARKLE_LAYOUT.centerY}
+          listening={false}
+        />
+      );
+    }
+    case "skull": {
+      const scale = glyph * SKULL_LAYOUT.unitScale;
+      return (
+        <Path
+          data={SKULL_PATH}
+          fill={fill}
+          fillRule="evenodd"
+          scaleX={scale}
+          scaleY={scale}
+          offsetX={SKULL_LAYOUT.centerX}
+          offsetY={SKULL_LAYOUT.centerY}
           listening={false}
         />
       );

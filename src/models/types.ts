@@ -69,7 +69,8 @@ export type MembershipSymbol =
   | "breeze"
   | "rock"
   | "plant"
-  | "sparkle";
+  | "sparkle"
+  | "skull";
 
 /** Visual identity for a membership group chip. */
 export interface MembershipAppearance {
@@ -104,6 +105,7 @@ export const MEMBERSHIP_SYMBOLS: {
   { value: "rock", label: "Rock" },
   { value: "plant", label: "Plant" },
   { value: "sparkle", label: "Sparkle" },
+  { value: "skull", label: "Skull" },
 ];
 
 export function isMembershipSymbol(value: unknown): value is MembershipSymbol {

@@ -13,6 +13,8 @@ import {
   MUSIC_NOTE_PATH,
   ROCK_LAYOUT,
   ROCK_PATH,
+  SKULL_LAYOUT,
+  SKULL_PATH,
   SPARKLE_LAYOUT,
   SPARKLE_PATH,
   SWORD_LAYOUT,
@@ -267,6 +269,16 @@ export function MembershipSymbolIcon({
             transform={`scale(${SPARKLE_LAYOUT.unitScale}) translate(${-SPARKLE_LAYOUT.centerX} ${-SPARKLE_LAYOUT.centerY})`}
           >
             <path d={SPARKLE_PATH} fill={COLOR} />
+          </g>
+        </SvgShell>
+      );
+    case "skull":
+      return (
+        <SvgShell title={label}>
+          <g
+            transform={`scale(${SKULL_LAYOUT.unitScale}) translate(${-SKULL_LAYOUT.centerX} ${-SKULL_LAYOUT.centerY})`}
+          >
+            <path d={SKULL_PATH} fill={COLOR} fillRule="evenodd" />
           </g>
         </SvgShell>
       );

@@ -1,22 +1,22 @@
 # Character Relationship Diagram Creator
 
-A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
+A browser-based and desktop editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
 
 ## Important Notes
 This application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
 I can (and do) still read the code, and I'm happy to fix reported issues and consider into feature requests, should anyone make any.
 
-Also, note that whilst screenshots (if and when I add any) will probably demonstrate the [Honey Pigeon](https://stevencolling.itch.io/honey-pigeon) font, this font is not included with the application; you can use any installed font, and I just happen to like Honey Pigeon.
+Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pigeon](https://stevencolling.itch.io/honey-pigeon) font, I have not included Honey Pigeon with the application; you can use any installed font, and I just happen to like Honey Pigeon.
 
 ## Features
-- Create characters, give them names, subtitles, graphics, customised border colour
-- Connect characters (and boxes) with coloured lines (and give the lines labels, a couple of styles, bend them)
+- **Characters** - give them names, subtitles, an image, and a customised border colour
+- **Lines** for relationships - coloured lines with optional labels, a couple choices of styles (straight, dotted, wavy, jagged), can be curved for visibility
 - **Groups** - semantic membership (a character can belong to many groups). Shown as coloured chips on each character’s border; select a group to highlight its members
-- **Boxes** - labelled organisational regions with customisable colours. Drag characters into a box by position; collapse a box to hide whoever is inside it
-- Floating text annotations
-- Saving and loading
-- Image export (entire graphic or selected area) at two distinct levels of zoom (also it estimates the dimensions of the exported image)
+- **Boxes** - labelled organisational regions with customisable colours. Drag characters or text into a box by position; collapse a box to hide whoever is inside it
+- **Text** - floating text
 - Customise the overall diagram - title and subtitle, grid or no grid, background colour, font
+- Saving and loading (*.rdiagram)
+- Image export (entire graphic or selected area) at two distinct levels of zoom (it estimates the dimensions of the exported image)
 
 ## Screenshots
 

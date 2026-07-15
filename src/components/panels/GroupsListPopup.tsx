@@ -9,6 +9,7 @@ export function GroupsListPopup() {
   const groups = useDiagramStore((s) => s.groups);
   const addGroup = useDiagramStore((s) => s.addGroup);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const setToolMode = useDiagramStore((s) => s.setToolMode);
 
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
@@ -32,6 +33,17 @@ export function GroupsListPopup() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
+
+  const selectGroup = (groupId: string) => {
+    setSelection({ type: "group", id: groupId });
+    setOpen(false);
+  };
+
+  const editMembers = (groupId: string) => {
+    setSelection({ type: "group", id: groupId });
+    setToolMode("editGroupMembers");
+    setOpen(false);
+  };
 
   return (
     <div className="groups-list-anchor" ref={rootRef}>
@@ -60,7 +72,7 @@ export function GroupsListPopup() {
               {groups.map((group) => {
                 const selected = selectedGroupId === group.id;
                 return (
-                  <li key={group.id}>
+                  <li key={group.id} className="groups-list-row">
                     <button
                       type="button"
                       className={
@@ -68,10 +80,7 @@ export function GroupsListPopup() {
                           ? "groups-list-item active"
                           : "groups-list-item"
                       }
-                      onClick={() => {
-                        setSelection({ type: "group", id: group.id });
-                        setOpen(false);
-                      }}
+                      onClick={() => selectGroup(group.id)}
                     >
                       <span
                         className="membership-swatch"
@@ -86,6 +95,25 @@ export function GroupsListPopup() {
                       <span className="groups-list-count">
                         {group.memberCharacterIds.length}
                       </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="groups-list-edit"
+                      title="Edit members on canvas"
+                      aria-label={`Edit members of ${group.name}`}
+                      onClick={() => editMembers(group.id)}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        aria-hidden
+                      >
+                        <path
+                          fill="currentColor"
+                          d="M11.6 1.4a1.4 1.4 0 0 1 2 2L5.2 11.8 2 12.8l1-3.2 8.6-8.2Zm1 1-8.5 8.2-.4 1.3 1.3-.4 8.5-8.2-.9-.9Z"
+                        />
+                      </svg>
                     </button>
                   </li>
                 );

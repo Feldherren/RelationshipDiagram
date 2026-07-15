@@ -9,7 +9,6 @@ import {
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
   MIN_FLOATING_TEXT_FONT_SIZE,
-  rgbToCss,
 } from "../../models/types";
 import {
   getBoxById,
@@ -61,10 +60,6 @@ export function SelectionFloat() {
   const updateBox = useDiagramStore((s) => s.updateBox);
   const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
   const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
-  const addCharacterToGroup = useDiagramStore((s) => s.addCharacterToGroup);
-  const removeCharacterFromGroup = useDiagramStore(
-    (s) => s.removeCharacterFromGroup,
-  );
   const toolMode = useDiagramStore((s) => s.toolMode);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
@@ -228,46 +223,6 @@ export function SelectionFloat() {
             }
           />
         </label>
-        <div className="field">
-          <span>Groups</span>
-          {groups.length === 0 ? (
-            <p className="hint">
-              No groups yet. Use Groups in the lower left to add one.
-            </p>
-          ) : (
-            <div className="membership-checklist">
-              {groups.map((group) => {
-                const checked = group.memberCharacterIds.includes(character.id);
-                return (
-                  <label
-                    key={group.id}
-                    className="field checkbox membership-row"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          addCharacterToGroup(character.id, group.id);
-                        } else {
-                          removeCharacterFromGroup(character.id, group.id);
-                        }
-                      }}
-                    />
-                    <span
-                      className="membership-swatch"
-                      style={{
-                        background: rgbToCss(group.appearance.backgroundColor),
-                      }}
-                      aria-hidden
-                    />
-                    <span>{group.name}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           Delete character
         </button>

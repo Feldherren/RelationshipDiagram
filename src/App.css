@@ -85,8 +85,18 @@ body,
   min-height: 0;
 }
 
+.workspace {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
 .canvas-container {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   position: relative;
   overflow: hidden;
 }
@@ -204,18 +214,132 @@ body,
   color: #5c5c5c;
 }
 
-.property-panel {
-  width: 280px;
-  flex-shrink: 0;
+.selection-float {
+  position: absolute;
+  z-index: 15;
+  max-height: calc(100% - 16px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 12px 14px;
   background: #fff;
-  border-left: 1px solid #dde1e6;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+}
+
+.selection-float h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.float-details {
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.float-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.groups-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 16;
+  width: 280px;
+  max-width: min(280px, 100%);
+  display: flex;
+  flex-direction: column;
   padding: 16px;
+  background: #fff;
+  border-right: 1px solid #dde1e6;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
 }
 
-.property-panel h2 {
-  margin: 0 0 16px;
+.groups-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.groups-panel h2 {
+  margin: 0;
   font-size: 16px;
+}
+
+.groups-panel-close {
+  flex-shrink: 0;
+}
+
+.groups-panel-add {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.groups-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.groups-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d8dde3;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groups-list-item:hover {
+  background: #f0f4f8;
+}
+
+.groups-list-item.active {
+  background: #e8f1fb;
+  border-color: #4a90d9;
+}
+
+.groups-list-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groups-list-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.groups-panel-detail {
+  border-top: 1px solid #e6eaef;
+  padding-top: 14px;
+}
+
+.groups-panel-header .btn-secondary,
+.membership-chip-summary .btn-secondary {
+  width: auto;
+  margin-top: 0;
 }
 
 .field {

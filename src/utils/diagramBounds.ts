@@ -6,6 +6,7 @@ import {
   getCollapsedBoxBounds,
   getFloatingTextBounds,
   isCharacterContainedInBox,
+  isFloatingTextContainedInBox,
   resolveBoxBounds,
   mergeBounds,
 } from "./geometry";
@@ -43,6 +44,10 @@ export function collectContentObstacles(
   }
 
   for (const floatingText of diagram.floatingTexts ?? []) {
+    const inCollapsedBox = diagram.boxes.some(
+      (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
+    );
+    if (inCollapsedBox) continue;
     obstacles.push(getFloatingTextBounds(floatingText, fontFamily));
   }
 
@@ -82,6 +87,10 @@ export function computeContentBounds(
   }
 
   for (const floatingText of diagram.floatingTexts ?? []) {
+    const inCollapsedBox = diagram.boxes.some(
+      (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
+    );
+    if (inCollapsedBox) continue;
     const bounds = getFloatingTextBounds(floatingText, fontFamily);
     result = result ? mergeBounds(result, bounds) : bounds;
   }

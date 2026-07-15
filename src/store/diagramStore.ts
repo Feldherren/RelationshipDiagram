@@ -27,6 +27,7 @@ import {
   getBoxCenter,
   getCharactersContainedInBox,
   getEmptyBoxBounds,
+  getFloatingTextsContainedInBox,
   isCharacterContainedInBox,
   resolveBoxBounds,
 } from "../utils/geometry";
@@ -47,7 +48,10 @@ import {
   findConnectionTargetAt,
   sameNodeRef,
 } from "../utils/connection";
-import { getCollapsedBoxForCharacter } from "../utils/lineEndpoints";
+import {
+  getCollapsedBoxForCharacter,
+  getCollapsedBoxForFloatingText,
+} from "../utils/lineEndpoints";
 import {
   createAutosaveSnapshot,
   loadAutosave,
@@ -537,18 +541,31 @@ export const useDiagramStore = create<DiagramState>()(
       const box = s.boxes.find((b) => b.id === id);
       if (!box) return {};
 
-      const containedIds = new Set(
+      const containedCharacterIds = new Set(
         getCharactersContainedInBox(box, s.characters).map((c) => c.id),
+      );
+      const containedFloatingTextIds = new Set(
+        getFloatingTextsContainedInBox(box, s.floatingTexts).map((t) => t.id),
       );
 
       return {
         characters: s.characters.map((c) => {
-          if (!containedIds.has(c.id)) return c;
+          if (!containedCharacterIds.has(c.id)) return c;
           return {
             ...c,
             position: {
               x: c.position.x + delta.dx,
               y: c.position.y + delta.dy,
+            },
+          };
+        }),
+        floatingTexts: s.floatingTexts.map((t) => {
+          if (!containedFloatingTextIds.has(t.id)) return t;
+          return {
+            ...t,
+            position: {
+              x: t.position.x + delta.dx,
+              y: t.position.y + delta.dy,
             },
           };
         }),
@@ -787,6 +804,16 @@ export function isCharacterHidden(
   characters: Character[],
 ): boolean {
   return getCollapsedBoxForCharacter(characterId, boxes, characters) != null;
+}
+
+export function isFloatingTextHidden(
+  floatingTextId: string,
+  boxes: Box[],
+  floatingTexts: FloatingText[],
+): boolean {
+  return (
+    getCollapsedBoxForFloatingText(floatingTextId, boxes, floatingTexts) != null
+  );
 }
 
 export function getExpandedBoxBounds(box: Box) {

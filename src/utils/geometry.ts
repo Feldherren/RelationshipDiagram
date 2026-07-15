@@ -231,13 +231,10 @@ export function resolveBoxBounds(box: Box): Bounds | null {
   return getEmptyBoxBounds(box.anchorPosition);
 }
 
-export function isCharacterContainedInBox(
-  character: Character,
-  box: Box,
-): boolean {
+export function isPointContainedInBox(point: Point, box: Box): boolean {
   const bounds = resolveBoxBounds(box);
   if (!bounds) return false;
-  const { x, y } = character.position;
+  const { x, y } = point;
   return (
     x >= bounds.x &&
     x <= bounds.x + bounds.width &&
@@ -246,11 +243,32 @@ export function isCharacterContainedInBox(
   );
 }
 
+export function isCharacterContainedInBox(
+  character: Character,
+  box: Box,
+): boolean {
+  return isPointContainedInBox(character.position, box);
+}
+
 export function getCharactersContainedInBox(
   box: Box,
   characters: Character[],
 ): Character[] {
   return characters.filter((c) => isCharacterContainedInBox(c, box));
+}
+
+export function isFloatingTextContainedInBox(
+  floatingText: FloatingText,
+  box: Box,
+): boolean {
+  return isPointContainedInBox(floatingText.position, box);
+}
+
+export function getFloatingTextsContainedInBox(
+  box: Box,
+  floatingTexts: FloatingText[],
+): FloatingText[] {
+  return floatingTexts.filter((t) => isFloatingTextContainedInBox(t, box));
 }
 
 export function resizeBoxBounds(

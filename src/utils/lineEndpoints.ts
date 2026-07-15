@@ -1,7 +1,15 @@
-import type { Box, Character, Diagram, Line, NodeRef } from "../models/types";
+import type {
+  Box,
+  Character,
+  Diagram,
+  FloatingText,
+  Line,
+  NodeRef,
+} from "../models/types";
 import {
   getCharacterById,
   isCharacterContainedInBox,
+  isFloatingTextContainedInBox,
 } from "./geometry";
 
 export interface ResolvedLineEndpoint {
@@ -21,6 +29,18 @@ export function getCollapsedBoxForCharacter(
   if (!character) return undefined;
   return boxes.find(
     (b) => b.collapsed && isCharacterContainedInBox(character, b),
+  );
+}
+
+export function getCollapsedBoxForFloatingText(
+  floatingTextId: string,
+  boxes: Box[],
+  floatingTexts: FloatingText[],
+): Box | undefined {
+  const floatingText = floatingTexts.find((t) => t.id === floatingTextId);
+  if (!floatingText) return undefined;
+  return boxes.find(
+    (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
   );
 }
 

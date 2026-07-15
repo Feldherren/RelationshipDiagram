@@ -13,7 +13,11 @@ import {
   CanvasContextMenu,
   type CanvasContextMenuState,
 } from "./CanvasContextMenu";
-import { useDiagramStore, isCharacterHidden } from "../../store/diagramStore";
+import {
+  useDiagramStore,
+  isCharacterHidden,
+  isFloatingTextHidden,
+} from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
@@ -655,7 +659,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               />
             ))}
 
-          {floatingTexts.map((floatingText) => (
+          {floatingTexts
+            .filter(
+              (t) => !isFloatingTextHidden(t.id, boxes, floatingTexts),
+            )
+            .map((floatingText) => (
             <FloatingTextNode
               key={floatingText.id}
               floatingText={floatingText}

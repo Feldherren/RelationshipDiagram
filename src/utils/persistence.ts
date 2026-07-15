@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import i18n from "../i18n";
 import type {
   Bounds,
   Box,
@@ -265,7 +266,7 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
   const content = serializeDiagram(diagram);
   const suggestedName = filename ?? getDefaultDiagramFilename(diagram);
   const diagramFilter = {
-    name: "Character Relationship Diagram Creator",
+    name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
   };
 
@@ -307,7 +308,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       const [handle] = await window.showOpenFilePicker!({
         types: [
           {
-            description: "Character Relationship Diagram Creator",
+            description: i18n.t("fileFilter.diagram"),
             accept: { "application/json": [".rdiagram", ".json"] },
           },
         ],
@@ -378,7 +379,7 @@ export async function downloadDataUrl(
   dataUrl: string,
   filename: string,
 ): Promise<boolean> {
-  const pngFilter = { name: "PNG Image", extensions: ["png"] };
+  const pngFilter = { name: i18n.t("fileFilter.png"), extensions: ["png"] };
 
   if (isTauriApp()) {
     const blob = dataUrlToBlob(dataUrl);

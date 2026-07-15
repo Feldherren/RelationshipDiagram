@@ -107,6 +107,22 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 
 Diagrams are saved as `.rdiagram` JSON with `schemaVersion: 2` (`groups` for membership, `boxes` for organisational regions). Images are embedded as base64 data URLs for single-file portability. Opening a `schemaVersion: 1` file migrates each old combined group into one box (same id, so lines keep working) plus one membership group.
 
+## Translating the UI
+
+The interface is localised with [i18next](https://www.i18next.com/). English (`en`) is the source language (British spellings such as *colour* / *Customise*). Diagram content (character names, labels, and so on) is never auto-translated — only chrome strings.
+
+To add a language:
+
+1. Copy [`src/i18n/locales/_template.json`](src/i18n/locales/_template.json) to `src/i18n/locales/xx.json` (or `xx-YY.json`, e.g. `pt-BR.json`).
+2. Translate the string **values**. Keep keys and `{{placeholders}}` (such as `{{name}}`, `{{n}}`, `{{count}}`) unchanged.
+3. Register the locale in [`src/i18n/index.ts`](src/i18n/index.ts):
+   - Import the JSON file
+   - Add it to `resources`
+   - Add `{ code: "xx", nativeName: "…" }` to `SUPPORTED_LOCALES` (`nativeName` should be the language’s own name, e.g. `Français`)
+4. Open **Settings → Language**, pick the new locale (or **System** to follow the browser/OS), and check the UI.
+
+Please do not submit machine-only translations without review by someone fluent in the target language.
+
 # Licensing Information
 
 I vibe-coded this, *mostly*, but should anyone want to use or modify this tool, [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) seems appropriate. Also, please pay attention to the licenses of several resources used in the making of the tool, listed below.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type Konva from "konva";
+import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { exportStageToPng, getAutoExportBounds } from "../../utils/export";
 import { downloadDataUrl, getDefaultExportFilename } from "../../utils/persistence";
@@ -13,6 +14,7 @@ interface ExportDialogProps {
 }
 
 export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
+  const { t } = useTranslation();
   const characters = useDiagramStore((s) => s.characters);
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
@@ -108,7 +110,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
       if (saved) onClose();
     } catch (err) {
       console.error(err);
-      alert("Failed to export PNG.");
+      alert(t("export.failed"));
     }
   };
 
@@ -122,22 +124,22 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>Export diagram</h2>
+        <h2>{t("export.title")}</h2>
 
         <label className="field">
-          <span>Bounds</span>
+          <span>{t("export.bounds")}</span>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as "auto" | "custom")}
           >
-            <option value="auto">Auto (content only)</option>
-            <option value="custom">Custom region</option>
+            <option value="auto">{t("export.boundsAuto")}</option>
+            <option value="custom">{t("export.boundsCustom")}</option>
           </select>
         </label>
 
         {mode === "auto" && (
           <label className="field">
-            <span>Padding (px)</span>
+            <span>{t("export.padding")}</span>
             <input
               type="number"
               min={0}
@@ -149,41 +151,39 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
         )}
 
         {mode === "custom" && !exportBounds && (
-          <p className="hint">
-            No custom region set. Click below to draw a region on the canvas.
-          </p>
+          <p className="hint">{t("export.noCustomRegion")}</p>
         )}
 
         {mode === "custom" && (
           <button type="button" className="btn-secondary" onClick={startCustomBounds}>
-            Draw export region on canvas
+            {t("export.drawRegion")}
           </button>
         )}
 
         <label className="field">
-          <span>Resolution</span>
+          <span>{t("export.resolution")}</span>
           <select
             value={pixelRatio}
             onChange={(e) => setPixelRatio(Number(e.target.value))}
           >
-            <option value={1}>100% (1x)</option>
-            <option value={2}>200% (2x)</option>
+            <option value={1}>{t("export.res1x")}</option>
+            <option value={2}>{t("export.res2x")}</option>
           </select>
         </label>
 
         {activeBounds ? (
           <div className="export-preview">
             <p>
-              <strong>Dimensions:</strong> {width} × {height} px
+              <strong>{t("export.dimensions")}</strong> {width} × {height} px
             </p>
           </div>
         ) : (
-          <p className="hint">Add content to the diagram before exporting.</p>
+          <p className="hint">{t("export.empty")}</p>
         )}
 
         <div className="dialog-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t("export.cancel")}
           </button>
           <button
             type="button"
@@ -191,7 +191,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
             disabled={!activeBounds}
             onClick={handleExport}
           >
-            Download PNG
+            {t("export.downloadPng")}
           </button>
         </div>
       </div>

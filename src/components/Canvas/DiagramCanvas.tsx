@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Layer, Line, Rect } from "react-konva";
 import type Konva from "konva";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
 import { FloatingTextNode } from "./FloatingTextNode";
@@ -85,6 +86,7 @@ function ScaleStrokeRect({
 }
 
 export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
 
@@ -430,15 +432,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         onAddFloatingText={addFloatingTextAt}
       />
       {connectFrom && (
-        <div className="connect-hint">
-          Click a character or box to connect, or the same one for a self-loop
-          (Esc to cancel)
-        </div>
+        <div className="connect-hint">{t("canvas.connectHint")}</div>
       )}
       {toolMode === "editGroupMembers" && !connectFrom && (
-        <div className="connect-hint">
-          Click characters to toggle membership (Esc when done)
-        </div>
+        <div className="connect-hint">{t("canvas.editMembersHint")}</div>
       )}
       <ViewportStage
         stageRef={stageRef}

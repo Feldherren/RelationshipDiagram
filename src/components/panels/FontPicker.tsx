@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DEFAULT_DIAGRAM_FONT,
   isDefaultDiagramFont,
 } from "../../utils/diagramFont";
 import {
-  FONT_PREVIEW_TEXT,
   clearLocalFontCache,
   formatUiFontFamily,
   isDeprecatedFontFamily,
@@ -19,6 +19,7 @@ interface FontPickerProps {
 }
 
 export function FontPicker({ value, onChange }: FontPickerProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [systemFonts, setSystemFonts] = useState<SystemFontOption[]>([]);
   const [systemFontsLoaded, setSystemFontsLoaded] = useState(false);
@@ -26,6 +27,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
   const [loadingSystemFonts, setLoadingSystemFonts] = useState(false);
 
   const systemFontAccess = isSystemFontAccessSupported();
+  const previewText = t("font.previewSample");
 
   const extraFonts = useMemo(() => {
     if (isDefaultDiagramFont(value) || isDeprecatedFontFamily(value)) return [];
@@ -55,9 +57,9 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
       setSystemFontsLoaded(true);
     } catch (err) {
       if ((err as DOMException).name === "NotAllowedError") {
-        setSystemFontsError("Permission to access local fonts was denied.");
+        setSystemFontsError(t("font.permissionDenied"));
       } else {
-        setSystemFontsError("Could not read installed fonts.");
+        setSystemFontsError(t("font.readFailed"));
         console.error(err);
       }
     } finally {
@@ -78,7 +80,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
           className="font-picker-preview"
           style={{ fontFamily: formatUiFontFamily(family) }}
         >
-          {FONT_PREVIEW_TEXT}
+          {previewText}
         </span>
         <span className="font-picker-meta">
           <span className="font-picker-name">{label}</span>
@@ -91,35 +93,38 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
   return (
     <div className="font-picker">
       <label className="field">
-        <span>Search fonts</span>
+        <span>{t("font.search")}</span>
         <input
           type="search"
           value={query}
-          placeholder="Filter by name"
+          placeholder={t("font.filterPlaceholder")}
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
 
-      <div className="font-picker-list" role="listbox" aria-label="Diagram font">
-        {renderOption(DEFAULT_DIAGRAM_FONT, "Default (Arial)")}
+      <div
+        className="font-picker-list"
+        role="listbox"
+        aria-label={t("font.listAria")}
+      >
+        {renderOption(DEFAULT_DIAGRAM_FONT, t("font.defaultArial"))}
 
         {extraFonts.map((family) =>
-          renderOption(family, family, "Saved in diagram"),
+          renderOption(family, family, t("font.savedInDiagram")),
         )}
 
         {systemFontAccess && !systemFontsLoaded && (
           <div className="font-picker-empty">
-            <p className="hint">
-              Installed fonts can be listed with your permission. The browser
-              will ask before sharing them with this app.
-            </p>
+            <p className="hint">{t("font.permissionHint")}</p>
             <button
               type="button"
               className="btn-secondary"
               disabled={loadingSystemFonts}
               onClick={() => void loadSystemFonts()}
             >
-              {loadingSystemFonts ? "Loading fonts…" : "Show installed fonts"}
+              {loadingSystemFonts
+                ? t("font.loading")
+                : t("font.showInstalled")}
             </button>
           </div>
         )}
@@ -133,10 +138,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
       </div>
 
       {!systemFontAccess && (
-        <p className="hint">
-          This browser cannot list installed fonts. Use Chrome or Edge on desktop
-          to choose fonts installed on your system.
-        </p>
+        <p className="hint">{t("font.unsupportedBrowser")}</p>
       )}
     </div>
   );

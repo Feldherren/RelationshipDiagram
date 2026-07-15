@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { rgbToCss } from "../../models/types";
 
 export function GroupsListPopup() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const selection = useDiagramStore((s) => s.selection);
@@ -58,13 +60,15 @@ export function GroupsListPopup() {
   return (
     <div className="groups-list-anchor" ref={rootRef}>
       {open && (
-        <div className="groups-list-popup" role="dialog" aria-label="Groups">
+        <div
+          className="groups-list-popup"
+          role="dialog"
+          aria-label={t("groups.title")}
+        >
           <div className="groups-list-popup-header">
-            <h2>Groups</h2>
+            <h2>{t("groups.title")}</h2>
           </div>
-          <p className="hint">
-            Select a group to highlight members and edit it.
-          </p>
+          <p className="hint">{t("groups.hint")}</p>
           <button
             type="button"
             className="btn-primary groups-list-add"
@@ -73,10 +77,10 @@ export function GroupsListPopup() {
               setOpen(false);
             }}
           >
-            Add group
+            {t("groups.add")}
           </button>
           {groups.length === 0 ? (
-            <p className="hint">No groups yet.</p>
+            <p className="hint">{t("groups.empty")}</p>
           ) : (
             <ul className="groups-list">
               {groups.map((group) => {
@@ -109,8 +113,10 @@ export function GroupsListPopup() {
                     <button
                       type="button"
                       className="groups-list-edit"
-                      title="Add or remove members on canvas"
-                      aria-label={`Add or remove members of ${group.name}`}
+                      title={t("groups.editMembersTooltip")}
+                      aria-label={t("groups.editMembersAria", {
+                        name: group.name,
+                      })}
                       onClick={() => editMembers(group.id)}
                     >
                       <span className="groups-list-edit-icon" aria-hidden>
@@ -133,7 +139,7 @@ export function GroupsListPopup() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        Groups
+        {t("groups.title")}
       </button>
     </div>
   );

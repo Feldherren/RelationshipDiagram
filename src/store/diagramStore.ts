@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
+import i18n from "../i18n";
 import type {
   Bounds,
   Box,
@@ -400,7 +401,7 @@ export const useDiagramStore = create<DiagramState>()(
     const { groups } = get();
     const group: Group = {
       id: uuidv4(),
-      name: name?.trim() || `Group ${groups.length + 1}`,
+      name: name?.trim() || i18n.t("defaults.groupName", { n: groups.length + 1 }),
       memberCharacterIds: [],
       appearance: defaultMembershipAppearance(),
     };
@@ -482,7 +483,7 @@ export const useDiagramStore = create<DiagramState>()(
     const bounds = getEmptyBoxBounds(position);
     const box: Box = {
       id: uuidv4(),
-      name: `Box ${boxes.length + 1}`,
+      name: i18n.t("defaults.boxName", { n: boxes.length + 1 }),
       collapsed: false,
       anchorPosition: position,
       collapsedPosition: position,
@@ -790,7 +791,7 @@ export const useDiagramStore = create<DiagramState>()(
 );
 
 export function getCharacterInitials(name: string): string {
-  if (!name.trim()) return "?";
+  if (!name.trim()) return i18n.t("defaults.initialsEmpty");
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();

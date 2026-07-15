@@ -1,4 +1,5 @@
 import { Stage, Layer, Group as KonvaGroup } from "react-konva";
+import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { MembershipSymbolPicker } from "../pickers/MembershipSymbolPicker";
@@ -17,6 +18,7 @@ export function MembershipAppearanceDialog({
   open,
   onClose,
 }: MembershipAppearanceDialogProps) {
+  const { t } = useTranslation();
   const groups = useDiagramStore((s) => s.groups);
   const updateGroup = useDiagramStore((s) => s.updateGroup);
   const group = getGroupById({ groups }, groupId);
@@ -28,13 +30,11 @@ export function MembershipAppearanceDialog({
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>Chip appearance</h2>
-        <p className="hint">
-          How this group looks on member characters.
-        </p>
+        <h2>{t("chipAppearance.title")}</h2>
+        <p className="hint">{t("chipAppearance.hint")}</p>
 
         <div className="field">
-          <span>Preview</span>
+          <span>{t("chipAppearance.preview")}</span>
           <div className="membership-chip-preview">
             <Stage width={previewSize} height={previewSize}>
               <Layer>
@@ -47,7 +47,7 @@ export function MembershipAppearanceDialog({
         </div>
 
         <RgbPicker
-          label="Background colour"
+          label={t("chipAppearance.backgroundColour")}
           value={group.appearance.backgroundColor}
           onChange={(backgroundColor) =>
             updateGroup(group.id, { appearance: { backgroundColor } })
@@ -60,14 +60,14 @@ export function MembershipAppearanceDialog({
           }
         />
         <RgbPicker
-          label="Symbol colour"
+          label={t("chipAppearance.symbolColour")}
           value={group.appearance.symbolColor}
           onChange={(symbolColor) =>
             updateGroup(group.id, { appearance: { symbolColor } })
           }
         />
         <RgbPicker
-          label="Border colour"
+          label={t("chipAppearance.borderColour")}
           value={group.appearance.borderColor}
           onChange={(borderColor) =>
             updateGroup(group.id, { appearance: { borderColor } })
@@ -76,7 +76,7 @@ export function MembershipAppearanceDialog({
 
         <div className="dialog-actions">
           <button type="button" className="btn-primary" onClick={onClose}>
-            Done
+            {t("chipAppearance.done")}
           </button>
         </div>
       </div>

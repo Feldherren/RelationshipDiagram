@@ -15,9 +15,11 @@
   "dependencies": {
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
+    "i18next": "^26.3.6",
     "konva": "^10.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.9",
     "react-konva": "^19.2.5",
     "use-image": "^1.1.4",
     "uuid": "^14.0.1",

@@ -1,5 +1,13 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import {
+  SUPPORTED_LOCALES,
+  SYSTEM_LANGUAGE,
+  getLanguagePreference,
+  setLanguagePreference,
+} from "../../i18n";
 import { BackgroundColorPicker } from "../pickers/BackgroundColorPicker";
 import { FontPicker } from "./FontPicker";
 
@@ -9,6 +17,10 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+  const { t } = useTranslation();
+  const [languagePreference, setLanguagePreferenceState] = useState(
+    getLanguagePreference,
+  );
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
@@ -30,83 +42,104 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>Diagram settings</h2>
+        <h2>{t("settings.title")}</h2>
 
-        <label className="field">
-          <span>Diagram title</span>
-          <input
-            type="text"
-            value={diagramTitle}
-            placeholder="Untitled diagram"
-            onChange={(e) => setDiagramTitle(e.target.value)}
+        <section className="settings-section">
+          <h3>{t("settings.applicationSection")}</h3>
+          <label className="field">
+            <span>{t("settings.language")}</span>
+            <select
+              value={languagePreference}
+              onChange={(e) => {
+                const next = e.target.value;
+                setLanguagePreferenceState(next);
+                void setLanguagePreference(next);
+              }}
+            >
+              <option value={SYSTEM_LANGUAGE}>
+                {t("settings.languageSystem")}
+              </option>
+              {SUPPORTED_LOCALES.map((locale) => (
+                <option key={locale.code} value={locale.code}>
+                  {locale.nativeName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">{t("settings.languageHint")}</p>
+        </section>
+
+        <section className="settings-section">
+          <h3>{t("settings.diagramSection")}</h3>
+
+          <label className="field">
+            <span>{t("settings.diagramTitle")}</span>
+            <input
+              type="text"
+              value={diagramTitle}
+              placeholder={t("settings.titlePlaceholder")}
+              onChange={(e) => setDiagramTitle(e.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span>{t("settings.diagramSubtitle")}</span>
+            <input
+              type="text"
+              value={diagramSubtitle}
+              placeholder={t("settings.subtitlePlaceholder")}
+              onChange={(e) => setDiagramSubtitle(e.target.value)}
+            />
+          </label>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={showDiagramHeader}
+              onChange={(e) => setShowDiagramHeader(e.target.checked)}
+            />
+            <span>{t("settings.showHeader")}</span>
+          </label>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={showGrid}
+              onChange={(e) => setShowGrid(e.target.checked)}
+            />
+            <span>{t("settings.showGrid")}</span>
+          </label>
+
+          <BackgroundColorPicker
+            label={t("settings.backgroundColour")}
+            value={diagramBackgroundColor}
+            onChange={setDiagramBackgroundColor}
           />
-        </label>
 
-        <label className="field">
-          <span>Diagram subtitle</span>
-          <input
-            type="text"
-            value={diagramSubtitle}
-            placeholder="Optional subtitle"
-            onChange={(e) => setDiagramSubtitle(e.target.value)}
-          />
-        </label>
+          <div className="field">
+            <span>{t("settings.diagramFont")}</span>
+            <FontPicker
+              value={diagramFontFamily}
+              onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
+            />
+          </div>
 
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={showDiagramHeader}
-            onChange={(e) => setShowDiagramHeader(e.target.checked)}
-          />
-          <span>Show title and subtitle</span>
-        </label>
+          {fontMissing && (
+            <p className="hint">
+              {t("settings.fontMissing", { font: diagramFontFamily })}
+            </p>
+          )}
 
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={showGrid}
-            onChange={(e) => setShowGrid(e.target.checked)}
-          />
-          <span>Show background grid</span>
-        </label>
+          {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
+            <p className="hint">{t("settings.customFontHint")}</p>
+          )}
 
-        <BackgroundColorPicker
-          label="Background colour"
-          value={diagramBackgroundColor}
-          onChange={setDiagramBackgroundColor}
-        />
-
-        <div className="field">
-          <span>Diagram font</span>
-          <FontPicker
-            value={diagramFontFamily}
-            onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
-          />
-        </div>
-
-        {fontMissing && (
-          <p className="hint">
-            The font &ldquo;{diagramFontFamily}&rdquo; is not available on this
-            device. Choose it from installed fonts above. Diagram files only
-            store the font name, not the font file itself.
-          </p>
-        )}
-
-        {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
-          <p className="hint">
-            Custom fonts must be installed on this device. They are not saved
-            inside diagram files.
-          </p>
-        )}
-
-        <p className="hint">
-          Diagram font applies to canvas labels only. The application interface
-          keeps its default font.
-        </p>
+          <p className="hint">{t("settings.uiFontHint")}</p>
+        </section>
 
         <div className="dialog-actions">
           <button type="button" className="btn-primary" onClick={onClose}>
-            Done
+            {t("settings.done")}
           </button>
         </div>
       </div>

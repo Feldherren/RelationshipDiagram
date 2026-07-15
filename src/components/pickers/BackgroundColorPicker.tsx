@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { RGB } from "../../models/types";
 import { colorsEqual, parseHexColor } from "../../models/types";
 import type { DiagramBackgroundColor } from "../../utils/diagramBackground";
@@ -29,6 +30,7 @@ export function BackgroundColorPicker({
   value,
   onChange,
 }: BackgroundColorPickerProps) {
+  const { t } = useTranslation();
   const colorInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(value);
   const hasPendingCommitRef = useRef(false);
@@ -85,16 +87,17 @@ export function BackgroundColorPicker({
       <span>{label}</span>
       <div className="color-picker-row">
         {BACKGROUND_PRESETS.map((entry) => {
-          const selected = selectedPreset?.label === entry.label;
+          const selected = selectedPreset?.id === entry.id;
+          const swatchLabel = t(`background.${entry.id}`);
           return (
             <button
-              key={entry.label}
+              key={entry.id}
               type="button"
               className={`color-swatch${
                 entry.color === null ? " color-swatch-transparent" : ""
               }${selected ? " selected" : ""}`}
-              title={entry.label}
-              aria-label={entry.label}
+              title={swatchLabel}
+              aria-label={swatchLabel}
               aria-pressed={selected}
               style={
                 entry.color
@@ -108,8 +111,8 @@ export function BackgroundColorPicker({
         <button
           type="button"
           className={`color-swatch color-swatch-custom${isCustom ? " selected" : ""}`}
-          title="Custom colour"
-          aria-label="Custom colour"
+          title={t("colour.custom")}
+          aria-label={t("colour.custom")}
           aria-pressed={isCustom}
           onClick={() => colorInputRef.current?.click()}
         >
@@ -134,7 +137,7 @@ export function BackgroundColorPicker({
           value={draft === null ? "transparent" : hexDraft}
           readOnly={draft === null}
           spellCheck={false}
-          aria-label={`${label} hex code`}
+          aria-label={t("colour.hexAria", { label })}
           onFocus={() => {
             if (draft === null) return;
             setIsEditingHex(true);

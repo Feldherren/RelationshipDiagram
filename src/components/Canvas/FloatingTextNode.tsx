@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Group, Rect, Text } from "react-konva";
+import { useTranslation } from "react-i18next";
 import type { FloatingText } from "../../models/types";
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
@@ -23,7 +24,6 @@ interface FloatingTextNodeProps {
   onDragEnd: (pos: { x: number; y: number }) => void;
 }
 
-const PLACEHOLDER = "Text";
 const SELECTION_STROKE = "#4a90d9";
 
 export function FloatingTextNode({
@@ -34,11 +34,14 @@ export function FloatingTextNode({
   onDragMove,
   onDragEnd,
 }: FloatingTextNodeProps) {
+  const { t } = useTranslation();
   const allowDragRef = useRef(true);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const fontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const hasText = Boolean(floatingText.text.trim());
-  const displayText = hasText ? floatingText.text : PLACEHOLDER;
+  const displayText = hasText
+    ? floatingText.text
+    : t("defaults.floatingTextPlaceholder");
   const fontSize = floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
   const color = floatingText.color ?? DEFAULT_FLOATING_TEXT_COLOR;
   const { width, height } = getFloatingTextSize(

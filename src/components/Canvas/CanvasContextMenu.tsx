@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface CanvasContextMenuState {
   screenX: number;
@@ -24,6 +25,7 @@ export function CanvasContextMenu({
   onAddGroup,
   onAddFloatingText,
 }: CanvasContextMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export function CanvasContextMenu({
           onClose();
         }}
       >
-        Add character
+        {t("context.addCharacter")}
       </button>
       <button
         type="button"
@@ -75,7 +77,7 @@ export function CanvasContextMenu({
           onClose();
         }}
       >
-        Add box
+        {t("context.addBox")}
       </button>
       <button
         type="button"
@@ -85,7 +87,7 @@ export function CanvasContextMenu({
           onClose();
         }}
       >
-        Add group
+        {t("context.addGroup")}
       </button>
       <button
         type="button"
@@ -95,7 +97,7 @@ export function CanvasContextMenu({
           onClose();
         }}
       >
-        Add text
+        {t("context.addText")}
       </button>
     </div>
   );

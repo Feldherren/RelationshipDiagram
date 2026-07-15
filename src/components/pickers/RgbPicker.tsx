@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { RGB } from "../../models/types";
 import {
   colorsEqual,
@@ -7,16 +8,16 @@ import {
 } from "../../models/types";
 import { useRafCoalescedCallback } from "../../hooks/useRafCoalescedCallback";
 
-const PASTEL_PALETTE: { label: string; color: RGB }[] = [
-  { label: "White", color: { r: 255, g: 255, b: 255 } },
-  { label: "Black", color: { r: 0, g: 0, b: 0 } },
-  { label: "Pastel red", color: { r: 248, g: 155, b: 155 } },
-  { label: "Pastel orange", color: { r: 250, g: 197, b: 149 } },
-  { label: "Pastel yellow", color: { r: 245, g: 226, b: 145 } },
-  { label: "Pastel green", color: { r: 166, g: 222, b: 173 } },
-  { label: "Pastel blue", color: { r: 150, g: 199, b: 246 } },
-  { label: "Pastel indigo", color: { r: 170, g: 176, b: 245 } },
-  { label: "Pastel violet", color: { r: 207, g: 154, b: 245 } },
+const PASTEL_PALETTE: { id: string; color: RGB }[] = [
+  { id: "white", color: { r: 255, g: 255, b: 255 } },
+  { id: "black", color: { r: 0, g: 0, b: 0 } },
+  { id: "pastelRed", color: { r: 248, g: 155, b: 155 } },
+  { id: "pastelOrange", color: { r: 250, g: 197, b: 149 } },
+  { id: "pastelYellow", color: { r: 245, g: 226, b: 145 } },
+  { id: "pastelGreen", color: { r: 166, g: 222, b: 173 } },
+  { id: "pastelBlue", color: { r: 150, g: 199, b: 246 } },
+  { id: "pastelIndigo", color: { r: 170, g: 176, b: 245 } },
+  { id: "pastelViolet", color: { r: 207, g: 154, b: 245 } },
 ];
 
 interface RgbPickerProps {
@@ -26,6 +27,7 @@ interface RgbPickerProps {
 }
 
 export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
+  const { t } = useTranslation();
   const colorInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(value);
   const hasPendingCommitRef = useRef(false);
@@ -80,14 +82,15 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
       <span>{label}</span>
       <div className="color-picker-row">
         {PASTEL_PALETTE.map((entry) => {
-          const selected = selectedPreset?.label === entry.label;
+          const selected = selectedPreset?.id === entry.id;
+          const swatchLabel = t(`colour.${entry.id}`);
           return (
             <button
-              key={entry.label}
+              key={entry.id}
               type="button"
               className={`color-swatch${selected ? " selected" : ""}`}
-              title={entry.label}
-              aria-label={entry.label}
+              title={swatchLabel}
+              aria-label={swatchLabel}
               aria-pressed={selected}
               style={{ backgroundColor: rgbToHex(entry.color) }}
               onClick={() => applyColor(entry.color)}
@@ -97,8 +100,8 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
         <button
           type="button"
           className={`color-swatch color-swatch-custom${isCustom ? " selected" : ""}`}
-          title="Custom colour"
-          aria-label="Custom colour"
+          title={t("colour.custom")}
+          aria-label={t("colour.custom")}
           aria-pressed={isCustom}
           onClick={() => colorInputRef.current?.click()}
         >
@@ -119,7 +122,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
           className="color-hex-input"
           value={hexDraft}
           spellCheck={false}
-          aria-label={`${label} hex code`}
+          aria-label={t("colour.hexAria", { label })}
           onFocus={() => setIsEditingHex(true)}
           onChange={(e) => {
             const next = e.target.value;

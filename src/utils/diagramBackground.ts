@@ -6,17 +6,17 @@ export const DEFAULT_DIAGRAM_BACKGROUND: RGB = { r: 250, g: 251, b: 252 };
 export type DiagramBackgroundColor = RGB | null;
 
 export const BACKGROUND_PRESETS: {
-  label: string;
+  id: string;
   color: DiagramBackgroundColor;
 }[] = [
-  { label: "Off-white", color: DEFAULT_DIAGRAM_BACKGROUND },
-  { label: "Pale rose", color: { r: 252, g: 239, b: 239 } },
-  { label: "Pale peach", color: { r: 253, g: 243, b: 232 } },
-  { label: "Pale cream", color: { r: 252, g: 250, b: 239 } },
-  { label: "Pale mint", color: { r: 238, g: 248, b: 240 } },
-  { label: "Pale sky", color: { r: 238, g: 245, b: 252 } },
-  { label: "Pale lavender", color: { r: 243, g: 238, b: 252 } },
-  { label: "Transparent", color: null },
+  { id: "offWhite", color: DEFAULT_DIAGRAM_BACKGROUND },
+  { id: "paleRose", color: { r: 252, g: 239, b: 239 } },
+  { id: "palePeach", color: { r: 253, g: 243, b: 232 } },
+  { id: "paleCream", color: { r: 252, g: 250, b: 239 } },
+  { id: "paleMint", color: { r: 238, g: 248, b: 240 } },
+  { id: "paleSky", color: { r: 238, g: 245, b: 252 } },
+  { id: "paleLavender", color: { r: 243, g: 238, b: 252 } },
+  { id: "transparent", color: null },
 ];
 
 export function resolveDiagramBackground(

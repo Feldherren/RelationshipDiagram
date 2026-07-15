@@ -1,4 +1,5 @@
 import useImage from "use-image";
+import { useTranslation } from "react-i18next";
 import type { Character } from "../../models/types";
 import {
   getCoverImageExcess,
@@ -11,6 +12,7 @@ interface ImageFocusControlsProps {
 }
 
 export function ImageFocusControls({ character }: ImageFocusControlsProps) {
+  const { t } = useTranslation();
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
   const [image] = useImage(character.imageData ?? "", "anonymous");
   const focus = resolveImageFocus(character.imageFocus);
@@ -31,9 +33,9 @@ export function ImageFocusControls({ character }: ImageFocusControlsProps) {
   return (
     <>
       <label className="field">
-        <span>Image vertical position</span>
+        <span>{t("imageFocus.vertical")}</span>
         <div className="range-row">
-          <span className="range-end">Top</span>
+          <span className="range-end">{t("imageFocus.top")}</span>
           <input
             type="range"
             min={0}
@@ -42,16 +44,16 @@ export function ImageFocusControls({ character }: ImageFocusControlsProps) {
             value={Math.round(focus.y * 100)}
             onChange={(e) => updateFocus({ y: Number(e.target.value) / 100 })}
           />
-          <span className="range-end">Bottom</span>
+          <span className="range-end">{t("imageFocus.bottom")}</span>
         </div>
         {excess.excessY < 1 && (
-          <span className="hint-inline">No vertical crop room for this image.</span>
+          <span className="hint-inline">{t("imageFocus.noVerticalCrop")}</span>
         )}
       </label>
       <label className="field">
-        <span>Image horizontal position</span>
+        <span>{t("imageFocus.horizontal")}</span>
         <div className="range-row">
-          <span className="range-end">Left</span>
+          <span className="range-end">{t("imageFocus.left")}</span>
           <input
             type="range"
             min={0}
@@ -60,10 +62,12 @@ export function ImageFocusControls({ character }: ImageFocusControlsProps) {
             value={Math.round(focus.x * 100)}
             onChange={(e) => updateFocus({ x: Number(e.target.value) / 100 })}
           />
-          <span className="range-end">Right</span>
+          <span className="range-end">{t("imageFocus.right")}</span>
         </div>
         {excess.excessX < 1 && (
-          <span className="hint-inline">No horizontal crop room for this image.</span>
+          <span className="hint-inline">
+            {t("imageFocus.noHorizontalCrop")}
+          </span>
         )}
       </label>
     </>

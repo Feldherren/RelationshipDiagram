@@ -19,6 +19,7 @@ import {
   MIN_BOX_HEIGHT,
   MIN_BOX_WIDTH,
 } from "../models/types";
+import i18n from "../i18n";
 import {
   CHARACTER_LABEL_GAP,
   CHARACTER_LABEL_PADDING_X,
@@ -87,7 +88,9 @@ export function getFloatingTextBounds(
   floatingText: FloatingText,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Bounds {
-  const displayText = floatingText.text.trim() ? floatingText.text : "Text";
+  const displayText = floatingText.text.trim()
+    ? floatingText.text
+    : i18n.t("defaults.floatingTextPlaceholder");
   const fontSize = floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
   const size = getFloatingTextSize(displayText, fontSize, fontFamily);
   const { x, y } = floatingText.position;

@@ -1,11 +1,7 @@
+import { useTranslation } from "react-i18next";
 import type { BorderShape } from "../../models/types";
 
-const SHAPES: { value: BorderShape; label: string }[] = [
-  { value: "circle", label: "Circle" },
-  { value: "square", label: "Square" },
-  { value: "pentagon", label: "Pentagon" },
-  { value: "hexagon", label: "Hexagon" },
-];
+const SHAPES: BorderShape[] = ["circle", "square", "pentagon", "hexagon"];
 
 interface ShapePickerProps {
   value: BorderShape;
@@ -13,16 +9,18 @@ interface ShapePickerProps {
 }
 
 export function ShapePicker({ value, onChange }: ShapePickerProps) {
+  const { t } = useTranslation();
+
   return (
     <label className="field">
-      <span>Border shape</span>
+      <span>{t("shape.borderShape")}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as BorderShape)}
       >
-        {SHAPES.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
+        {SHAPES.map((shape) => (
+          <option key={shape} value={shape}>
+            {t(`shape.${shape}`)}
           </option>
         ))}
       </select>

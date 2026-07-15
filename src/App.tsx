@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type Konva from "konva";
+import { useTranslation } from "react-i18next";
 import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
 import { SelectionFloat } from "./components/panels/SelectionFloat";
 import { GroupsListPopup } from "./components/panels/GroupsListPopup";
@@ -15,6 +16,7 @@ import {
 import "./App.css";
 
 function App() {
+  const { t } = useTranslation();
   const stageRef = useRef<Konva.Stage | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -35,7 +37,7 @@ function App() {
       await saveDiagramToFile(getDiagram());
     } catch (err) {
       console.error(err);
-      alert("Failed to save diagram.");
+      alert(t("app.saveFailed"));
     }
   };
 
@@ -46,7 +48,7 @@ function App() {
     } catch (err) {
       if ((err as Error).message === "cancelled") return;
       console.error(err);
-      alert("Failed to open diagram file.");
+      alert(t("app.openFailed"));
     }
   };
 
@@ -59,12 +61,7 @@ function App() {
       groups.length > 0 ||
       boxes.length > 0 ||
       floatingTexts.length > 0;
-    if (
-      hasContent &&
-      !window.confirm(
-        "Start a new diagram? Your current diagram will be replaced.",
-      )
-    ) {
+    if (hasContent && !window.confirm(t("app.newConfirm"))) {
       return;
     }
     await newDiagram();

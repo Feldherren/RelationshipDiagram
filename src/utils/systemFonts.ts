@@ -4,8 +4,6 @@ export interface SystemFontOption {
   postscriptName: string;
 }
 
-export const FONT_PREVIEW_TEXT = "Aa Bb Character Names 123";
-
 let cachedLocalFonts: FontData[] | null = null;
 
 export function isSystemFontAccessSupported(): boolean {

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface ToolbarProps {
   onNew: () => void;
   onSave: () => void;
@@ -13,26 +15,28 @@ export function Toolbar({
   onExport,
   onSettings,
 }: ToolbarProps) {
+  const { t } = useTranslation();
+
   return (
     <header className="toolbar">
       <div className="toolbar-group">
         <button type="button" onClick={onNew}>
-          New
+          {t("toolbar.new")}
         </button>
         <button type="button" onClick={onOpen}>
-          Open
+          {t("toolbar.open")}
         </button>
         <button type="button" onClick={onSave}>
-          Save
+          {t("toolbar.save")}
         </button>
         <button type="button" onClick={onExport}>
-          Export
+          {t("toolbar.export")}
         </button>
       </div>
 
       <div className="toolbar-group toolbar-right">
         <button type="button" onClick={onSettings}>
-          Settings
+          {t("toolbar.settings")}
         </button>
       </div>
     </header>

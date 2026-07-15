@@ -82,38 +82,35 @@ export interface MembershipAppearance {
   borderColor: RGB;
 }
 
-export const MEMBERSHIP_SYMBOLS: {
-  value: MembershipSymbol;
-  label: string;
-}[] = [
-  { value: "none", label: "None" },
-  { value: "star", label: "Star" },
-  { value: "moon", label: "Moon" },
-  { value: "heart", label: "Heart" },
-  { value: "diamond", label: "Diamond" },
-  { value: "circle", label: "Circle" },
-  { value: "ring", label: "Ring" },
-  { value: "square", label: "Square" },
-  { value: "triangle", label: "Triangle" },
-  { value: "hexagon", label: "Hexagon" },
-  { value: "plus", label: "Plus" },
-  { value: "cross", label: "Cross" },
-  { value: "slash", label: "Slash" },
-  { value: "music", label: "Music note" },
-  { value: "sword", label: "Sword" },
-  { value: "flame", label: "Flame" },
-  { value: "droplet", label: "Droplet" },
-  { value: "breeze", label: "Breeze" },
-  { value: "rock", label: "Rock" },
-  { value: "plant", label: "Plant" },
-  { value: "sparkle", label: "Sparkle" },
-  { value: "skull", label: "Skull" },
+export const MEMBERSHIP_SYMBOLS: MembershipSymbol[] = [
+  "none",
+  "star",
+  "moon",
+  "heart",
+  "diamond",
+  "circle",
+  "ring",
+  "square",
+  "triangle",
+  "hexagon",
+  "plus",
+  "cross",
+  "slash",
+  "music",
+  "sword",
+  "flame",
+  "droplet",
+  "breeze",
+  "rock",
+  "plant",
+  "sparkle",
+  "skull",
 ];
 
 export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
   return (
     typeof value === "string" &&
-    MEMBERSHIP_SYMBOLS.some((entry) => entry.value === value)
+    MEMBERSHIP_SYMBOLS.includes(value as MembershipSymbol)
   );
 }
 

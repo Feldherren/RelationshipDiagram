@@ -18,7 +18,17 @@ export function GroupsListPopup() {
     if (!open) return;
 
     const handlePointerDown = (e: MouseEvent) => {
-      if (rootRef.current?.contains(e.target as Node)) return;
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (rootRef.current?.contains(target)) return;
+      // Keep open while panning, zooming, or selecting on the canvas.
+      if (
+        target instanceof Element &&
+        (target.closest(".canvas-container") ||
+          target.closest(".selection-float"))
+      ) {
+        return;
+      }
       setOpen(false);
     };
 

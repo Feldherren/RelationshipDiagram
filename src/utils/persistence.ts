@@ -221,9 +221,58 @@ export function getDefaultExportFilename(title?: string): string {
   );
 }
 
+function isTauriApp(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+async function saveBytesWithTauriDialog(
+  bytes: Uint8Array,
+  suggestedName: string,
+  filter: { name: string; extensions: string[] },
+): Promise<boolean> {
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  const { writeFile } = await import("@tauri-apps/plugin-fs");
+
+  const path = await save({
+    defaultPath: suggestedName,
+    filters: [filter],
+  });
+  if (path === null) return false;
+
+  await writeFile(path, bytes);
+  return true;
+}
+
+async function saveTextWithTauriDialog(
+  content: string,
+  suggestedName: string,
+  filter: { name: string; extensions: string[] },
+): Promise<boolean> {
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+
+  const path = await save({
+    defaultPath: suggestedName,
+    filters: [filter],
+  });
+  if (path === null) return false;
+
+  await writeTextFile(path, content);
+  return true;
+}
+
 export async function saveDiagramToFile(diagram: Diagram, filename?: string): Promise<void> {
   const content = serializeDiagram(diagram);
   const suggestedName = filename ?? getDefaultDiagramFilename(diagram);
+  const diagramFilter = {
+    name: "Character Relationship Diagram Creator",
+    extensions: ["rdiagram", "json"],
+  };
+
+  if (isTauriApp()) {
+    await saveTextWithTauriDialog(content, suggestedName, diagramFilter);
+    return;
+  }
 
   if ("showSaveFilePicker" in window) {
     try {
@@ -231,7 +280,7 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
         suggestedName,
         types: [
           {
-            description: "Character Relationship Diagram Creator",
+            description: diagramFilter.name,
             accept: { "application/json": [".rdiagram", ".json"] },
           },
         ],
@@ -248,10 +297,7 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
 
   const blob = new Blob([content], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = suggestedName;
-  a.click();
+  triggerAnchorDownload(url, suggestedName);
   URL.revokeObjectURL(url);
 }
 
@@ -299,9 +345,68 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
   });
 }
 
-export function downloadDataUrl(dataUrl: string, filename: string): void {
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, data] = dataUrl.split(",", 2);
+  if (!header || data === undefined) {
+    throw new Error("Invalid data URL");
+  }
+
+  const isBase64 = /;base64/i.test(header);
+  const mimeMatch = /^data:([^;,]+)/i.exec(header);
+  const mime = mimeMatch?.[1] ?? "application/octet-stream";
+
+  if (isBase64) {
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
+
+  return new Blob([decodeURIComponent(data)], { type: mime });
+}
+
+function triggerAnchorDownload(href: string, filename: string): void {
   const a = document.createElement("a");
-  a.href = dataUrl;
+  a.href = href;
   a.download = filename;
   a.click();
+}
+
+export async function downloadDataUrl(
+  dataUrl: string,
+  filename: string,
+): Promise<boolean> {
+  const pngFilter = { name: "PNG Image", extensions: ["png"] };
+
+  if (isTauriApp()) {
+    const blob = dataUrlToBlob(dataUrl);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return saveBytesWithTauriDialog(bytes, filename, pngFilter);
+  }
+
+  if ("showSaveFilePicker" in window) {
+    try {
+      const handle = await window.showSaveFilePicker!({
+        suggestedName: filename,
+        types: [
+          {
+            description: pngFilter.name,
+            accept: { "image/png": [".png"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(dataUrlToBlob(dataUrl));
+      await writable.close();
+      return true;
+    } catch (err) {
+      if ((err as DOMException).name === "AbortError") return false;
+      throw err;
+    }
+  }
+
+  triggerAnchorDownload(dataUrl, filename);
+  return true;
 }

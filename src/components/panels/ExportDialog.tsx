@@ -92,16 +92,24 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const handleExport = async () => {
     const stage = stageRef.current;
     if (!stage || !activeBounds) return;
-    const dataUrl = await exportStageToPng(stage, {
-      bounds: activeBounds,
-      pixelRatio,
-      backgroundColor: diagramBackgroundColor,
-      showGrid,
-      header: exportHeader,
-      viewportScale,
-    });
-    downloadDataUrl(dataUrl, getDefaultExportFilename(diagramTitle));
-    onClose();
+    try {
+      const dataUrl = await exportStageToPng(stage, {
+        bounds: activeBounds,
+        pixelRatio,
+        backgroundColor: diagramBackgroundColor,
+        showGrid,
+        header: exportHeader,
+        viewportScale,
+      });
+      const saved = await downloadDataUrl(
+        dataUrl,
+        getDefaultExportFilename(diagramTitle),
+      );
+      if (saved) onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to export PNG.");
+    }
   };
 
   const startCustomBounds = () => {

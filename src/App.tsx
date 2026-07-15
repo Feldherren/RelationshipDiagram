@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
 import { SelectionFloat } from "./components/panels/SelectionFloat";
-import { GroupsPanel } from "./components/panels/GroupsPanel";
+import { GroupsListPopup } from "./components/panels/GroupsListPopup";
 import { ExportDialog } from "./components/panels/ExportDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
@@ -18,25 +18,17 @@ function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [groupsOpen, setGroupsOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
   const newDiagram = useDiagramStore((s) => s.newDiagram);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
-  const selection = useDiagramStore((s) => s.selection);
 
   useAutosave();
 
   useEffect(() => {
     void bootstrapApp();
   }, [bootstrapApp]);
-
-  useEffect(() => {
-    if (selection?.type === "group") {
-      setGroupsOpen(true);
-    }
-  }, [selection]);
 
   const handleSave = async () => {
     try {
@@ -91,17 +83,12 @@ function App() {
         onOpen={handleOpen}
         onExport={handleExport}
         onSettings={() => setSettingsOpen(true)}
-        groupsOpen={groupsOpen}
-        onToggleGroups={() => setGroupsOpen((open) => !open)}
       />
       <main className="main">
         <div className="workspace">
           <DiagramCanvas stageRef={stageRef} />
           <SelectionFloat />
-          <GroupsPanel
-            open={groupsOpen}
-            onClose={() => setGroupsOpen(false)}
-          />
+          <GroupsListPopup />
         </div>
       </main>
       <ExportDialog

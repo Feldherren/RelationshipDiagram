@@ -203,7 +203,7 @@ export interface Diagram {
 export type Selection =
   | { type: "character"; id: string }
   | { type: "line"; id: string }
-  | { type: "group"; id: string }
+  | { type: "group"; id: string; anchorCharacterId?: string }
   | { type: "box"; id: string }
   | { type: "floatingText"; id: string }
   | null;

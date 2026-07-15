@@ -4,8 +4,6 @@ interface ToolbarProps {
   onOpen: () => void;
   onExport: () => void;
   onSettings: () => void;
-  groupsOpen: boolean;
-  onToggleGroups: () => void;
 }
 
 export function Toolbar({
@@ -14,8 +12,6 @@ export function Toolbar({
   onOpen,
   onExport,
   onSettings,
-  groupsOpen,
-  onToggleGroups,
 }: ToolbarProps) {
   return (
     <header className="toolbar">
@@ -31,17 +27,6 @@ export function Toolbar({
         </button>
         <button type="button" onClick={onExport}>
           Export
-        </button>
-      </div>
-
-      <div className="toolbar-group">
-        <button
-          type="button"
-          className={groupsOpen ? "active" : undefined}
-          onClick={onToggleGroups}
-          aria-pressed={groupsOpen}
-        >
-          Groups
         </button>
       </div>
 

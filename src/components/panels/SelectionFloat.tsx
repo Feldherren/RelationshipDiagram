@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Stage, Layer, Group as KonvaGroup } from "react-konva";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
@@ -6,6 +7,7 @@ import type { LineStyle } from "../../models/types";
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MEMBERSHIP_CHIP_RADIUS,
   MIN_FLOATING_TEXT_FONT_SIZE,
   rgbToCss,
 } from "../../models/types";
@@ -14,9 +16,12 @@ import {
   getCharacterById,
   getCharactersContainedInBox,
   getFloatingTextById,
+  getGroupById,
 } from "../../utils/geometry";
 import { DEFAULT_IMAGE_FOCUS } from "../../utils/imageLayout";
 import { ImageFocusControls } from "./ImageFocusControls";
+import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
+import { MembershipChip } from "../Canvas/MembershipChips";
 import {
   getSelectionAnchorWorld,
   placeSelectionFloat,
@@ -37,6 +42,7 @@ export function SelectionFloat() {
   const panelRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [panelHeight, setPanelHeight] = useState(ESTIMATED_FLOAT_HEIGHT);
+  const [chipAppearanceOpen, setChipAppearanceOpen] = useState(false);
 
   const selection = useDiagramStore((s) => s.selection);
   const characters = useDiagramStore((s) => s.characters);
@@ -49,6 +55,7 @@ export function SelectionFloat() {
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
   const updateLine = useDiagramStore((s) => s.updateLine);
+  const updateGroup = useDiagramStore((s) => s.updateGroup);
   const updateBox = useDiagramStore((s) => s.updateBox);
   const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
   const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
@@ -56,7 +63,16 @@ export function SelectionFloat() {
   const removeCharacterFromGroup = useDiagramStore(
     (s) => s.removeCharacterFromGroup,
   );
+  const toolMode = useDiagramStore((s) => s.toolMode);
+  const setToolMode = useDiagramStore((s) => s.setToolMode);
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
+
+  const selectedGroupId =
+    selection?.type === "group" ? selection.id : null;
+
+  useEffect(() => {
+    setChipAppearanceOpen(false);
+  }, [selectedGroupId]);
 
   useLayoutEffect(() => {
     const el = panelRef.current;
@@ -67,15 +83,18 @@ export function SelectionFloat() {
     }
   }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
 
-  if (!selection || selection.type === "group") {
+  if (!selection) {
     return null;
   }
 
   const diagram = getDiagram();
   const anchorWorld = getSelectionAnchorWorld(selection, diagram);
-  if (!anchorWorld) return null;
-
-  const anchorScreen = worldToScreen(anchorWorld, viewport);
+  const anchorScreen = anchorWorld
+    ? worldToScreen(anchorWorld, viewport)
+    : {
+        x: stageSize.width / 2 + SELECTION_FLOAT_WIDTH / 2,
+        y: stageSize.height / 2,
+      };
   const { left, top } = placeSelectionFloat({
     anchorScreen,
     stageWidth: stageSize.width,
@@ -85,6 +104,7 @@ export function SelectionFloat() {
   });
 
   let body: ReactNode = null;
+  let chipDialog: ReactNode = null;
 
   if (selection.type === "character") {
     const character = getCharacterById({ characters }, selection.id);
@@ -197,7 +217,7 @@ export function SelectionFloat() {
           <span>Groups</span>
           {groups.length === 0 ? (
             <p className="hint">
-              No groups yet. Use the Groups toolbar button to add one.
+              No groups yet. Use Groups in the lower left to add one.
             </p>
           ) : (
             <div className="membership-checklist">
@@ -417,19 +437,115 @@ export function SelectionFloat() {
         </button>
       </>
     );
+  } else if (selection.type === "group") {
+    const group = getGroupById({ groups }, selection.id);
+    if (!group) return null;
+
+    const previewSize = (MEMBERSHIP_CHIP_RADIUS + 4) * 2;
+
+    body = (
+      <>
+        <h2>Group</h2>
+        <p className="hint">
+          Membership chips appear on characters. Selecting a group highlights
+          its members.
+        </p>
+        <label className="field">
+          <span>Name</span>
+          <input
+            type="text"
+            value={group.name}
+            onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+          />
+        </label>
+        <div className="field">
+          <span>Chip</span>
+          <div className="membership-chip-summary">
+            <div className="membership-chip-preview">
+              <Stage width={previewSize} height={previewSize}>
+                <Layer>
+                  <KonvaGroup x={previewSize / 2} y={previewSize / 2}>
+                    <MembershipChip appearance={group.appearance} />
+                  </KonvaGroup>
+                </Layer>
+              </Stage>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setChipAppearanceOpen(true)}
+            >
+              Customise chip…
+            </button>
+          </div>
+        </div>
+        <div className="field">
+          <span>Members ({group.memberCharacterIds.length})</span>
+          {characters.length === 0 ? (
+            <p className="hint">No characters to assign.</p>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={
+                  toolMode === "editGroupMembers"
+                    ? "btn-primary"
+                    : "btn-secondary"
+                }
+                onClick={() =>
+                  setToolMode(
+                    toolMode === "editGroupMembers"
+                      ? "select"
+                      : "editGroupMembers",
+                  )
+                }
+              >
+                {toolMode === "editGroupMembers"
+                  ? "Done editing members"
+                  : "Edit members on canvas"}
+              </button>
+              <p className="hint">
+                {toolMode === "editGroupMembers"
+                  ? "Click characters on the canvas to add or remove them."
+                  : "Enter edit mode, then click characters on the canvas to toggle membership."}
+              </p>
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={deleteSelected}
+          disabled={toolMode === "editGroupMembers"}
+        >
+          Delete group
+        </button>
+      </>
+    );
+
+    chipDialog = (
+      <MembershipAppearanceDialog
+        groupId={group.id}
+        open={chipAppearanceOpen}
+        onClose={() => setChipAppearanceOpen(false)}
+      />
+    );
   }
 
   if (!body) return null;
 
   return (
-    <aside
-      ref={panelRef}
-      className="selection-float"
-      style={{ left, top, width: SELECTION_FLOAT_WIDTH }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      {body}
-    </aside>
+    <>
+      <aside
+        ref={panelRef}
+        className="selection-float"
+        style={{ left, top, width: SELECTION_FLOAT_WIDTH }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {body}
+      </aside>
+      {chipDialog}
+    </>
   );
 }

@@ -580,7 +580,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                             kind: "character",
                           })
                       : (groupId) =>
-                          setSelection({ type: "group", id: groupId })
+                          setSelection({
+                            type: "group",
+                            id: groupId,
+                            anchorCharacterId: character.id,
+                          })
                   }
                   onConnectHandleDown={handleConnectHandleDown({
                     id: character.id,

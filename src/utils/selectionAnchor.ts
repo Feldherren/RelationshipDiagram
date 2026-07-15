@@ -13,6 +13,7 @@ import {
   getCharacterById,
   getCollapsedBoxSquareBounds,
   getFloatingTextById,
+  getGroupById,
   resolveBoxBounds,
 } from "./geometry";
 import { getLineAnchors } from "./lineRouting";
@@ -81,6 +82,20 @@ export function getSelectionAnchorWorld(
     return {
       x: (start.x + end.x) / 2,
       y: (start.y + end.y) / 2,
+    };
+  }
+
+  if (selection.type === "group") {
+    const group = getGroupById(diagram, selection.id);
+    if (!group) return null;
+    const anchorCharacterId =
+      selection.anchorCharacterId ?? group.memberCharacterIds[0];
+    if (!anchorCharacterId) return null;
+    const character = getCharacterById(diagram, anchorCharacterId);
+    if (!character) return null;
+    return {
+      x: character.position.x + character.size,
+      y: character.position.y,
     };
   }
 

@@ -9,6 +9,7 @@ import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDi
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
 import { useAutosave } from "./hooks/useAutosave";
+import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useDiagramStore } from "./store/diagramStore";
 import { getAppPreferences } from "./utils/appPreferences";
 import {
@@ -30,6 +31,7 @@ function App() {
   const setToolMode = useDiagramStore((s) => s.setToolMode);
 
   useAutosave();
+  useUiAppearance();
 
   useEffect(() => {
     void bootstrapApp();

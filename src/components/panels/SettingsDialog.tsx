@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import packageJson from "../../../package.json";
 import {
@@ -16,6 +16,15 @@ import {
 } from "../../utils/appPreferences";
 import { clearAutosave } from "../../utils/autosaveStorage";
 import { useDiagramStore } from "../../store/diagramStore";
+import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
+import {
+  UI_SCALE_OPTIONS,
+  createThemeFromCurrentTokens,
+  themeDocumentToJson,
+  validateThemeDocument,
+  type ThemePreference,
+  type UiScale,
+} from "../../utils/uiTheme";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
 
@@ -31,12 +40,26 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   );
   const [prefs, setPrefsState] = useState<AppPreferences>(getAppPreferences);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPrefsState(getAppPreferences());
+    setLanguagePreferenceState(getLanguagePreference());
+  }, [open]);
 
   const updatePrefs = (patch: Partial<AppPreferences>) => {
     const next = setAppPreferences(patch);
     setPrefsState(next);
     if (patch.autosaveEnabled !== undefined) {
       setAutosaveEnabled(patch.autosaveEnabled);
+    }
+    if (
+      patch.themePreference !== undefined ||
+      patch.uiScale !== undefined ||
+      patch.customThemes !== undefined
+    ) {
+      reapplyUiAppearanceFromPrefs();
     }
   };
 
@@ -46,12 +69,162 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     alert(t("appSettings.clearRecoveryDone"));
   };
 
+  const handleImportTheme = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      const theme = validateThemeDocument(parsed);
+      if (!theme) {
+        alert(t("appSettings.themeImportInvalid"));
+        return;
+      }
+      const existing = prefs.customThemes.filter((entry) => entry.id !== theme.id);
+      const customThemes = [...existing, theme];
+      updatePrefs({
+        customThemes,
+        themePreference: theme.id,
+      });
+    } catch {
+      alert(t("appSettings.themeImportInvalid"));
+    }
+  };
+
+  const handleExportTheme = (themeId: string) => {
+    const custom = prefs.customThemes.find((theme) => theme.id === themeId);
+    const theme =
+      custom ??
+      createThemeFromCurrentTokens(
+        themeId === "light" || themeId === "dark" ? themeId : "active-theme",
+        themeId === "light" || themeId === "dark"
+          ? themeId
+          : t("appSettings.themeExportActiveName"),
+        prefs.themePreference,
+        prefs.customThemes,
+      );
+    const blob = new Blob([themeDocumentToJson(theme)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${theme.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRemoveTheme = (themeId: string, themeName: string) => {
+    if (!window.confirm(t("appSettings.themeRemoveConfirm", { name: themeName }))) {
+      return;
+    }
+    const customThemes = prefs.customThemes.filter((theme) => theme.id !== themeId);
+    const themePreference =
+      prefs.themePreference === themeId ? "system" : prefs.themePreference;
+    updatePrefs({ customThemes, themePreference });
+  };
+
   if (!open) return null;
 
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog dialog-scrollable" onClick={(e) => e.stopPropagation()}>
         <h2>{t("appSettings.title")}</h2>
+
+        <section className="settings-section">
+          <h3>{t("appSettings.appearanceSection")}</h3>
+          <label className="field">
+            <span>{t("appSettings.theme")}</span>
+            <select
+              value={prefs.themePreference}
+              onChange={(e) =>
+                updatePrefs({
+                  themePreference: e.target.value as ThemePreference,
+                })
+              }
+            >
+              <option value="system">{t("appSettings.themeSystem")}</option>
+              <option value="light">{t("appSettings.themeLight")}</option>
+              <option value="dark">{t("appSettings.themeDark")}</option>
+              {prefs.customThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">{t("appSettings.themeHint")}</p>
+
+          <label className="field">
+            <span>{t("appSettings.uiScale")}</span>
+            <select
+              value={prefs.uiScale}
+              onChange={(e) =>
+                updatePrefs({
+                  uiScale: Number(e.target.value) as UiScale,
+                })
+              }
+            >
+              {UI_SCALE_OPTIONS.map((scale) => (
+                <option key={scale} value={scale}>
+                  {t("appSettings.uiScaleOption", {
+                    percent: Math.round(scale * 100),
+                  })}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <p className="hint">{t("appSettings.customThemesHint")}</p>
+          {prefs.customThemes.length > 0 && (
+            <ul className="custom-theme-list">
+              {prefs.customThemes.map((theme) => (
+                <li key={theme.id} className="custom-theme-row">
+                  <span style={{ flex: 1 }}>{theme.name}</span>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => handleExportTheme(theme.id)}
+                  >
+                    {t("appSettings.themeExport")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => handleRemoveTheme(theme.id, theme.name)}
+                  >
+                    {t("appSettings.themeRemove")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="custom-theme-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => importInputRef.current?.click()}
+            >
+              {t("appSettings.themeImport")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => handleExportTheme(prefs.themePreference)}
+            >
+              {t("appSettings.themeExportActive")}
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void handleImportTheme(file);
+              }}
+            />
+          </div>
+        </section>
 
         <section className="settings-section">
           <h3>{t("appSettings.generalSection")}</h3>

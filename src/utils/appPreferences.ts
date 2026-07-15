@@ -4,6 +4,13 @@ import {
   DEFAULT_DIAGRAM_BACKGROUND,
   type DiagramBackgroundMode,
 } from "./diagramBackground";
+import {
+  isUiScale,
+  validateThemeDocument,
+  type ThemeDocument,
+  type ThemePreference,
+  type UiScale,
+} from "./uiTheme";
 
 const STORAGE_KEY = "appPreferences";
 
@@ -19,6 +26,9 @@ export interface AppPreferences {
   defaultExportPadding: number;
   defaultExportPixelRatio: 1 | 2;
   defaultExportBoundsMode: ExportBoundsMode;
+  themePreference: ThemePreference;
+  uiScale: UiScale;
+  customThemes: ThemeDocument[];
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -31,6 +41,9 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   defaultExportPadding: 32,
   defaultExportPixelRatio: 1,
   defaultExportBoundsMode: "auto",
+  themePreference: "system",
+  uiScale: 1,
+  customThemes: [],
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -54,6 +67,23 @@ function isRgb(value: unknown): value is RGB {
     typeof v.g === "number" &&
     typeof v.b === "number"
   );
+}
+
+function isThemePreference(value: unknown): value is ThemePreference {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function parseCustomThemes(value: unknown): ThemeDocument[] {
+  if (!Array.isArray(value)) return [];
+  const themes: ThemeDocument[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const theme = validateThemeDocument(entry);
+    if (!theme || seen.has(theme.id)) continue;
+    seen.add(theme.id);
+    themes.push(theme);
+  }
+  return themes;
 }
 
 function migrateLegacyBackgroundMode(
@@ -85,6 +115,20 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     ? stored.defaultBackgroundMode
     : migrateLegacyBackgroundMode(stored, defaultBackgroundColor);
 
+  const customThemes = parseCustomThemes(stored.customThemes);
+  let themePreference: ThemePreference = isThemePreference(stored.themePreference)
+    ? stored.themePreference.trim()
+    : defaults.themePreference;
+
+  if (
+    themePreference !== "system" &&
+    themePreference !== "light" &&
+    themePreference !== "dark" &&
+    !customThemes.some((theme) => theme.id === themePreference)
+  ) {
+    themePreference = defaults.themePreference;
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -115,16 +159,19 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     defaultExportBoundsMode: isExportBoundsMode(stored.defaultExportBoundsMode)
       ? stored.defaultExportBoundsMode
       : defaults.defaultExportBoundsMode,
+    themePreference,
+    uiScale: isUiScale(stored.uiScale) ? stored.uiScale : defaults.uiScale,
+    customThemes,
   };
 }
 
 export function getAppPreferences(): AppPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_APP_PREFERENCES };
+    if (!raw) return { ...DEFAULT_APP_PREFERENCES, customThemes: [] };
     return parseStoredPreferences(JSON.parse(raw));
   } catch {
-    return { ...DEFAULT_APP_PREFERENCES };
+    return { ...DEFAULT_APP_PREFERENCES, customThemes: [] };
   }
 }
 

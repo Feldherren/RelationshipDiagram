@@ -368,18 +368,26 @@ body,
 
 .groups-list-edit {
   flex-shrink: 0;
+  align-self: stretch;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  box-sizing: border-box;
+  width: 34px;
+  min-height: 0;
   padding: 0;
   margin: 0;
-  border: 1px solid #c8cdd3;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   background: #fff;
   color: #445;
   cursor: pointer;
+}
+
+.groups-list-edit-icon {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 600;
 }
 
 .groups-list-edit:hover {

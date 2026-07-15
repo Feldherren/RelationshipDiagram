@@ -109,21 +109,13 @@ export function GroupsListPopup() {
                     <button
                       type="button"
                       className="groups-list-edit"
-                      title="Edit members on canvas"
-                      aria-label={`Edit members of ${group.name}`}
+                      title="Add or remove members on canvas"
+                      aria-label={`Add or remove members of ${group.name}`}
                       onClick={() => editMembers(group.id)}
                     >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        aria-hidden
-                      >
-                        <path
-                          fill="currentColor"
-                          d="M11.6 1.4a1.4 1.4 0 0 1 2 2L5.2 11.8 2 12.8l1-3.2 8.6-8.2Zm1 1-8.5 8.2-.4 1.3 1.3-.4 8.5-8.2-.9-.9Z"
-                        />
-                      </svg>
+                      <span className="groups-list-edit-icon" aria-hidden>
+                        ±
+                      </span>
                     </button>
                   </li>
                 );

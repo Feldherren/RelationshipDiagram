@@ -2,7 +2,7 @@
 
 A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
 
-## NB
+## Important Notes
 This application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
 I can (and do) still read the code, and I'm happy to fix reported issues and consider into feature requests, should anyone make any.
 

@@ -8,13 +8,13 @@ import type {
 } from "../models/types";
 import {
   COLLAPSED_BOX_SIZE,
-  DEFAULT_FLOATING_TEXT_FONT_SIZE,
 } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
   getBoxById,
   getCharacterById,
   getCollapsedBoxSquareBounds,
+  getFloatingTextBounds,
   getFloatingTextById,
   getGroupById,
   resolveBoxBounds,
@@ -102,13 +102,12 @@ export function getSelectionAnchorWorld(
   if (selection.type === "floatingText") {
     const floatingText = getFloatingTextById(diagram, selection.id);
     if (!floatingText) return null;
-    const fontSize = floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
-    const approxHalfWidth = Math.max(
-      fontSize,
-      (floatingText.text.length || 1) * fontSize * 0.35,
+    const bounds = getFloatingTextBounds(
+      floatingText,
+      diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT,
     );
     return {
-      x: floatingText.position.x + approxHalfWidth,
+      x: bounds.x + bounds.width,
       y: floatingText.position.y,
     };
   }

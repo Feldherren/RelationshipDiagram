@@ -380,10 +380,10 @@ export function SelectionFloat() {
         <h2>Text</h2>
         <label className="field">
           <span>Text</span>
-          <input
-            type="text"
+          <textarea
             value={floatingText.text}
-            placeholder="Text"
+            placeholder={"Text\nSecond line"}
+            rows={4}
             onChange={(e) =>
               updateFloatingText(floatingText.id, { text: e.target.value })
             }

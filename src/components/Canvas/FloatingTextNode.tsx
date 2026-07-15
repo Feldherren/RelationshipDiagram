@@ -8,7 +8,10 @@ import {
 } from "../../models/types";
 import { useDiagramStore } from "../../store/diagramStore";
 import { formatFontForCanvas } from "../../utils/diagramFont";
-import { getFloatingTextSize } from "../../utils/labelMetrics";
+import {
+  FLOATING_TEXT_LINE_HEIGHT,
+  getFloatingTextSize,
+} from "../../utils/labelMetrics";
 import { SELECTION_PILL_NODE_NAME } from "../../utils/export";
 
 interface FloatingTextNodeProps {
@@ -99,6 +102,7 @@ export function FloatingTextNode({
         text={displayText}
         fontFamily={formatFontForCanvas(fontFamily)}
         fontSize={fontSize}
+        lineHeight={FLOATING_TEXT_LINE_HEIGHT}
         fill={rgbToCss(color)}
         x={rectX}
         y={rectY}
@@ -106,6 +110,7 @@ export function FloatingTextNode({
         height={height}
         align="center"
         verticalAlign="middle"
+        wrap="none"
         listening={false}
       />
     </Group>

@@ -33,13 +33,28 @@ export function getFloatingTextPadding(fontSize: number): {
   };
 }
 
+/** Line height multiplier used for floating-text layout and Konva rendering. */
+export const FLOATING_TEXT_LINE_HEIGHT = 1.25;
+
 export function getFloatingTextSize(
   text: string,
   fontSize: number,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): { width: number; height: number } {
   const { paddingX, paddingY } = getFloatingTextPadding(fontSize);
-  return getPillLabelSize(text, fontSize, "normal", fontFamily, paddingX, paddingY);
+  const lines = text.length > 0 ? text.split("\n") : [""];
+  let maxWidth = 0;
+  for (const line of lines) {
+    maxWidth = Math.max(
+      maxWidth,
+      measureLabelText(line, fontSize, "normal", fontFamily),
+    );
+  }
+  const lineCount = Math.max(1, lines.length);
+  return {
+    width: Math.ceil(maxWidth) + paddingX * 2,
+    height: Math.ceil(fontSize * FLOATING_TEXT_LINE_HEIGHT * lineCount) + paddingY * 2,
+  };
 }
 
 export function measureLabelText(

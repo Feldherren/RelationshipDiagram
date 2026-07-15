@@ -23,9 +23,11 @@ import { ImageFocusControls } from "./ImageFocusControls";
 import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
 import { MembershipChip } from "../Canvas/MembershipChips";
 import {
+  getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
   placeSelectionFloat,
   SELECTION_FLOAT_WIDTH,
+  worldBoundsToScreen,
   worldToScreen,
 } from "../../utils/selectionAnchor";
 
@@ -95,12 +97,25 @@ export function SelectionFloat() {
         x: stageSize.width / 2 + SELECTION_FLOAT_WIDTH / 2,
         y: stageSize.height / 2,
       };
+
+  let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
+  if (selection.type === "line") {
+    const line = lines.find((l) => l.id === selection.id);
+    if (line) {
+      avoidScreen = worldBoundsToScreen(
+        getLineSelectionAvoidBounds(line, diagram),
+        viewport,
+      );
+    }
+  }
+
   const { left, top } = placeSelectionFloat({
     anchorScreen,
     stageWidth: stageSize.width,
     stageHeight: stageSize.height,
     panelWidth: SELECTION_FLOAT_WIDTH,
     panelHeight,
+    avoidScreen,
   });
 
   let body: ReactNode = null;

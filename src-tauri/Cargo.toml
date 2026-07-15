@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = "A desktop editor for character relationship diagrams"
-authors = ["Relationship Diagram"]
+authors = ["Character Relationship Diagram Creator"]
 license = ""
 repository = ""
 edition = "2021"

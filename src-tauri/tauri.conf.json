@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Relationship Diagram",
+  "productName": "Character Relationship Diagram Creator",
   "version": "0.1.0",
   "identifier": "app.relationshipdiagram",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Relationship Diagram",
+        "title": "Character Relationship Diagram Creator",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

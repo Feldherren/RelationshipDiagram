@@ -1,4 +1,4 @@
-# Relationship Diagram Creator
+# Character Relationship Diagram Creator
 
 A browser-based editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
 

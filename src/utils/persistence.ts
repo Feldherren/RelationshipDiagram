@@ -231,7 +231,7 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
         suggestedName,
         types: [
           {
-            description: "Relationship Diagram",
+            description: "Character Relationship Diagram Creator",
             accept: { "application/json": [".rdiagram", ".json"] },
           },
         ],
@@ -261,7 +261,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       const [handle] = await window.showOpenFilePicker!({
         types: [
           {
-            description: "Relationship Diagram",
+            description: "Character Relationship Diagram Creator",
             accept: { "application/json": [".rdiagram", ".json"] },
           },
         ],

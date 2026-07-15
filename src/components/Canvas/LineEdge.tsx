@@ -16,6 +16,7 @@ import {
   resolveLineEndpoint,
 } from "../../utils/lineEndpoints";
 import { useDiagramStore } from "../../store/diagramStore";
+import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 import { PillLabel } from "./PillLabel";
 import { LineAura, shouldShowAura } from "./HoverAura";
 
@@ -34,6 +35,7 @@ interface LineEdgeProps {
 interface BendDragStart {
   bend: number;
   world: Point;
+  origin: Point;
   fromCenter: Point;
   toCenter: Point;
 }
@@ -56,6 +58,8 @@ export function LineEdge({
   const dash = line.style === "dotted" ? [8, 6] : undefined;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
+  const setSelection = useDiagramStore((s) => s.setSelection);
+  const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
   const hovered = hoveredProp ?? localHovered;
   const setHovered = (value: boolean) => {
@@ -66,6 +70,7 @@ export function LineEdge({
   const stageRef = useRef<Konva.Stage | null>(null);
   const lineIdRef = useRef(line.id);
   const dragStartRef = useRef<BendDragStart | null>(null);
+  const gestureClearedSelectionRef = useRef(false);
 
   useEffect(() => {
     lineIdRef.current = line.id;
@@ -84,6 +89,17 @@ export function LineEdge({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });
+
+      if (!gestureClearedSelectionRef.current) {
+        const movedFarEnough =
+          Math.hypot(world.x - dragStart.origin.x, world.y - dragStart.origin.y) >
+          2;
+        if (movedFarEnough) {
+          gestureClearedSelectionRef.current = true;
+          clickGuard.noticeDrag();
+          setSelection(null);
+        }
+      }
 
       const delta = bendDeltaFromDrag(
         dragStart.fromCenter,
@@ -115,7 +131,7 @@ export function LineEdge({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [bendDragging, onBendChange, screenToWorld]);
+  }, [bendDragging, onBendChange, screenToWorld, clickGuard.noticeDrag, setSelection, line]);
 
   const beginBendDrag = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true;
@@ -124,13 +140,24 @@ export function LineEdge({
     if (!pointer) return;
 
     const { start, end } = getLineAnchors(line, diagram);
+    const world = screenToWorld(pointer);
+    gestureClearedSelectionRef.current = false;
     dragStartRef.current = {
       bend: resolveLineBend(line),
-      world: screenToWorld(pointer),
+      world,
+      origin: world,
       fromCenter: start,
       toCenter: end,
     };
     setBendDragging(true);
+  };
+
+  const handleSelectClick = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    if ("button" in e.evt && e.evt.button !== 0) return;
+    if (clickGuard.consumeClickSuppression()) return;
     onSelect();
   };
 
@@ -163,15 +190,8 @@ export function LineEdge({
         hitStrokeWidth={16}
         lineCap="round"
         lineJoin="round"
-        onClick={(e) => {
-          e.cancelBubble = true;
-          if (e.evt.button !== 0) return;
-          onSelect();
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          onSelect();
-        }}
+        onClick={handleSelectClick}
+        onTap={handleSelectClick}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return;
           beginBendDrag(e);
@@ -209,15 +229,8 @@ export function LineEdge({
           textFill={color}
           selected={selected}
           selectedStroke="#c62828"
-          onClick={(e) => {
-            e.cancelBubble = true;
-            if (e.evt.button !== 0) return;
-            onSelect();
-          }}
-          onTap={(e) => {
-            e.cancelBubble = true;
-            onSelect();
-          }}
+          onClick={handleSelectClick}
+          onTap={handleSelectClick}
           onMouseDown={(e) => {
             if (e.evt.button !== 0) return;
             beginBendDrag(e);

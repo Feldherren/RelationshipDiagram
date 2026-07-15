@@ -24,6 +24,7 @@ import {
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
+import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 import {
   getCollapsedBoxConnectHandlePosition,
   getBoxConnectHandlePosition,
@@ -63,6 +64,7 @@ interface ResizeDragStart {
 
 interface MoveDragStart {
   pointer: { x: number; y: number };
+  origin: { x: number; y: number };
   characterIds: string[];
   floatingTextIds: string[];
 }
@@ -149,8 +151,11 @@ export function BoxContainer({
 }: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
+  const setSelection = useDiagramStore((s) => s.setSelection);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
+  const clickGuard = useClickWithoutDrag();
+  const gestureClearedSelectionRef = useRef(false);
   const [hovered, setHovered] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -188,6 +193,18 @@ export function BoxContainer({
         y: e.clientY - rect.top,
       });
 
+      const movedFarEnough =
+        Math.hypot(
+          pointer.x - dragStart.pointer.x,
+          pointer.y - dragStart.pointer.y,
+        ) > 2;
+
+      if (movedFarEnough && !gestureClearedSelectionRef.current) {
+        gestureClearedSelectionRef.current = true;
+        clickGuard.noticeDrag();
+        setSelection(null);
+      }
+
       const newBounds = resizeBoxBounds(
         dragStart.bounds,
         dragStart.edge,
@@ -210,7 +227,7 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [resizing, screenToWorld]);
+  }, [resizing, screenToWorld, clickGuard.noticeDrag, setSelection]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -225,6 +242,18 @@ export function BoxContainer({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });
+
+      const movedFarEnough =
+        Math.hypot(
+          pointer.x - dragStart.origin.x,
+          pointer.y - dragStart.origin.y,
+        ) > 2;
+
+      if (movedFarEnough && !gestureClearedSelectionRef.current) {
+        gestureClearedSelectionRef.current = true;
+        clickGuard.noticeDrag();
+        setSelection(null);
+      }
 
       onMoveByDeltaRef.current(
         {
@@ -252,7 +281,7 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, screenToWorld]);
+  }, [dragging, screenToWorld, clickGuard.noticeDrag, setSelection]);
 
   const beginResize = (
     e: Konva.KonvaEventObject<MouseEvent>,
@@ -265,6 +294,7 @@ export function BoxContainer({
     const pointer = stageRef.current?.getPointerPosition();
     if (!pointer) return;
 
+    gestureClearedSelectionRef.current = false;
     resizeStartRef.current = {
       bounds,
       pointer: screenToWorld(pointer),
@@ -273,7 +303,6 @@ export function BoxContainer({
     document.body.style.cursor = cursorForBoxResizeEdge(edge);
     setResizing(true);
     onResizeStart();
-    onSelect();
   };
 
   const beginMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -283,8 +312,11 @@ export function BoxContainer({
     const pointer = stageRef.current?.getPointerPosition();
     if (!pointer) return;
 
+    const world = screenToWorld(pointer);
+    gestureClearedSelectionRef.current = false;
     moveStartRef.current = {
-      pointer: screenToWorld(pointer),
+      pointer: world,
+      origin: world,
       characterIds: getCharactersContainedInBox(
         box,
         characters,
@@ -299,6 +331,14 @@ export function BoxContainer({
     document.body.style.cursor = "grabbing";
     setDragging(true);
     onDragStart();
+  };
+
+  const handleSelectClick = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    if ("button" in e.evt && e.evt.button !== 0) return;
+    if (clickGuard.consumeClickSuppression()) return;
     onSelect();
   };
 
@@ -314,15 +354,8 @@ export function BoxContainer({
         y={pos.y}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={(e) => {
-          e.cancelBubble = true;
-          if (e.evt.button !== 0) return;
-          onSelect();
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          onSelect();
-        }}
+        onClick={handleSelectClick}
+        onTap={handleSelectClick}
         onDblClick={(e) => {
           e.cancelBubble = true;
           if (e.evt.button !== 0) return;
@@ -396,15 +429,8 @@ export function BoxContainer({
     <Group
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={(e) => {
-        e.cancelBubble = true;
-        if (e.evt.button !== 0) return;
-        onSelect();
-      }}
-      onTap={(e) => {
-        e.cancelBubble = true;
-        onSelect();
-      }}
+      onClick={handleSelectClick}
+      onTap={handleSelectClick}
       onDblClick={(e) => {
         e.cancelBubble = true;
         if (e.evt.button !== 0) return;

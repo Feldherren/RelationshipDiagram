@@ -116,6 +116,7 @@ export function CharacterNode({
   const [hovered, setHovered] = useState(false);
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
+  const setSelection = useDiagramStore((s) => s.setSelection);
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -163,7 +164,10 @@ export function CharacterNode({
       onDragStart={(e) => {
         if (!allowNodeDragRef.current) {
           e.target.stopDrag();
+          return;
         }
+        // Dragging is layout, not inspect — close any open float.
+        setSelection(null);
       }}
       onDragMove={(e) => {
         onDragMove({ x: e.target.x(), y: e.target.y() });

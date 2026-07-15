@@ -4,7 +4,7 @@ A browser-based and desktop editor for character relationship diagrams. Create c
 
 ## Important Notes
 This application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
-I can (and do) still read the code, and I'm happy to fix reported issues and consider into feature requests, should anyone make any.
+I can (and do) still read the code, and I'm happy to fix reported issues and consider feature requests, should anyone make any.
 
 Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pigeon](https://stevencolling.itch.io/honey-pigeon) font, I have not included Honey Pigeon with the application; you can use any installed font, and I just happen to like Honey Pigeon.
 
@@ -15,7 +15,7 @@ Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pige
 - **Boxes** - labelled organisational regions with customisable colours. Drag characters or text into a box by position; collapse a box to hide whoever is inside it
 - **Text** - floating text
 - **Diagram properties** - title and subtitle, background style, background colour, font
-- **Themes**
+- **Themes** - in-app theme editor (themes are stored in localStorage), theme export and import (JSON)
 - Saving and loading (*.rdiagram)
 - Image export (entire graphic or selected area) at two distinct levels of zoom (it estimates the dimensions of the exported image)
 

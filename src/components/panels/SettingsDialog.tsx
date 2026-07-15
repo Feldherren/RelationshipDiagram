@@ -27,10 +27,12 @@ import {
 } from "../../utils/uiTheme";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
+import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
 type SettingsSectionId =
   | "appearance"
+  | "themeEditor"
   | "general"
   | "editing"
   | "newDiagrams"
@@ -135,8 +137,19 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     updatePrefs({ customThemes, themePreference });
   };
 
+  const handleThemesChange = (
+    customThemes: AppPreferences["customThemes"],
+    activateId?: string,
+  ) => {
+    updatePrefs({
+      customThemes,
+      ...(activateId ? { themePreference: activateId } : {}),
+    });
+  };
+
   const sections = [
     { id: "appearance", label: t("appSettings.appearanceSection") },
+    { id: "themeEditor", label: t("appSettings.themeEditorSection") },
     { id: "general", label: t("appSettings.generalSection") },
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "newDiagrams", label: t("appSettings.newDiagramsSection") },
@@ -244,6 +257,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
           </div>
         </>
+      );
+      break;
+    case "themeEditor":
+      content = (
+        <ThemeEditorPanel
+          customThemes={prefs.customThemes}
+          onThemesChange={handleThemesChange}
+        />
       );
       break;
     case "general":

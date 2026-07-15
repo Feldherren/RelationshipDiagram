@@ -16,9 +16,17 @@ import {
 interface FontPickerProps {
   value: string;
   onChange: (fontFamily: string) => void;
+  /** Stored value for the default option (defaults to diagram Arial stack). */
+  defaultValue?: string;
+  defaultLabel?: string;
 }
 
-export function FontPicker({ value, onChange }: FontPickerProps) {
+export function FontPicker({
+  value,
+  onChange,
+  defaultValue = DEFAULT_DIAGRAM_FONT,
+  defaultLabel,
+}: FontPickerProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [systemFonts, setSystemFonts] = useState<SystemFontOption[]>([]);
@@ -28,15 +36,21 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
 
   const systemFontAccess = isSystemFontAccessSupported();
   const previewText = t("font.previewSample");
+  const resolvedDefaultLabel = defaultLabel ?? t("font.defaultArial");
+
+  const isDefaultValue =
+    value === defaultValue ||
+    (defaultValue === DEFAULT_DIAGRAM_FONT && isDefaultDiagramFont(value));
 
   const extraFonts = useMemo(() => {
-    if (isDefaultDiagramFont(value) || isDeprecatedFontFamily(value)) return [];
+    if (isDefaultValue || isDeprecatedFontFamily(value)) return [];
     const known = new Set([
+      defaultValue,
       DEFAULT_DIAGRAM_FONT,
       ...systemFonts.map((font) => font.family),
     ]);
     return known.has(value) ? [] : [value];
-  }, [systemFonts, value]);
+  }, [systemFonts, value, defaultValue, isDefaultValue]);
 
   const filteredSystemFonts = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -68,7 +82,10 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
   };
 
   const renderOption = (family: string, label: string, subtitle?: string) => {
-    const selected = value === family;
+    const selected =
+      family === defaultValue ? isDefaultValue : value === family;
+    const previewFamily =
+      family === defaultValue ? defaultValue : formatUiFontFamily(family);
     return (
       <button
         key={family}
@@ -78,7 +95,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
       >
         <span
           className="font-picker-preview"
-          style={{ fontFamily: formatUiFontFamily(family) }}
+          style={{ fontFamily: previewFamily }}
         >
           {previewText}
         </span>
@@ -107,7 +124,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
         role="listbox"
         aria-label={t("font.listAria")}
       >
-        {renderOption(DEFAULT_DIAGRAM_FONT, t("font.defaultArial"))}
+        {renderOption(defaultValue, resolvedDefaultLabel)}
 
         {extraFonts.map((family) =>
           renderOption(family, family, t("font.savedInDiagram")),

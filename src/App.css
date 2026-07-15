@@ -29,6 +29,8 @@ html {
   --ui-swatch-ring-outer: #ffffff;
   --ui-input-bg: #ffffff;
   --ui-section-heading: #5a6570;
+  --ui-font-family:
+    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
 }
 
@@ -38,12 +40,7 @@ body,
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--ui-font-family);
   background: var(--ui-bg);
   color: var(--ui-text);
 }
@@ -870,6 +867,115 @@ body,
 }
 
 .custom-theme-actions .btn-secondary {
+  width: auto;
+  margin-top: 0;
+}
+
+.theme-editor-group {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.75rem 0.25rem;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 0.5rem;
+}
+
+.theme-editor-group legend {
+  padding: 0 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ui-section-heading);
+}
+
+.theme-editor-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.theme-editor-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.theme-editor-swatch-label {
+  font-weight: 500;
+  color: var(--ui-text-muted);
+}
+
+.theme-editor-swatch-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-editor-color {
+  width: 2.25rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.375rem;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.theme-editor-color-fallback {
+  width: 2.25rem;
+  height: 2rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.375rem;
+  flex-shrink: 0;
+}
+
+.theme-editor-value {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.375rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  background: var(--ui-input-bg);
+  color: var(--ui-text);
+}
+
+.theme-editor-create-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.theme-editor-divider {
+  border: none;
+  border-top: 1px solid var(--ui-border-strong);
+  margin: 1.25rem 0;
+}
+
+.theme-editor-create-row .field {
+  margin-bottom: 0;
+  flex: 1 1 8rem;
+}
+
+.theme-editor-create-row .btn-secondary {
+  width: auto;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.theme-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.theme-editor-actions .btn-primary,
+.theme-editor-actions .btn-secondary {
   width: auto;
   margin-top: 0;
 }

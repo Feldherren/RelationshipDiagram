@@ -17,7 +17,15 @@
  * }
  */
 
+/** Default chrome font stack (matches previous App.css). */
+export const DEFAULT_UI_FONT =
+  'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+/** Appended when a custom UI font is chosen and may be missing. */
+export const UI_FONT_FALLBACK = "Arial, sans-serif";
+
 export const UI_TOKEN_KEYS = [
+  "--ui-font-family",
   "--ui-bg",
   "--ui-surface",
   "--ui-surface-hover",
@@ -64,6 +72,7 @@ export interface ThemeDocument {
 }
 
 export const LIGHT_THEME_TOKENS: UiTokenMap = {
+  "--ui-font-family": DEFAULT_UI_FONT,
   "--ui-bg": "#f4f5f7",
   "--ui-surface": "#ffffff",
   "--ui-surface-hover": "#f0f2f5",
@@ -89,6 +98,7 @@ export const LIGHT_THEME_TOKENS: UiTokenMap = {
 };
 
 export const DARK_THEME_TOKENS: UiTokenMap = {
+  "--ui-font-family": DEFAULT_UI_FONT,
   "--ui-bg": "#1a1d22",
   "--ui-surface": "#242830",
   "--ui-surface-hover": "#2e333c",
@@ -248,6 +258,176 @@ export function createThemeFromCurrentTokens(
     schemaVersion: 1,
     tokens: { ...tokens },
   };
+}
+
+/** Groups for the visual theme editor (label keys under appSettings.token*). */
+export function isDefaultUiFont(fontFamily: string): boolean {
+  return fontFamily.trim() === DEFAULT_UI_FONT;
+}
+
+/** CSS font-family value with Arial fallback for custom families. */
+export function toUiFontFamilyCss(fontFamily: string): string {
+  const trimmed = fontFamily.trim();
+  if (!trimmed || isDefaultUiFont(trimmed)) return DEFAULT_UI_FONT;
+  if (trimmed === UI_FONT_FALLBACK || trimmed === "Arial") {
+    return UI_FONT_FALLBACK;
+  }
+  if (trimmed.includes(",")) {
+    // Already a stack; ensure Arial appears before generic sans-serif if missing.
+    if (/\barial\b/i.test(trimmed)) return trimmed;
+    return trimmed.replace(/\bsans-serif\s*$/i, "Arial, sans-serif");
+  }
+  const family = trimmed.replace(/^["']|["']$/g, "");
+  return `"${family}", ${UI_FONT_FALLBACK}`;
+}
+
+/** Value for FontPicker selection (default sentinel or bare family name). */
+export function uiFontPickerValue(cssFontFamily: string): string {
+  const trimmed = cssFontFamily.trim();
+  if (!trimmed || isDefaultUiFont(trimmed)) return DEFAULT_UI_FONT;
+  if (trimmed === UI_FONT_FALLBACK || /^arial\b/i.test(trimmed)) return "Arial";
+  const primary = trimmed.match(/^"([^"]+)"|^'([^']+)'|^([^,]+)/);
+  const name = (primary?.[1] ?? primary?.[2] ?? primary?.[3] ?? trimmed).trim();
+  return name;
+}
+
+export const UI_TOKEN_GROUPS: readonly {
+  id: string;
+  labelKey: string;
+  keys: readonly UiTokenKey[];
+}[] = [
+  {
+    id: "surfaces",
+    labelKey: "tokenGroupSurfaces",
+    keys: [
+      "--ui-bg",
+      "--ui-surface",
+      "--ui-surface-hover",
+      "--ui-surface-muted",
+      "--ui-input-bg",
+    ],
+  },
+  {
+    id: "borders",
+    labelKey: "tokenGroupBorders",
+    keys: ["--ui-border", "--ui-border-strong"],
+  },
+  {
+    id: "text",
+    labelKey: "tokenGroupText",
+    keys: [
+      "--ui-text",
+      "--ui-text-muted",
+      "--ui-text-subtle",
+      "--ui-section-heading",
+    ],
+  },
+  {
+    id: "accent",
+    labelKey: "tokenGroupAccent",
+    keys: [
+      "--ui-accent",
+      "--ui-accent-hover",
+      "--ui-accent-text",
+      "--ui-accent-soft",
+      "--ui-danger",
+    ],
+  },
+  {
+    id: "effects",
+    labelKey: "tokenGroupEffects",
+    keys: ["--ui-overlay", "--ui-shadow"],
+  },
+  {
+    id: "checker",
+    labelKey: "tokenGroupChecker",
+    keys: ["--ui-check-a", "--ui-check-b"],
+  },
+  {
+    id: "swatches",
+    labelKey: "tokenGroupSwatches",
+    keys: ["--ui-swatch-ring", "--ui-swatch-ring-outer"],
+  },
+];
+
+export const UI_TOKEN_LABEL_KEYS: Record<UiTokenKey, string> = {
+  "--ui-font-family": "tokenFontFamily",
+  "--ui-bg": "tokenBg",
+  "--ui-surface": "tokenSurface",
+  "--ui-surface-hover": "tokenSurfaceHover",
+  "--ui-surface-muted": "tokenSurfaceMuted",
+  "--ui-border": "tokenBorder",
+  "--ui-border-strong": "tokenBorderStrong",
+  "--ui-text": "tokenText",
+  "--ui-text-muted": "tokenTextMuted",
+  "--ui-text-subtle": "tokenTextSubtle",
+  "--ui-accent": "tokenAccent",
+  "--ui-accent-hover": "tokenAccentHover",
+  "--ui-accent-text": "tokenAccentText",
+  "--ui-accent-soft": "tokenAccentSoft",
+  "--ui-danger": "tokenDanger",
+  "--ui-overlay": "tokenOverlay",
+  "--ui-shadow": "tokenShadow",
+  "--ui-check-a": "tokenCheckA",
+  "--ui-check-b": "tokenCheckB",
+  "--ui-swatch-ring": "tokenSwatchRing",
+  "--ui-swatch-ring-outer": "tokenSwatchRingOuter",
+  "--ui-input-bg": "tokenInputBg",
+  "--ui-section-heading": "tokenSectionHeading",
+};
+
+export function expandThemeTokens(
+  tokens: Partial<UiTokenMap> | undefined,
+): UiTokenMap {
+  return { ...LIGHT_THEME_TOKENS, ...normalizeTokenPartial(tokens) };
+}
+
+export function slugifyThemeId(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "theme";
+}
+
+export function uniqueThemeId(
+  name: string,
+  existing: readonly ThemeDocument[],
+): string {
+  const base = slugifyThemeId(name);
+  const used = new Set(existing.map((theme) => theme.id));
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+/** Hex suitable for `<input type="color">`, or null if not a solid hex/rgb colour. */
+export function cssColorToHexInput(value: string): string | null {
+  const trimmed = value.trim();
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
+  if (hex) {
+    const raw = hex[1]!;
+    if (raw.length === 3) {
+      return `#${raw[0]}${raw[0]}${raw[1]}${raw[1]}${raw[2]}${raw[2]}`.toLowerCase();
+    }
+    return `#${raw.toLowerCase()}`;
+  }
+  const rgb =
+    /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i.exec(trimmed);
+  if (rgb) {
+    const r = Math.min(255, Number(rgb[1]));
+    const g = Math.min(255, Number(rgb[2]));
+    const b = Math.min(255, Number(rgb[3]));
+    return (
+      "#" +
+      [r, g, b]
+        .map((c) => c.toString(16).padStart(2, "0"))
+        .join("")
+        .toLowerCase()
+    );
+  }
+  return null;
 }
 
 let systemThemeListener: ((event: MediaQueryListEvent) => void) | null = null;

@@ -25,9 +25,7 @@ import {
 } from "../models/types";
 import {
   getBoxCenter,
-  getCharactersContainedInBox,
   getEmptyBoxBounds,
-  getFloatingTextsContainedInBox,
   isCharacterContainedInBox,
   resolveBoxBounds,
 } from "../utils/geometry";
@@ -129,7 +127,11 @@ interface DiagramState {
   updateBox: (id: string, patch: Partial<Box>) => void;
   deleteBox: (id: string) => void;
   toggleBoxCollapse: (id: string) => void;
-  moveBox: (id: string, delta: { dx: number; dy: number }) => void;
+  moveBox: (
+    id: string,
+    delta: { dx: number; dy: number },
+    contents: { characterIds: string[]; floatingTextIds: string[] },
+  ) => void;
 
   addFloatingTextAt: (position: { x: number; y: number }) => void;
   updateFloatingText: (id: string, patch: Partial<FloatingText>) => void;
@@ -536,17 +538,13 @@ export const useDiagramStore = create<DiagramState>()(
     }
   },
 
-  moveBox: (id, delta) =>
+  moveBox: (id, delta, contents) =>
     set((s) => {
       const box = s.boxes.find((b) => b.id === id);
       if (!box) return {};
 
-      const containedCharacterIds = new Set(
-        getCharactersContainedInBox(box, s.characters).map((c) => c.id),
-      );
-      const containedFloatingTextIds = new Set(
-        getFloatingTextsContainedInBox(box, s.floatingTexts).map((t) => t.id),
-      );
+      const containedCharacterIds = new Set(contents.characterIds);
+      const containedFloatingTextIds = new Set(contents.floatingTextIds);
 
       return {
         characters: s.characters.map((c) => {
@@ -802,17 +800,31 @@ export function isCharacterHidden(
   characterId: string,
   boxes: Box[],
   characters: Character[],
+  fontFamily?: string,
 ): boolean {
-  return getCollapsedBoxForCharacter(characterId, boxes, characters) != null;
+  return (
+    getCollapsedBoxForCharacter(
+      characterId,
+      boxes,
+      characters,
+      fontFamily,
+    ) != null
+  );
 }
 
 export function isFloatingTextHidden(
   floatingTextId: string,
   boxes: Box[],
   floatingTexts: FloatingText[],
+  fontFamily?: string,
 ): boolean {
   return (
-    getCollapsedBoxForFloatingText(floatingTextId, boxes, floatingTexts) != null
+    getCollapsedBoxForFloatingText(
+      floatingTextId,
+      boxes,
+      floatingTexts,
+      fontFamily,
+    ) != null
   );
 }
 

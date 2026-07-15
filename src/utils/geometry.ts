@@ -103,23 +103,27 @@ export function getCharacterBounds(
   character: Character,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
   viewportScale = 1,
+  options?: { includeConnectHandle?: boolean },
 ): Bounds {
+  const includeConnectHandle = options?.includeConnectHandle !== false;
   const size = character.size || DEFAULT_CHARACTER_SIZE;
   const { x, y } = character.position;
-  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
 
   let minX = x - size - NODE_STROKE_MARGIN;
   let maxX = x + size + NODE_STROKE_MARGIN;
   let minY = y - size - NODE_STROKE_MARGIN;
   let maxY = y + size + NODE_STROKE_MARGIN;
 
-  const handleOffset = getConnectHandleOffset(size);
-  const handleX = x + handleOffset.x;
-  const handleY = y + handleOffset.y;
-  minX = Math.min(minX, handleX - handleRadius);
-  maxX = Math.max(maxX, handleX + handleRadius);
-  minY = Math.min(minY, handleY - handleRadius);
-  maxY = Math.max(maxY, handleY + handleRadius);
+  if (includeConnectHandle) {
+    const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+    const handleOffset = getConnectHandleOffset(size);
+    const handleX = x + handleOffset.x;
+    const handleY = y + handleOffset.y;
+    minX = Math.min(minX, handleX - handleRadius);
+    maxX = Math.max(maxX, handleX + handleRadius);
+    minY = Math.min(minY, handleY - handleRadius);
+    maxY = Math.max(maxY, handleY + handleRadius);
+  }
 
   let labelTop = y + size + 8;
 
@@ -231,6 +235,15 @@ export function resolveBoxBounds(box: Box): Bounds | null {
   return getEmptyBoxBounds(box.anchorPosition);
 }
 
+export function isBoundsFullyInside(inner: Bounds, outer: Bounds): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
 export function isPointContainedInBox(point: Point, box: Box): boolean {
   const bounds = resolveBoxBounds(box);
   if (!bounds) return false;
@@ -243,32 +256,52 @@ export function isPointContainedInBox(point: Point, box: Box): boolean {
   );
 }
 
+/** True when the character circle + labels are fully inside the box. */
 export function isCharacterContainedInBox(
   character: Character,
   box: Box,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
-  return isPointContainedInBox(character.position, box);
+  const boxBounds = resolveBoxBounds(box);
+  if (!boxBounds) return false;
+  const characterBounds = getCharacterBounds(character, fontFamily, 1, {
+    includeConnectHandle: false,
+  });
+  return isBoundsFullyInside(characterBounds, boxBounds);
 }
 
 export function getCharactersContainedInBox(
   box: Box,
   characters: Character[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Character[] {
-  return characters.filter((c) => isCharacterContainedInBox(c, box));
+  return characters.filter((c) =>
+    isCharacterContainedInBox(c, box, fontFamily),
+  );
 }
 
+/** True when the floating text pill is fully inside the box. */
 export function isFloatingTextContainedInBox(
   floatingText: FloatingText,
   box: Box,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
-  return isPointContainedInBox(floatingText.position, box);
+  const boxBounds = resolveBoxBounds(box);
+  if (!boxBounds) return false;
+  return isBoundsFullyInside(
+    getFloatingTextBounds(floatingText, fontFamily),
+    boxBounds,
+  );
 }
 
 export function getFloatingTextsContainedInBox(
   box: Box,
   floatingTexts: FloatingText[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): FloatingText[] {
-  return floatingTexts.filter((t) => isFloatingTextContainedInBox(t, box));
+  return floatingTexts.filter((t) =>
+    isFloatingTextContainedInBox(t, box, fontFamily),
+  );
 }
 
 export function resizeBoxBounds(

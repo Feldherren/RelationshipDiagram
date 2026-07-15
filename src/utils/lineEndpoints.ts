@@ -11,6 +11,7 @@ import {
   isCharacterContainedInBox,
   isFloatingTextContainedInBox,
 } from "./geometry";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 export interface ResolvedLineEndpoint {
   logical: NodeRef;
@@ -24,11 +25,13 @@ export function getCollapsedBoxForCharacter(
   characterId: string,
   boxes: Box[],
   characters: Character[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Box | undefined {
   const character = characters.find((c) => c.id === characterId);
   if (!character) return undefined;
   return boxes.find(
-    (b) => b.collapsed && isCharacterContainedInBox(character, b),
+    (b) =>
+      b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
   );
 }
 
@@ -36,26 +39,31 @@ export function getCollapsedBoxForFloatingText(
   floatingTextId: string,
   boxes: Box[],
   floatingTexts: FloatingText[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Box | undefined {
   const floatingText = floatingTexts.find((t) => t.id === floatingTextId);
   if (!floatingText) return undefined;
   return boxes.find(
-    (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
+    (b) =>
+      b.collapsed &&
+      isFloatingTextContainedInBox(floatingText, b, fontFamily),
   );
 }
 
 export function resolveLineEndpoint(
   ref: NodeRef,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "fontFamily">,
 ): ResolvedLineEndpoint {
   if (ref.kind === "box") {
     return { logical: ref, anchorKind: "box", anchorId: ref.id };
   }
 
+  const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
   const collapsedBox = getCollapsedBoxForCharacter(
     ref.id,
     diagram.boxes,
     diagram.characters,
+    fontFamily,
   );
   if (collapsedBox) {
     const character = getCharacterById(diagram, ref.id);
@@ -75,6 +83,7 @@ export function isLineFullyInsideCollapsedBox(
   line: Line,
   boxes: Box[],
   characters: Character[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
   if (line.from.kind !== "character" || line.to.kind !== "character") {
     return false;
@@ -83,17 +92,29 @@ export function isLineFullyInsideCollapsedBox(
     line.from.id,
     boxes,
     characters,
+    fontFamily,
   );
-  const toBox = getCollapsedBoxForCharacter(line.to.id, boxes, characters);
+  const toBox = getCollapsedBoxForCharacter(
+    line.to.id,
+    boxes,
+    characters,
+    fontFamily,
+  );
   return fromBox != null && toBox?.id === fromBox.id;
 }
 
 export function shouldRenderLine(
   line: Line,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "fontFamily">,
 ): boolean {
+  const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
   if (
-    isLineFullyInsideCollapsedBox(line, diagram.boxes, diagram.characters)
+    isLineFullyInsideCollapsedBox(
+      line,
+      diagram.boxes,
+      diagram.characters,
+      fontFamily,
+    )
   ) {
     return false;
   }

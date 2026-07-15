@@ -22,7 +22,8 @@ export function collectContentObstacles(
 
   for (const character of diagram.characters) {
     const inCollapsedBox = diagram.boxes.some(
-      (b) => b.collapsed && isCharacterContainedInBox(character, b),
+      (b) =>
+        b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
     );
     if (inCollapsedBox) continue;
     obstacles.push(getCharacterBounds(character, fontFamily, viewportScale));
@@ -45,7 +46,9 @@ export function collectContentObstacles(
 
   for (const floatingText of diagram.floatingTexts ?? []) {
     const inCollapsedBox = diagram.boxes.some(
-      (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
+      (b) =>
+        b.collapsed &&
+        isFloatingTextContainedInBox(floatingText, b, fontFamily),
     );
     if (inCollapsedBox) continue;
     obstacles.push(getFloatingTextBounds(floatingText, fontFamily));
@@ -63,7 +66,8 @@ export function computeContentBounds(
 
   for (const character of diagram.characters) {
     const inCollapsedBox = diagram.boxes.some(
-      (b) => b.collapsed && isCharacterContainedInBox(character, b),
+      (b) =>
+        b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
     );
     if (inCollapsedBox) continue;
     const bounds = getCharacterBounds(character, fontFamily, viewportScale);
@@ -88,7 +92,9 @@ export function computeContentBounds(
 
   for (const floatingText of diagram.floatingTexts ?? []) {
     const inCollapsedBox = diagram.boxes.some(
-      (b) => b.collapsed && isFloatingTextContainedInBox(floatingText, b),
+      (b) =>
+        b.collapsed &&
+        isFloatingTextContainedInBox(floatingText, b, fontFamily),
     );
     if (inCollapsedBox) continue;
     const bounds = getFloatingTextBounds(floatingText, fontFamily);

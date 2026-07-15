@@ -47,6 +47,7 @@ export function SelectionFloat() {
 
   const selection = useDiagramStore((s) => s.selection);
   const characters = useDiagramStore((s) => s.characters);
+  const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
@@ -300,7 +301,11 @@ export function SelectionFloat() {
   } else if (selection.type === "box") {
     const box = getBoxById({ boxes }, selection.id);
     if (!box) return null;
-    const contained = getCharactersContainedInBox(box, characters);
+    const contained = getCharactersContainedInBox(
+      box,
+      characters,
+      diagramFontFamily,
+    );
 
     body = (
       <>
@@ -319,7 +324,7 @@ export function SelectionFloat() {
           onChange={(borderColor) => updateBox(box.id, { borderColor })}
         />
         <p className="hint">
-          {contained.length} character(s) inside (by position)
+          {contained.length} character(s) fully inside
         </p>
         <button
           type="button"

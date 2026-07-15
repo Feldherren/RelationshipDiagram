@@ -16,6 +16,7 @@ import {
 import {
   cursorForBoxResizeEdge,
   getCharactersContainedInBox,
+  getFloatingTextsContainedInBox,
   rgbaWithAlpha,
   resolveBoxBounds,
   resizeBoxBounds,
@@ -41,7 +42,10 @@ interface BoxContainerProps {
   onSelect: () => void;
   onToggleCollapse: () => void;
   onBoundsChange: (bounds: Bounds) => void;
-  onMoveByDelta: (delta: { dx: number; dy: number }) => void;
+  onMoveByDelta: (
+    delta: { dx: number; dy: number },
+    contents: { characterIds: string[]; floatingTextIds: string[] },
+  ) => void;
   onResizeStart: () => void;
   onResizeEnd: () => void;
   onDragStart: () => void;
@@ -59,6 +63,8 @@ interface ResizeDragStart {
 
 interface MoveDragStart {
   pointer: { x: number; y: number };
+  characterIds: string[];
+  floatingTextIds: string[];
 }
 
 const RESIZE_EDGES: BoxResizeEdge[] = [
@@ -142,6 +148,7 @@ export function BoxContainer({
   part = "full",
 }: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const [hovered, setHovered] = useState(false);
@@ -161,7 +168,11 @@ export function BoxContainer({
   const showAura = shouldShowAura(hovered, selected);
   const showConnectHandle = selected || hovered || isConnectSource;
   const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
-  const containedCount = getCharactersContainedInBox(box, characters).length;
+  const containedCount = getCharactersContainedInBox(
+    box,
+    characters,
+    diagramFontFamily,
+  ).length;
 
   useEffect(() => {
     if (!resizing) return;
@@ -215,10 +226,16 @@ export function BoxContainer({
         y: e.clientY - rect.top,
       });
 
-      onMoveByDeltaRef.current({
-        dx: pointer.x - dragStart.pointer.x,
-        dy: pointer.y - dragStart.pointer.y,
-      });
+      onMoveByDeltaRef.current(
+        {
+          dx: pointer.x - dragStart.pointer.x,
+          dy: pointer.y - dragStart.pointer.y,
+        },
+        {
+          characterIds: dragStart.characterIds,
+          floatingTextIds: dragStart.floatingTextIds,
+        },
+      );
       dragStart.pointer = pointer;
     };
 
@@ -268,6 +285,16 @@ export function BoxContainer({
 
     moveStartRef.current = {
       pointer: screenToWorld(pointer),
+      characterIds: getCharactersContainedInBox(
+        box,
+        characters,
+        diagramFontFamily,
+      ).map((c) => c.id),
+      floatingTextIds: getFloatingTextsContainedInBox(
+        box,
+        floatingTexts,
+        diagramFontFamily,
+      ).map((t) => t.id),
     };
     document.body.style.cursor = "grabbing";
     setDragging(true);

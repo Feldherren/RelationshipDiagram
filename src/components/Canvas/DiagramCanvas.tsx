@@ -101,6 +101,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     showGrid,
     exportBounds,
     diagramBackgroundColor,
+    diagramFontFamily,
     stageSize,
     setStageSize,
     setSelection,
@@ -134,6 +135,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       showGrid: s.showGrid,
       exportBounds: s.exportBounds,
       diagramBackgroundColor: s.diagramBackgroundColor,
+      diagramFontFamily: s.diagramFontFamily,
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
@@ -392,6 +394,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     groups,
     boxes,
     floatingTexts,
+    fontFamily: diagramFontFamily,
   };
 
   const previewBounds =
@@ -472,7 +475,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
-                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onMoveByDelta={(delta, contents) =>
+                  moveBox(box.id, delta, contents)
+                }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
                 onDragStart={() => setIsDraggingBox(true)}
@@ -547,7 +552,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           )}
 
           {characters
-            .filter((c) => !isCharacterHidden(c.id, boxes, characters))
+            .filter(
+              (c) =>
+                !isCharacterHidden(c.id, boxes, characters, diagramFontFamily),
+            )
             .map((character) => {
               const memberOf = getGroupsForCharacter(character.id, groups);
               const isMember =
@@ -617,7 +625,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
-                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onMoveByDelta={(delta, contents) =>
+                  moveBox(box.id, delta, contents)
+                }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
                 onDragStart={() => setIsDraggingBox(true)}
@@ -647,7 +657,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
-                onMoveByDelta={(delta) => moveBox(box.id, delta)}
+                onMoveByDelta={(delta, contents) =>
+                  moveBox(box.id, delta, contents)
+                }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
                 onDragStart={() => setIsDraggingBox(true)}
@@ -661,7 +673,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
           {floatingTexts
             .filter(
-              (t) => !isFloatingTextHidden(t.id, boxes, floatingTexts),
+              (t) =>
+                !isFloatingTextHidden(
+                  t.id,
+                  boxes,
+                  floatingTexts,
+                  diagramFontFamily,
+                ),
             )
             .map((floatingText) => (
             <FloatingTextNode

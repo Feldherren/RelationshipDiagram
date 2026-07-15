@@ -51,6 +51,9 @@
   },
   "diagramProperties": {
     "title": "Diagram properties",
+    "sectionHeader": "Header",
+    "sectionBackground": "Background",
+    "sectionFont": "Font",
     "diagramTitle": "Diagram title",
     "diagramSubtitle": "Diagram subtitle",
     "titlePlaceholder": "Untitled diagram",

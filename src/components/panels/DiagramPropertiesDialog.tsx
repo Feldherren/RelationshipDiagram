@@ -1,9 +1,13 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getDiagramBackgroundMode } from "../../utils/diagramBackground";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
+import { TwoPaneDialog } from "./TwoPaneDialog";
+
+type PropertiesSectionId = "header" | "background" | "font";
 
 interface DiagramPropertiesDialogProps {
   open: boolean;
@@ -15,6 +19,8 @@ export function DiagramPropertiesDialog({
   onClose,
 }: DiagramPropertiesDialogProps) {
   const { t } = useTranslation();
+  const [activeSection, setActiveSection] =
+    useState<PropertiesSectionId>("header");
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
@@ -40,75 +46,101 @@ export function DiagramPropertiesDialog({
     diagramBackgroundColor,
   );
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!open) return;
+    setActiveSection("header");
+  }, [open]);
 
-  return (
-    <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <h2>{t("diagramProperties.title")}</h2>
+  const sections = [
+    { id: "header", label: t("diagramProperties.sectionHeader") },
+    { id: "background", label: t("diagramProperties.sectionBackground") },
+    { id: "font", label: t("diagramProperties.sectionFont") },
+  ] as const;
 
-        <label className="field">
-          <span>{t("diagramProperties.diagramTitle")}</span>
-          <input
-            type="text"
-            value={diagramTitle}
-            placeholder={t("diagramProperties.titlePlaceholder")}
-            onChange={(e) => setDiagramTitle(e.target.value)}
-          />
-        </label>
+  let content = null;
+  switch (activeSection) {
+    case "header":
+      content = (
+        <>
+          <label className="field">
+            <span>{t("diagramProperties.diagramTitle")}</span>
+            <input
+              type="text"
+              value={diagramTitle}
+              placeholder={t("diagramProperties.titlePlaceholder")}
+              onChange={(e) => setDiagramTitle(e.target.value)}
+            />
+          </label>
 
-        <label className="field">
-          <span>{t("diagramProperties.diagramSubtitle")}</span>
-          <input
-            type="text"
-            value={diagramSubtitle}
-            placeholder={t("diagramProperties.subtitlePlaceholder")}
-            onChange={(e) => setDiagramSubtitle(e.target.value)}
-          />
-        </label>
+          <label className="field">
+            <span>{t("diagramProperties.diagramSubtitle")}</span>
+            <input
+              type="text"
+              value={diagramSubtitle}
+              placeholder={t("diagramProperties.subtitlePlaceholder")}
+              onChange={(e) => setDiagramSubtitle(e.target.value)}
+            />
+          </label>
 
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={showDiagramHeader}
-            onChange={(e) => setShowDiagramHeader(e.target.checked)}
-          />
-          <span>{t("diagramProperties.showHeader")}</span>
-        </label>
-
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={showDiagramHeader}
+              onChange={(e) => setShowDiagramHeader(e.target.checked)}
+            />
+            <span>{t("diagramProperties.showHeader")}</span>
+          </label>
+        </>
+      );
+      break;
+    case "background":
+      content = (
         <BackgroundModeControls
           mode={backgroundMode}
           backgroundColor={diagramBackgroundColor}
           onModeChange={setDiagramBackgroundMode}
           onBackgroundColorChange={setDiagramBackgroundColor}
         />
+      );
+      break;
+    case "font":
+      content = (
+        <>
+          <div className="field">
+            <span>{t("diagramProperties.diagramFont")}</span>
+            <FontPicker
+              value={diagramFontFamily}
+              onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
+            />
+          </div>
 
-        <div className="field">
-          <span>{t("diagramProperties.diagramFont")}</span>
-          <FontPicker
-            value={diagramFontFamily}
-            onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
-          />
-        </div>
+          {fontMissing && (
+            <p className="hint">
+              {t("diagramProperties.fontMissing", { font: diagramFontFamily })}
+            </p>
+          )}
 
-        {fontMissing && (
-          <p className="hint">
-            {t("diagramProperties.fontMissing", { font: diagramFontFamily })}
-          </p>
-        )}
+          {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
+            <p className="hint">{t("diagramProperties.customFontHint")}</p>
+          )}
 
-        {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
-          <p className="hint">{t("diagramProperties.customFontHint")}</p>
-        )}
+          <p className="hint">{t("diagramProperties.uiFontHint")}</p>
+        </>
+      );
+      break;
+  }
 
-        <p className="hint">{t("diagramProperties.uiFontHint")}</p>
-
-        <div className="dialog-actions">
-          <button type="button" className="btn-primary" onClick={onClose}>
-            {t("diagramProperties.done")}
-          </button>
-        </div>
-      </div>
-    </div>
+  return (
+    <TwoPaneDialog
+      open={open}
+      onClose={onClose}
+      title={t("diagramProperties.title")}
+      sections={sections}
+      activeSection={activeSection}
+      onSectionChange={(id) => setActiveSection(id as PropertiesSectionId)}
+      doneLabel={t("diagramProperties.done")}
+    >
+      {content}
+    </TwoPaneDialog>
   );
 }

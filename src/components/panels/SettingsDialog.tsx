@@ -27,6 +27,16 @@ import {
 } from "../../utils/uiTheme";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
+import { TwoPaneDialog } from "./TwoPaneDialog";
+
+type SettingsSectionId =
+  | "appearance"
+  | "general"
+  | "editing"
+  | "newDiagrams"
+  | "export"
+  | "data"
+  | "about";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -39,6 +49,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     getLanguagePreference,
   );
   const [prefs, setPrefsState] = useState<AppPreferences>(getAppPreferences);
+  const [activeSection, setActiveSection] =
+    useState<SettingsSectionId>("appearance");
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +58,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     if (!open) return;
     setPrefsState(getAppPreferences());
     setLanguagePreferenceState(getLanguagePreference());
+    setActiveSection("appearance");
   }, [open]);
 
   const updatePrefs = (patch: Partial<AppPreferences>) => {
@@ -122,15 +135,21 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     updatePrefs({ customThemes, themePreference });
   };
 
-  if (!open) return null;
+  const sections = [
+    { id: "appearance", label: t("appSettings.appearanceSection") },
+    { id: "general", label: t("appSettings.generalSection") },
+    { id: "editing", label: t("appSettings.editingSection") },
+    { id: "newDiagrams", label: t("appSettings.newDiagramsSection") },
+    { id: "export", label: t("appSettings.exportSection") },
+    { id: "data", label: t("appSettings.dataSection") },
+    { id: "about", label: t("appSettings.aboutSection") },
+  ] as const;
 
-  return (
-    <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog dialog-scrollable" onClick={(e) => e.stopPropagation()}>
-        <h2>{t("appSettings.title")}</h2>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.appearanceSection")}</h3>
+  let content = null;
+  switch (activeSection) {
+    case "appearance":
+      content = (
+        <>
           <label className="field">
             <span>{t("appSettings.theme")}</span>
             <select
@@ -224,10 +243,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               }}
             />
           </div>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.generalSection")}</h3>
+        </>
+      );
+      break;
+    case "general":
+      content = (
+        <>
           <label className="field">
             <span>{t("appSettings.language")}</span>
             <select
@@ -249,10 +270,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             </select>
           </label>
           <p className="hint">{t("appSettings.languageHint")}</p>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.editingSection")}</h3>
+        </>
+      );
+      break;
+    case "editing":
+      content = (
+        <>
           <label className="field checkbox">
             <input
               type="checkbox"
@@ -275,10 +298,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
             <span>{t("appSettings.confirmBeforeNew")}</span>
           </label>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.newDiagramsSection")}</h3>
+        </>
+      );
+      break;
+    case "newDiagrams":
+      content = (
+        <>
           <p className="hint">{t("appSettings.newDiagramsHint")}</p>
 
           <BackgroundModeControls
@@ -320,10 +345,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               }
             />
           </div>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.exportSection")}</h3>
+        </>
+      );
+      break;
+    case "export":
+      content = (
+        <>
           <p className="hint">{t("appSettings.exportHint")}</p>
 
           <label className="field">
@@ -370,33 +397,43 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               <option value="custom">{t("export.boundsCustom")}</option>
             </select>
           </label>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.dataSection")}</h3>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => void handleClearRecovery()}
-          >
-            {t("appSettings.clearRecoveryData")}
-          </button>
-        </section>
-
-        <section className="settings-section">
-          <h3>{t("appSettings.aboutSection")}</h3>
+        </>
+      );
+      break;
+    case "data":
+      content = (
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => void handleClearRecovery()}
+        >
+          {t("appSettings.clearRecoveryData")}
+        </button>
+      );
+      break;
+    case "about":
+      content = (
+        <>
           <p>{t("app.name")}</p>
           <p className="hint">
             {t("appSettings.version", { version: packageJson.version })}
           </p>
-        </section>
+        </>
+      );
+      break;
+  }
 
-        <div className="dialog-actions">
-          <button type="button" className="btn-primary" onClick={onClose}>
-            {t("appSettings.done")}
-          </button>
-        </div>
-      </div>
-    </div>
+  return (
+    <TwoPaneDialog
+      open={open}
+      onClose={onClose}
+      title={t("appSettings.title")}
+      sections={sections}
+      activeSection={activeSection}
+      onSectionChange={(id) => setActiveSection(id as SettingsSectionId)}
+      doneLabel={t("appSettings.done")}
+    >
+      {content}
+    </TwoPaneDialog>
   );
 }

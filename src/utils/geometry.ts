@@ -4,6 +4,7 @@ import type {
   BoxResizeEdge,
   Character,
   Diagram,
+  FloatingText,
   Group,
   Point,
   RGB,
@@ -12,6 +13,7 @@ import {
   CHARACTER_BORDER_STROKE_WIDTH,
   COLLAPSED_BOX_SIZE,
   DEFAULT_CHARACTER_SIZE,
+  DEFAULT_FLOATING_TEXT_FONT_SIZE,
   BOX_HEADER_HEIGHT,
   BOX_PADDING,
   MIN_BOX_HEIGHT,
@@ -23,6 +25,7 @@ import {
   CHARACTER_LABEL_PADDING_Y,
   CHARACTER_NAME_FONT_SIZE,
   CHARACTER_SUBTITLE_FONT_SIZE,
+  getFloatingTextSize,
   getPillLabelSize,
 } from "./labelMetrics";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
@@ -66,11 +69,34 @@ export function getBoxById(
   return diagram.boxes.find((b) => b.id === id);
 }
 
+export function getFloatingTextById(
+  diagram: Pick<Diagram, "floatingTexts">,
+  id: string,
+): FloatingText | undefined {
+  return diagram.floatingTexts?.find((t) => t.id === id);
+}
+
 export function getGroupsForCharacter(
   characterId: string,
   groups: Group[],
 ): Group[] {
   return groups.filter((g) => g.memberCharacterIds.includes(characterId));
+}
+
+export function getFloatingTextBounds(
+  floatingText: FloatingText,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): Bounds {
+  const displayText = floatingText.text.trim() ? floatingText.text : "Text";
+  const fontSize = floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
+  const size = getFloatingTextSize(displayText, fontSize, fontFamily);
+  const { x, y } = floatingText.position;
+  return {
+    x: x - size.width / 2 - PILL_STROKE_MARGIN,
+    y: y - size.height / 2 - PILL_STROKE_MARGIN,
+    width: size.width + PILL_STROKE_MARGIN * 2,
+    height: size.height + PILL_STROKE_MARGIN * 2,
+  };
 }
 
 export function getCharacterBounds(

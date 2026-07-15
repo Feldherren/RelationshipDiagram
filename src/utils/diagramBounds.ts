@@ -4,6 +4,7 @@ import {
   expandBounds,
   getCharacterBounds,
   getCollapsedBoxBounds,
+  getFloatingTextBounds,
   isCharacterContainedInBox,
   resolveBoxBounds,
   mergeBounds,
@@ -41,6 +42,10 @@ export function collectContentObstacles(
     if (bounds) obstacles.push(bounds);
   }
 
+  for (const floatingText of diagram.floatingTexts ?? []) {
+    obstacles.push(getFloatingTextBounds(floatingText, fontFamily));
+  }
+
   return obstacles;
 }
 
@@ -74,6 +79,11 @@ export function computeContentBounds(
     if (!shouldRenderLine(line, diagram)) continue;
     const bounds = getLineBounds(line, diagram, fontFamily);
     if (bounds) result = result ? mergeBounds(result, bounds) : bounds;
+  }
+
+  for (const floatingText of diagram.floatingTexts ?? []) {
+    const bounds = getFloatingTextBounds(floatingText, fontFamily);
+    result = result ? mergeBounds(result, bounds) : bounds;
   }
 
   return result;

@@ -17,6 +17,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
@@ -32,6 +33,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     lines,
     groups,
     boxes,
+    floatingTexts,
   };
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);

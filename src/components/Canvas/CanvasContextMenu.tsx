@@ -13,6 +13,7 @@ interface CanvasContextMenuProps {
   onAddCharacter: (position: { x: number; y: number }) => void;
   onAddBox: (position: { x: number; y: number }) => void;
   onAddGroup: () => void;
+  onAddFloatingText: (position: { x: number; y: number }) => void;
 }
 
 export function CanvasContextMenu({
@@ -21,6 +22,7 @@ export function CanvasContextMenu({
   onAddCharacter,
   onAddBox,
   onAddGroup,
+  onAddFloatingText,
 }: CanvasContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +86,16 @@ export function CanvasContextMenu({
         }}
       >
         Add group
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onAddFloatingText(position);
+          onClose();
+        }}
+      >
+        Add text
       </button>
     </div>
   );

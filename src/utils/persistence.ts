@@ -3,6 +3,7 @@ import type {
   Bounds,
   Box,
   Diagram,
+  FloatingText,
   Group,
   Line,
   MembershipAppearance,
@@ -10,7 +11,12 @@ import type {
   Point,
   RGB,
 } from "../models/types";
-import { normalizeMembershipAppearance } from "../models/types";
+import {
+  DEFAULT_FLOATING_TEXT_COLOR,
+  DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MIN_FLOATING_TEXT_FONT_SIZE,
+  normalizeMembershipAppearance,
+} from "../models/types";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -94,8 +100,33 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
     lines: migrateLines(data.lines ?? []),
     groups,
     boxes,
+    floatingTexts: [],
     viewport: data.viewport,
   };
+}
+
+function normalizeFloatingTexts(
+  texts: Diagram["floatingTexts"],
+): FloatingText[] {
+  return (texts ?? []).map((t) => {
+    const partial = t as Partial<FloatingText> & {
+      id: string;
+      position: FloatingText["position"];
+    };
+    const fontSize =
+      typeof partial.fontSize === "number" && Number.isFinite(partial.fontSize)
+        ? Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize))
+        : DEFAULT_FLOATING_TEXT_FONT_SIZE;
+    return {
+      id: partial.id,
+      position: { x: partial.position.x, y: partial.position.y },
+      text: typeof partial.text === "string" ? partial.text : "",
+      color: partial.color
+        ? { ...partial.color }
+        : { ...DEFAULT_FLOATING_TEXT_COLOR },
+      fontSize,
+    };
+  });
 }
 
 function normalizeV2(data: Diagram): Diagram {
@@ -122,6 +153,7 @@ function normalizeV2(data: Diagram): Diagram {
       anchorPosition: b.anchorPosition,
       bounds: b.bounds,
     })),
+    floatingTexts: normalizeFloatingTexts(data.floatingTexts),
   };
 }
 

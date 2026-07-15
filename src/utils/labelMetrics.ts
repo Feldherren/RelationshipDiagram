@@ -22,6 +22,26 @@ export const CHARACTER_LABEL_PADDING_X = 12;
 export const CHARACTER_LABEL_PADDING_Y = 5;
 export const CHARACTER_LABEL_GAP = 4;
 
+/** Padding around floating text for hit-testing and the selection outline. */
+export function getFloatingTextPadding(fontSize: number): {
+  paddingX: number;
+  paddingY: number;
+} {
+  return {
+    paddingX: Math.max(4, Math.round(fontSize * 0.2)),
+    paddingY: Math.max(2, Math.round(fontSize * 0.15)),
+  };
+}
+
+export function getFloatingTextSize(
+  text: string,
+  fontSize: number,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): { width: number; height: number } {
+  const { paddingX, paddingY } = getFloatingTextPadding(fontSize);
+  return getPillLabelSize(text, fontSize, "normal", fontFamily, paddingX, paddingY);
+}
+
 export function measureLabelText(
   text: string,
   fontSize: number,

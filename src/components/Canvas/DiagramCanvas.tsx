@@ -3,6 +3,7 @@ import { Layer, Line, Rect } from "react-konva";
 import type Konva from "konva";
 import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
+import { FloatingTextNode } from "./FloatingTextNode";
 import { LineEdge } from "./LineEdge";
 import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
@@ -88,6 +89,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     lines,
     groups,
     boxes,
+    floatingTexts,
     selection,
     toolMode,
     connectFrom,
@@ -100,6 +102,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     setSelection,
     setExportBounds,
     moveCharacter,
+    moveFloatingText,
     handleNodeClick,
     toggleBoxCollapse,
     updateBox,
@@ -108,6 +111,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     addCharacterAt,
     addBoxAt,
     addGroup,
+    addFloatingTextAt,
     startConnectDrag,
     updateConnectDrag,
     endConnectDrag,
@@ -118,6 +122,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       lines: s.lines,
       groups: s.groups,
       boxes: s.boxes,
+      floatingTexts: s.floatingTexts,
       selection: s.selection,
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
@@ -130,6 +135,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       setSelection: s.setSelection,
       setExportBounds: s.setExportBounds,
       moveCharacter: s.moveCharacter,
+      moveFloatingText: s.moveFloatingText,
       handleNodeClick: s.handleNodeClick,
       toggleBoxCollapse: s.toggleBoxCollapse,
       updateBox: s.updateBox,
@@ -138,6 +144,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       addCharacterAt: s.addCharacterAt,
       addBoxAt: s.addBoxAt,
       addGroup: s.addGroup,
+      addFloatingTextAt: s.addFloatingTextAt,
       startConnectDrag: s.startConnectDrag,
       updateConnectDrag: s.updateConnectDrag,
       endConnectDrag: s.endConnectDrag,
@@ -380,6 +387,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     lines,
     groups,
     boxes,
+    floatingTexts,
   };
 
   const previewBounds =
@@ -412,6 +420,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         onAddCharacter={addCharacterAt}
         onAddBox={addBoxAt}
         onAddGroup={() => addGroup()}
+        onAddFloatingText={addFloatingTextAt}
       />
       {connectFrom && (
         <div className="connect-hint">
@@ -641,6 +650,27 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 })}
               />
             ))}
+
+          {floatingTexts.map((floatingText) => (
+            <FloatingTextNode
+              key={floatingText.id}
+              floatingText={floatingText}
+              selected={
+                selection?.type === "floatingText" &&
+                selection.id === floatingText.id
+              }
+              draggable={
+                toolMode !== "exportBounds" &&
+                toolMode !== "editGroupMembers" &&
+                !connectDrag
+              }
+              onSelect={() =>
+                setSelection({ type: "floatingText", id: floatingText.id })
+              }
+              onDragMove={(pos) => moveFloatingText(floatingText.id, pos)}
+              onDragEnd={(pos) => moveFloatingText(floatingText.id, pos)}
+            />
+          ))}
 
           {previewBounds && (
             <ScaleStrokeRect

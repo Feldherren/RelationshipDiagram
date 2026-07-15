@@ -5,13 +5,17 @@ import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
 import type { LineStyle } from "../../models/types";
 import {
+  DEFAULT_FLOATING_TEXT_COLOR,
+  DEFAULT_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
+  MIN_FLOATING_TEXT_FONT_SIZE,
   rgbToCss,
 } from "../../models/types";
 import {
   getBoxById,
   getCharacterById,
   getCharactersContainedInBox,
+  getFloatingTextById,
   getGroupById,
 } from "../../utils/geometry";
 import { DEFAULT_IMAGE_FOCUS } from "../../utils/imageLayout";
@@ -34,10 +38,12 @@ export function PropertyPanel() {
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
   const updateLine = useDiagramStore((s) => s.updateLine);
   const updateGroup = useDiagramStore((s) => s.updateGroup);
   const updateBox = useDiagramStore((s) => s.updateBox);
+  const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
   const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
   const addCharacterToGroup = useDiagramStore((s) => s.addCharacterToGroup);
   const removeCharacterFromGroup = useDiagramStore(
@@ -304,6 +310,81 @@ export function PropertyPanel() {
         <p className="hint">Double-click box on canvas to toggle collapse.</p>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           Delete box
+        </button>
+      </aside>
+    );
+  }
+
+  if (selection.type === "floatingText") {
+    const floatingText = getFloatingTextById(
+      { floatingTexts },
+      selection.id,
+    );
+    if (!floatingText) return null;
+
+    const color = floatingText.color ?? DEFAULT_FLOATING_TEXT_COLOR;
+    const fontSize =
+      floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
+
+    const commitFontSize = (raw: string) => {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) {
+        updateFloatingText(floatingText.id, { fontSize });
+        return;
+      }
+      updateFloatingText(floatingText.id, {
+        fontSize: Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(parsed)),
+      });
+    };
+
+    return (
+      <aside className="property-panel">
+        <h2>Text</h2>
+        <label className="field">
+          <span>Text</span>
+          <input
+            type="text"
+            value={floatingText.text}
+            placeholder="Text"
+            onChange={(e) =>
+              updateFloatingText(floatingText.id, { text: e.target.value })
+            }
+          />
+        </label>
+        <RgbPicker
+          label="Colour"
+          value={color}
+          onChange={(nextColor) =>
+            updateFloatingText(floatingText.id, { color: nextColor })
+          }
+        />
+        <label className="field">
+          <span>Font size</span>
+          <input
+            type="number"
+            min={MIN_FLOATING_TEXT_FONT_SIZE}
+            step={1}
+            value={fontSize}
+            onChange={(e) => {
+              if (e.target.value.trim() === "") return;
+              const parsed = Number(e.target.value);
+              if (!Number.isFinite(parsed)) return;
+              updateFloatingText(floatingText.id, {
+                fontSize: Math.round(parsed),
+              });
+            }}
+            onBlur={(e) => commitFontSize(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitFontSize((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+        </label>
+        <button type="button" className="btn-danger" onClick={deleteSelected}>
+          Delete text
         </button>
       </aside>
     );

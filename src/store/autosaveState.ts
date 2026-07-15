@@ -1,10 +1,11 @@
-import type { Diagram, RGB } from "../models/types";
+import type { Diagram, FloatingText, RGB } from "../models/types";
 
 export interface PersistedDiagramState {
   characters: Diagram["characters"];
   lines: Diagram["lines"];
   groups: Diagram["groups"];
   boxes: Diagram["boxes"];
+  floatingTexts: FloatingText[];
   viewport: Diagram["viewport"];
   diagramTitle: string;
   diagramSubtitle: string;
@@ -22,6 +23,7 @@ export function pickPersistedState(
     lines: state.lines,
     groups: state.groups,
     boxes: state.boxes,
+    floatingTexts: state.floatingTexts,
     viewport: state.viewport,
     diagramTitle: state.diagramTitle,
     diagramSubtitle: state.diagramSubtitle,
@@ -44,6 +46,7 @@ export function persistedStatesEqual(
     a.lines === b.lines &&
     a.groups === b.groups &&
     a.boxes === b.boxes &&
+    a.floatingTexts === b.floatingTexts &&
     a.diagramTitle === b.diagramTitle &&
     a.diagramSubtitle === b.diagramSubtitle &&
     a.showDiagramHeader === b.showDiagramHeader &&
@@ -72,5 +75,6 @@ export const EMPTY_DIAGRAM: Diagram = {
   lines: [],
   groups: [],
   boxes: [],
+  floatingTexts: [],
   viewport: { x: 0, y: 0, scale: 1 },
 };

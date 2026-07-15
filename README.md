@@ -7,6 +7,7 @@ A browser-based editor for character relationship diagrams. Create characters, c
 - Connect characters (and boxes) with coloured lines (and give the lines labels, a couple of styles, bend them)
 - **Groups** - semantic membership (a character can belong to many groups). Shown as coloured chips on each character’s border; select a group to highlight its members
 - **Boxes** - labelled organisational regions with customisable colours. Drag characters into a box by position; collapse a box to hide whoever is inside it
+- Floating text annotations
 - Saving and loading
 - Image export (entire graphic or selected area) at two distinct levels of zoom (also it estimates the dimensions of the exported image)
 - Customise the overall diagram - title and subtitle, grid or no grid, background colour, font
@@ -73,6 +74,7 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Add character | **+ Character** in the toolbar, or right-click canvas → **Add character** |
 | Add box | Right-click canvas → **Add box** |
 | Add group | Right-click canvas → **Add group** |
+| Add floating text | Right-click canvas → **Add text** |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |

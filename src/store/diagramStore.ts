@@ -7,6 +7,7 @@ import type {
   Character,
   ConnectDrag,
   Diagram,
+  FloatingText,
   Group,
   Line,
   NodeRef,
@@ -17,6 +18,8 @@ import type {
 } from "../models/types";
 import {
   DEFAULT_CHARACTER_SIZE,
+  DEFAULT_FLOATING_TEXT_COLOR,
+  DEFAULT_FLOATING_TEXT_FONT_SIZE,
   defaultMembershipAppearance,
   defaultRgb,
 } from "../models/types";
@@ -63,6 +66,7 @@ interface DiagramState {
   lines: Line[];
   groups: Group[];
   boxes: Box[];
+  floatingTexts: FloatingText[];
   viewport: Viewport;
   selection: Selection;
   toolMode: ToolMode;
@@ -123,6 +127,11 @@ interface DiagramState {
   toggleBoxCollapse: (id: string) => void;
   moveBox: (id: string, delta: { dx: number; dy: number }) => void;
 
+  addFloatingTextAt: (position: { x: number; y: number }) => void;
+  updateFloatingText: (id: string, patch: Partial<FloatingText>) => void;
+  deleteFloatingText: (id: string) => void;
+  moveFloatingText: (id: string, position: { x: number; y: number }) => void;
+
   handleNodeClick: (ref: NodeRef) => void;
   startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
   updateConnectDrag: (point: { x: number; y: number }) => void;
@@ -155,6 +164,7 @@ export const useDiagramStore = create<DiagramState>()(
   lines: [],
   groups: [],
   boxes: [],
+  floatingTexts: [],
   viewport: { x: 0, y: 0, scale: 1 },
   selection: null,
   toolMode: "select",
@@ -569,6 +579,43 @@ export const useDiagramStore = create<DiagramState>()(
       };
     }),
 
+  addFloatingTextAt: (position) => {
+    const floatingText: FloatingText = {
+      id: uuidv4(),
+      position,
+      text: "",
+      color: { ...DEFAULT_FLOATING_TEXT_COLOR },
+      fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
+    };
+    set((s) => ({
+      floatingTexts: [...s.floatingTexts, floatingText],
+      selection: { type: "floatingText", id: floatingText.id },
+    }));
+  },
+
+  updateFloatingText: (id, patch) =>
+    set((s) => ({
+      floatingTexts: s.floatingTexts.map((t) =>
+        t.id === id ? { ...t, ...patch } : t,
+      ),
+    })),
+
+  deleteFloatingText: (id) =>
+    set((s) => ({
+      floatingTexts: s.floatingTexts.filter((t) => t.id !== id),
+      selection:
+        s.selection?.type === "floatingText" && s.selection.id === id
+          ? null
+          : s.selection,
+    })),
+
+  moveFloatingText: (id, position) =>
+    set((s) => ({
+      floatingTexts: s.floatingTexts.map((t) =>
+        t.id === id ? { ...t, position } : t,
+      ),
+    })),
+
   handleNodeClick: (ref) => {
     const { connectFrom, toolMode, selection } = get();
     if (connectFrom) {
@@ -652,6 +699,8 @@ export const useDiagramStore = create<DiagramState>()(
     if (selection.type === "line") get().deleteLine(selection.id);
     if (selection.type === "group") get().deleteGroup(selection.id);
     if (selection.type === "box") get().deleteBox(selection.id);
+    if (selection.type === "floatingText")
+      get().deleteFloatingText(selection.id);
   },
 
   loadDiagram: async (diagram, options) => {
@@ -669,6 +718,7 @@ export const useDiagramStore = create<DiagramState>()(
       lines: diagram.lines,
       groups: diagram.groups,
       boxes: diagram.boxes,
+      floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
@@ -695,6 +745,7 @@ export const useDiagramStore = create<DiagramState>()(
       lines,
       groups,
       boxes,
+      floatingTexts,
       viewport,
       diagramTitle,
       diagramSubtitle,
@@ -716,6 +767,7 @@ export const useDiagramStore = create<DiagramState>()(
       lines,
       groups,
       boxes,
+      floatingTexts: floatingTexts.length > 0 ? floatingTexts : undefined,
       viewport,
     };
   },

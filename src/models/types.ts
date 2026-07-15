@@ -160,6 +160,19 @@ export interface Box {
   bounds?: Bounds;
 }
 
+/** Freestanding canvas annotation — not connected to characters, boxes, or lines. */
+export interface FloatingText {
+  id: string;
+  position: { x: number; y: number };
+  text: string;
+  color: RGB;
+  fontSize: number;
+}
+
+export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
+export const DEFAULT_FLOATING_TEXT_FONT_SIZE = 15;
+export const MIN_FLOATING_TEXT_FONT_SIZE = 10;
+
 export interface Viewport {
   x: number;
   y: number;
@@ -177,6 +190,7 @@ export interface Diagram {
   lines: Line[];
   groups: Group[];
   boxes: Box[];
+  floatingTexts?: FloatingText[];
   viewport?: Viewport;
 }
 
@@ -185,6 +199,7 @@ export type Selection =
   | { type: "line"; id: string }
   | { type: "group"; id: string }
   | { type: "box"; id: string }
+  | { type: "floatingText"; id: string }
   | null;
 
 export interface Bounds {

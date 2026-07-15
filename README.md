@@ -113,10 +113,17 @@ I vibe-coded this, *mostly*, but should anyone want to use or modify this tool, 
 None of these SVGs have been used as files, but their paths have been used for icons. Still worth attribution.
 
 Droplet SVG: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Flame Symbol SVG: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
+
 Music Note SVG: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+
 Skull SVG: https://www.svgrepo.com/svg/510199/skull (zest, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Glitter 2 SVG: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+
 Stone Block SVG: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+
 Sword F SVG: https://www.svgrepo.com/svg/360818/sword-f (michaelampr, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Wind SVG: https://www.svgrepo.com/svg/394565/wind (Kenan Gundogan, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))

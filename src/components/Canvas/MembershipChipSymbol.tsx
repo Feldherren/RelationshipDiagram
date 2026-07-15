@@ -231,7 +231,8 @@ export function MembershipChipSymbol({
         />
       );
     }
-    case "breeze": {
+    case "breeze":
+    case "plant": {
       const scale = glyph * BREEZE_LAYOUT.unitScale;
       return (
         <Path
@@ -240,6 +241,7 @@ export function MembershipChipSymbol({
           fillRule="evenodd"
           scaleX={scale}
           scaleY={scale}
+          rotation={symbol === "plant" ? -90 : 0}
           offsetX={BREEZE_LAYOUT.centerX}
           offsetY={BREEZE_LAYOUT.centerY}
           listening={false}

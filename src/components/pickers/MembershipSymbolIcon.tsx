@@ -238,10 +238,11 @@ export function MembershipSymbolIcon({
         </SvgShell>
       );
     case "breeze":
+    case "plant":
       return (
         <SvgShell title={label}>
           <g
-            transform={`scale(${BREEZE_LAYOUT.unitScale}) translate(${-BREEZE_LAYOUT.centerX} ${-BREEZE_LAYOUT.centerY})`}
+            transform={`${symbol === "plant" ? "rotate(-90) " : ""}scale(${BREEZE_LAYOUT.unitScale}) translate(${-BREEZE_LAYOUT.centerX} ${-BREEZE_LAYOUT.centerY})`}
           >
             <path d={BREEZE_PATH} fill={COLOR} fillRule="evenodd" />
           </g>

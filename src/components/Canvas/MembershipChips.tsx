@@ -92,6 +92,9 @@ export function MembershipChip({
         shadowBlur={emphasized ? 4 : 3}
         shadowOpacity={1}
         shadowEnabled
+        // Avoid Konva buffer canvas so fill/stroke survive cropped PNG export.
+        perfectDrawEnabled={false}
+        shadowForStrokeEnabled={false}
       />
       <MembershipChipSymbol
         symbol={appearance.symbol}
@@ -158,6 +161,7 @@ export function MembershipChips({
             fill="#e8e8e8"
             stroke="#333"
             strokeWidth={MEMBERSHIP_CHIP_BORDER_STROKE_WIDTH}
+            perfectDrawEnabled={false}
           />
           <Text
             text={`+${overflow}`}

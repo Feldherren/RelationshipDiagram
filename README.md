@@ -105,6 +105,8 @@ Diagrams are saved as `.rdiagram` JSON with `schemaVersion: 2` (`groups` for mem
 
 ## Resources Used
 
+[SVG Repo](https://www.svgrepo.com/)
+
 Droplet SVG: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 Flame Symbol SVG: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
 Music Note SVG: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))

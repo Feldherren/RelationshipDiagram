@@ -14,6 +14,8 @@ import {
   MUSIC_NOTE_PATH,
   ROCK_LAYOUT,
   ROCK_PATH,
+  SPARKLE_LAYOUT,
+  SPARKLE_PATH,
   SWORD_LAYOUT,
   SWORD_PATH,
 } from "../../utils/membershipSymbolGeometry";
@@ -258,6 +260,20 @@ export function MembershipChipSymbol({
           scaleY={scale}
           offsetX={ROCK_LAYOUT.centerX}
           offsetY={ROCK_LAYOUT.centerY}
+          listening={false}
+        />
+      );
+    }
+    case "sparkle": {
+      const scale = glyph * SPARKLE_LAYOUT.unitScale;
+      return (
+        <Path
+          data={SPARKLE_PATH}
+          fill={fill}
+          scaleX={scale}
+          scaleY={scale}
+          offsetX={SPARKLE_LAYOUT.centerX}
+          offsetY={SPARKLE_LAYOUT.centerY}
           listening={false}
         />
       );

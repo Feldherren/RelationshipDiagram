@@ -73,17 +73,18 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 |--------|-----|
 | Add character | **+ Character** in the toolbar, or right-click canvas → **Add character** |
 | Add box | Right-click canvas → **Add box** |
-| Add group | Right-click canvas → **Add group** |
+| Add group | **Groups** (lower left) → **Add group**, or right-click canvas → **Add group** |
 | Add floating text | Right-click canvas → **Add text** |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
-| Edit properties | Select an item; use the panel on the right |
-| Assign group membership | Select a character → check groups in the panel, or select a group → check members |
-| Highlight group | Select a group (panel or click a membership chip) — members stay prominent, others dim |
-| Customise group chip | Select a group → **Customise chip…** |
+| Edit properties | Select an item; use the floating panel near it |
+| Browse groups | **Groups** in the lower left |
+| Assign group membership | **Groups** (lower left) → **Edit members**, or select a group → **Edit members on canvas** |
+| Highlight / edit group | Click a membership chip, or pick a group from **Groups** — members stay prominent; edit in the floating panel |
+| Customise group chip | Select a group → **Customise chip…** in the floating panel |
 | Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |
-| Collapse box | Double-click the box, or use **Collapse box** in the panel |
+| Collapse box | Double-click the box, or use **Collapse box** in the floating panel |
 | Delete | Select an item → **Delete** key |
 | Save / Open | **Save** / **Open** (`.rdiagram` JSON files) |
 | Export PNG | **Export** — auto content bounds or draw a custom region |

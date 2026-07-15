@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
-import { PropertyPanel } from "./components/panels/PropertyPanel";
+import { SelectionFloat } from "./components/panels/SelectionFloat";
+import { GroupsListPopup } from "./components/panels/GroupsListPopup";
 import { ExportDialog } from "./components/panels/ExportDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
@@ -14,7 +15,7 @@ import {
 import "./App.css";
 
 function App() {
-  const stageRef = useRef<Konva.Stage>(null);
+  const stageRef = useRef<Konva.Stage | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
@@ -84,8 +85,11 @@ function App() {
         onSettings={() => setSettingsOpen(true)}
       />
       <main className="main">
-        <DiagramCanvas stageRef={stageRef} />
-        <PropertyPanel />
+        <div className="workspace">
+          <DiagramCanvas stageRef={stageRef} />
+          <SelectionFloat />
+          <GroupsListPopup />
+        </div>
       </main>
       <ExportDialog
         open={exportOpen}

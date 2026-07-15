@@ -1,6 +1,6 @@
 import type Konva from "konva";
 import KonvaLib from "konva";
-import type { Bounds, RGB } from "../models/types";
+import type { Bounds, GridStyle, RGB } from "../models/types";
 import { rgbToCss } from "../models/types";
 import { computeDiagramBounds } from "./diagramBounds";
 import type { Diagram } from "../models/types";
@@ -22,6 +22,7 @@ import {
   computeGridLineBounds,
   DIAGRAM_GRID_SIZE,
   DIAGRAM_GRID_STROKE,
+  drawGrid,
 } from "./gridBackground";
 
 export const GRID_NODE_NAME = "diagram-grid";
@@ -110,6 +111,7 @@ export interface ExportOptions {
   pixelRatio: number;
   backgroundColor?: RGB | null;
   showGrid?: boolean;
+  gridStyle?: GridStyle;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -177,8 +179,15 @@ export async function exportStageToPng(
   stage: Konva.Stage,
   options: ExportOptions,
 ): Promise<string> {
-  const { bounds, pixelRatio, backgroundColor, showGrid, header, viewportScale = 1 } =
-    options;
+  const {
+    bounds,
+    pixelRatio,
+    backgroundColor,
+    showGrid,
+    gridStyle = "lines",
+    header,
+    viewportScale = 1,
+  } = options;
 
   if (header?.showHeader) {
     await ensureFontLoaded(header.fontFamily);
@@ -237,23 +246,20 @@ export async function exportStageToPng(
 
   if (showGrid && layer) {
     const gridBounds = computeGridLineBounds(crop);
+    const isDots = gridStyle === "dots";
     const exportGrid = new KonvaLib.Shape({
       name: EXPORT_GRID_NODE_NAME,
       listening: false,
-      stroke: DIAGRAM_GRID_STROKE,
-      strokeWidth: 1,
+      stroke: isDots ? undefined : DIAGRAM_GRID_STROKE,
+      fill: isDots ? DIAGRAM_GRID_STROKE : undefined,
+      strokeWidth: isDots ? undefined : 1,
       sceneFunc: (ctx, shape) => {
-        const { startX, endX, startY, endY } = gridBounds;
-        ctx.beginPath();
-        for (let x = startX; x <= endX; x += DIAGRAM_GRID_SIZE) {
-          ctx.moveTo(x, startY);
-          ctx.lineTo(x, endY);
+        drawGrid(ctx, gridBounds, gridStyle, DIAGRAM_GRID_SIZE);
+        if (isDots) {
+          ctx.fillShape(shape);
+        } else {
+          ctx.strokeShape(shape);
         }
-        for (let y = startY; y <= endY; y += DIAGRAM_GRID_SIZE) {
-          ctx.moveTo(startX, y);
-          ctx.lineTo(endX, y);
-        }
-        ctx.strokeShape(shape);
       },
     });
     layer.add(exportGrid);

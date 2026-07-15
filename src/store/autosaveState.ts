@@ -1,4 +1,4 @@
-import type { Diagram, FloatingText, RGB } from "../models/types";
+import type { Diagram, FloatingText, GridStyle, RGB } from "../models/types";
 
 export interface PersistedDiagramState {
   characters: Diagram["characters"];
@@ -13,6 +13,7 @@ export interface PersistedDiagramState {
   diagramFontFamily: string;
   diagramBackgroundColor: RGB | null;
   showGrid: boolean;
+  gridStyle: GridStyle;
 }
 
 export function pickPersistedState(
@@ -31,6 +32,7 @@ export function pickPersistedState(
     diagramFontFamily: state.diagramFontFamily,
     diagramBackgroundColor: state.diagramBackgroundColor,
     showGrid: state.showGrid,
+    gridStyle: state.gridStyle,
   };
 }
 
@@ -52,6 +54,7 @@ export function persistedStatesEqual(
     a.showDiagramHeader === b.showDiagramHeader &&
     a.diagramFontFamily === b.diagramFontFamily &&
     a.showGrid === b.showGrid &&
+    a.gridStyle === b.gridStyle &&
     a.diagramBackgroundColor === b.diagramBackgroundColor &&
     av?.x === bv?.x &&
     av?.y === bv?.y &&

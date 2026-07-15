@@ -184,11 +184,15 @@ export interface Viewport {
   scale: number;
 }
 
+export type GridStyle = "lines" | "dots";
+
 export interface Diagram {
   schemaVersion: 2;
   title?: string;
   subtitle?: string;
   showHeader?: boolean;
+  showGrid?: boolean;
+  gridStyle?: GridStyle;
   fontFamily?: string;
   backgroundColor?: RGB | null;
   characters: Character[];

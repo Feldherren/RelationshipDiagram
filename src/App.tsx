@@ -5,10 +5,12 @@ import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
 import { SelectionFloat } from "./components/panels/SelectionFloat";
 import { GroupsListPopup } from "./components/panels/GroupsListPopup";
 import { ExportDialog } from "./components/panels/ExportDialog";
+import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
 import { useAutosave } from "./hooks/useAutosave";
 import { useDiagramStore } from "./store/diagramStore";
+import { getAppPreferences } from "./utils/appPreferences";
 import {
   loadDiagramFromFile,
   saveDiagramToFile,
@@ -19,6 +21,7 @@ function App() {
   const { t } = useTranslation();
   const stageRef = useRef<Konva.Stage | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [diagramPropertiesOpen, setDiagramPropertiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
@@ -53,6 +56,7 @@ function App() {
   };
 
   const handleNew = async () => {
+    const { confirmBeforeNewDiagram } = getAppPreferences();
     const { characters, lines, groups, boxes, floatingTexts } =
       useDiagramStore.getState();
     const hasContent =
@@ -61,7 +65,11 @@ function App() {
       groups.length > 0 ||
       boxes.length > 0 ||
       floatingTexts.length > 0;
-    if (hasContent && !window.confirm(t("app.newConfirm"))) {
+    if (
+      confirmBeforeNewDiagram &&
+      hasContent &&
+      !window.confirm(t("app.newConfirm"))
+    ) {
       return;
     }
     await newDiagram();
@@ -79,6 +87,7 @@ function App() {
         onSave={handleSave}
         onOpen={handleOpen}
         onExport={handleExport}
+        onDiagramProperties={() => setDiagramPropertiesOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
       <main className="main">
@@ -92,6 +101,10 @@ function App() {
         open={exportOpen}
         stageRef={stageRef}
         onClose={() => setExportOpen(false)}
+      />
+      <DiagramPropertiesDialog
+        open={diagramPropertiesOpen}
+        onClose={() => setDiagramPropertiesOpen(false)}
       />
       <SettingsDialog
         open={settingsOpen}

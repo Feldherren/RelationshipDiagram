@@ -71,6 +71,17 @@ body,
   cursor: not-allowed;
 }
 
+.toolbar-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+}
+
+.toolbar-icon {
+  display: block;
+}
+
 .toolbar-checkbox {
   display: flex;
   align-items: center;

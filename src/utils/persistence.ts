@@ -155,6 +155,8 @@ function normalizeV2(data: Diagram): Diagram {
       bounds: b.bounds,
     })),
     floatingTexts: normalizeFloatingTexts(data.floatingTexts),
+    showGrid: data.showGrid ?? true,
+    gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
   };
 }
 

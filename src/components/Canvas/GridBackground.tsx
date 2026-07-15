@@ -4,6 +4,7 @@ import {
   computeViewportGridLineBounds,
   DIAGRAM_GRID_SIZE,
   DIAGRAM_GRID_STROKE,
+  drawGrid,
 } from "../../utils/gridBackground";
 import { GRID_NODE_NAME } from "../../utils/export";
 import { useDiagramStore } from "../../store/diagramStore";
@@ -20,6 +21,7 @@ export function GridBackground({
   gridSize = DIAGRAM_GRID_SIZE,
 }: GridBackgroundProps) {
   const viewport = useDiagramStore((s) => s.viewport);
+  const gridStyle = useDiagramStore((s) => s.gridStyle);
 
   const bounds = useMemo(
     () =>
@@ -33,25 +35,22 @@ export function GridBackground({
   );
 
   const strokeWidth = 1 / viewport.scale;
+  const isDots = gridStyle === "dots";
 
   return (
     <Shape
       name={GRID_NODE_NAME}
       listening={false}
-      stroke={DIAGRAM_GRID_STROKE}
-      strokeWidth={strokeWidth}
+      stroke={isDots ? undefined : DIAGRAM_GRID_STROKE}
+      fill={isDots ? DIAGRAM_GRID_STROKE : undefined}
+      strokeWidth={isDots ? undefined : strokeWidth}
       sceneFunc={(ctx, shape) => {
-        const { startX, endX, startY, endY } = bounds;
-        ctx.beginPath();
-        for (let x = startX; x <= endX; x += gridSize) {
-          ctx.moveTo(x, startY);
-          ctx.lineTo(x, endY);
+        drawGrid(ctx, bounds, gridStyle, gridSize);
+        if (isDots) {
+          ctx.fillShape(shape);
+        } else {
+          ctx.strokeShape(shape);
         }
-        for (let y = startY; y <= endY; y += gridSize) {
-          ctx.moveTo(startX, y);
-          ctx.lineTo(endX, y);
-        }
-        ctx.strokeShape(shape);
       }}
     />
   );

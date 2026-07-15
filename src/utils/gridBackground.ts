@@ -1,7 +1,8 @@
-import type { Bounds, Viewport } from "../models/types";
+import type { Bounds, GridStyle, Viewport } from "../models/types";
 
 export const DIAGRAM_GRID_SIZE = 40;
 export const DIAGRAM_GRID_STROKE = "#e0e0e0";
+export const DIAGRAM_GRID_DOT_RADIUS = 1.25;
 
 export function computeGridLineBounds(
   region: Bounds,
@@ -31,4 +32,61 @@ export function computeViewportGridLineBounds(
     startY +
     Math.ceil(stageHeight / viewport.scale / gridSize + 2) * gridSize;
   return { startX, endX, startY, endY };
+}
+
+interface GridDrawContext {
+  beginPath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
+  fill(): void;
+  stroke(): void;
+}
+
+export function drawGridLines(
+  ctx: GridDrawContext,
+  bounds: { startX: number; endX: number; startY: number; endY: number },
+  gridSize = DIAGRAM_GRID_SIZE,
+): void {
+  const { startX, endX, startY, endY } = bounds;
+  ctx.beginPath();
+  for (let x = startX; x <= endX; x += gridSize) {
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, endY);
+  }
+  for (let y = startY; y <= endY; y += gridSize) {
+    ctx.moveTo(startX, y);
+    ctx.lineTo(endX, y);
+  }
+  ctx.stroke();
+}
+
+export function drawGridDots(
+  ctx: GridDrawContext,
+  bounds: { startX: number; endX: number; startY: number; endY: number },
+  gridSize = DIAGRAM_GRID_SIZE,
+  dotRadius = DIAGRAM_GRID_DOT_RADIUS,
+): void {
+  const { startX, endX, startY, endY } = bounds;
+  ctx.beginPath();
+  for (let x = startX; x <= endX; x += gridSize) {
+    for (let y = startY; y <= endY; y += gridSize) {
+      ctx.moveTo(x + dotRadius, y);
+      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+    }
+  }
+  ctx.fill();
+}
+
+export function drawGrid(
+  ctx: GridDrawContext,
+  bounds: { startX: number; endX: number; startY: number; endY: number },
+  gridStyle: GridStyle,
+  gridSize = DIAGRAM_GRID_SIZE,
+): void {
+  if (gridStyle === "dots") {
+    drawGridDots(ctx, bounds, gridSize);
+  } else {
+    drawGridLines(ctx, bounds, gridSize);
+  }
 }

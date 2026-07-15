@@ -9,18 +9,15 @@ import {
 export interface AutosaveSnapshot {
   schemaVersion: 1;
   savedAt: number;
-  showGrid: boolean;
+  /** @deprecated Migrated into diagram.showGrid on load */
+  showGrid?: boolean;
   diagram: Diagram;
 }
 
-export function createAutosaveSnapshot(
-  diagram: Diagram,
-  showGrid: boolean,
-): AutosaveSnapshot {
+export function createAutosaveSnapshot(diagram: Diagram): AutosaveSnapshot {
   return {
     schemaVersion: 1,
     savedAt: Date.now(),
-    showGrid,
     diagram,
   };
 }
@@ -30,11 +27,17 @@ function parseAutosaveSnapshot(data: unknown): AutosaveSnapshot {
   if (record.schemaVersion !== 1 || !record.diagram) {
     throw new Error("Invalid autosave format");
   }
+
+  let diagram = parseDiagram(JSON.stringify(record.diagram));
+
+  if (diagram.showGrid === undefined && typeof record.showGrid === "boolean") {
+    diagram = { ...diagram, showGrid: record.showGrid };
+  }
+
   return {
     schemaVersion: 1,
     savedAt: record.savedAt ?? 0,
-    showGrid: record.showGrid ?? true,
-    diagram: parseDiagram(JSON.stringify(record.diagram)),
+    diagram,
   };
 }
 

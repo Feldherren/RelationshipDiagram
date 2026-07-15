@@ -1,9 +1,12 @@
-import type { RGB } from "../models/types";
+import type { GridStyle, RGB } from "../models/types";
 import { colorsEqual, rgbToCss, rgbToHex } from "../models/types";
 
 export const DEFAULT_DIAGRAM_BACKGROUND: RGB = { r: 250, g: 251, b: 252 };
 
 export type DiagramBackgroundColor = RGB | null;
+
+/** Canvas background appearance: solid, transparent, or grid overlay variants. */
+export type DiagramBackgroundMode = "plain" | "blank" | "grid" | "dots";
 
 export const BACKGROUND_PRESETS: {
   id: string;
@@ -56,4 +59,51 @@ export function backgroundColorForPicker(color: DiagramBackgroundColor): RGB {
 
 export function backgroundHexForPicker(color: DiagramBackgroundColor): string {
   return rgbToHex(backgroundColorForPicker(color));
+}
+
+export function getDiagramBackgroundMode(
+  showGrid: boolean,
+  gridStyle: GridStyle,
+  backgroundColor: DiagramBackgroundColor,
+): DiagramBackgroundMode {
+  if (showGrid && gridStyle === "dots") return "dots";
+  if (showGrid) return "grid";
+  if (backgroundColor === null) return "blank";
+  return "plain";
+}
+
+export function applyDiagramBackgroundMode(
+  mode: DiagramBackgroundMode,
+  currentBackground: DiagramBackgroundColor,
+): {
+  showGrid: boolean;
+  gridStyle: GridStyle;
+  backgroundColor: DiagramBackgroundColor;
+} {
+  switch (mode) {
+    case "blank":
+      return { showGrid: false, gridStyle: "lines", backgroundColor: null };
+    case "plain":
+      return {
+        showGrid: false,
+        gridStyle: "lines",
+        backgroundColor: currentBackground ?? DEFAULT_DIAGRAM_BACKGROUND,
+      };
+    case "grid":
+      return {
+        showGrid: true,
+        gridStyle: "lines",
+        backgroundColor: currentBackground ?? DEFAULT_DIAGRAM_BACKGROUND,
+      };
+    case "dots":
+      return {
+        showGrid: true,
+        gridStyle: "dots",
+        backgroundColor: currentBackground ?? DEFAULT_DIAGRAM_BACKGROUND,
+      };
+  }
+}
+
+export function backgroundModeUsesColour(mode: DiagramBackgroundMode): boolean {
+  return mode !== "blank";
 }

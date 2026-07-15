@@ -1,0 +1,139 @@
+import type { RGB } from "../models/types";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import {
+  DEFAULT_DIAGRAM_BACKGROUND,
+  type DiagramBackgroundMode,
+} from "./diagramBackground";
+
+const STORAGE_KEY = "appPreferences";
+
+export type ExportBoundsMode = "auto" | "custom";
+
+export interface AppPreferences {
+  autosaveEnabled: boolean;
+  confirmBeforeNewDiagram: boolean;
+  defaultBackgroundMode: DiagramBackgroundMode;
+  defaultShowHeader: boolean;
+  defaultBackgroundColor: RGB | null;
+  defaultDiagramFont: string;
+  defaultExportPadding: number;
+  defaultExportPixelRatio: 1 | 2;
+  defaultExportBoundsMode: ExportBoundsMode;
+}
+
+export const DEFAULT_APP_PREFERENCES: AppPreferences = {
+  autosaveEnabled: true,
+  confirmBeforeNewDiagram: true,
+  defaultBackgroundMode: "grid",
+  defaultShowHeader: true,
+  defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
+  defaultDiagramFont: DEFAULT_DIAGRAM_FONT,
+  defaultExportPadding: 32,
+  defaultExportPixelRatio: 1,
+  defaultExportBoundsMode: "auto",
+};
+
+function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
+  return (
+    value === "plain" ||
+    value === "blank" ||
+    value === "grid" ||
+    value === "dots"
+  );
+}
+
+function isExportBoundsMode(value: unknown): value is ExportBoundsMode {
+  return value === "auto" || value === "custom";
+}
+
+function isRgb(value: unknown): value is RGB {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.r === "number" &&
+    typeof v.g === "number" &&
+    typeof v.b === "number"
+  );
+}
+
+function migrateLegacyBackgroundMode(
+  stored: Record<string, unknown>,
+  defaultBackgroundColor: RGB | null,
+): DiagramBackgroundMode {
+  if (defaultBackgroundColor === null) return "blank";
+  if (stored.defaultShowGrid === false) return "plain";
+  if (stored.defaultGridStyle === "dots") return "dots";
+  return "grid";
+}
+
+function parseStoredPreferences(raw: unknown): AppPreferences {
+  if (typeof raw !== "object" || raw === null) {
+    return { ...DEFAULT_APP_PREFERENCES };
+  }
+
+  const stored = raw as Record<string, unknown>;
+  const defaults = DEFAULT_APP_PREFERENCES;
+
+  const defaultBackgroundColor =
+    stored.defaultBackgroundColor === null
+      ? null
+      : isRgb(stored.defaultBackgroundColor)
+        ? { ...(stored.defaultBackgroundColor as RGB) }
+        : defaults.defaultBackgroundColor;
+
+  const defaultBackgroundMode = isBackgroundMode(stored.defaultBackgroundMode)
+    ? stored.defaultBackgroundMode
+    : migrateLegacyBackgroundMode(stored, defaultBackgroundColor);
+
+  return {
+    autosaveEnabled:
+      typeof stored.autosaveEnabled === "boolean"
+        ? stored.autosaveEnabled
+        : defaults.autosaveEnabled,
+    confirmBeforeNewDiagram:
+      typeof stored.confirmBeforeNewDiagram === "boolean"
+        ? stored.confirmBeforeNewDiagram
+        : defaults.confirmBeforeNewDiagram,
+    defaultBackgroundMode,
+    defaultShowHeader:
+      typeof stored.defaultShowHeader === "boolean"
+        ? stored.defaultShowHeader
+        : defaults.defaultShowHeader,
+    defaultBackgroundColor,
+    defaultDiagramFont:
+      typeof stored.defaultDiagramFont === "string" &&
+      stored.defaultDiagramFont.trim()
+        ? stored.defaultDiagramFont
+        : defaults.defaultDiagramFont,
+    defaultExportPadding:
+      typeof stored.defaultExportPadding === "number" &&
+      Number.isFinite(stored.defaultExportPadding)
+        ? Math.max(0, Math.min(200, Math.round(stored.defaultExportPadding)))
+        : defaults.defaultExportPadding,
+    defaultExportPixelRatio:
+      stored.defaultExportPixelRatio === 2 ? 2 : defaults.defaultExportPixelRatio,
+    defaultExportBoundsMode: isExportBoundsMode(stored.defaultExportBoundsMode)
+      ? stored.defaultExportBoundsMode
+      : defaults.defaultExportBoundsMode,
+  };
+}
+
+export function getAppPreferences(): AppPreferences {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_APP_PREFERENCES };
+    return parseStoredPreferences(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_APP_PREFERENCES };
+  }
+}
+
+export function setAppPreferences(patch: Partial<AppPreferences>): AppPreferences {
+  const next = { ...getAppPreferences(), ...patch };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage may be unavailable
+  }
+  return next;
+}

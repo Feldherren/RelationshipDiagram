@@ -9,6 +9,7 @@ import type {
   ConnectDrag,
   Diagram,
   FloatingText,
+  GridStyle,
   Group,
   Line,
   NodeRef,
@@ -60,9 +61,12 @@ import { EMPTY_DIAGRAM } from "./autosaveState";
 import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
+  applyDiagramBackgroundMode,
+  type DiagramBackgroundMode,
   resolveDiagramBackground,
   serializeDiagramBackground,
 } from "../utils/diagramBackground";
+import { getAppPreferences } from "../utils/appPreferences";
 
 interface DiagramState {
   characters: Character[];
@@ -76,6 +80,7 @@ interface DiagramState {
   connectFrom: NodeRef | null;
   connectDrag: ConnectDrag | null;
   showGrid: boolean;
+  gridStyle: GridStyle;
   exportBounds: Bounds | null;
   stageSize: { width: number; height: number };
   diagramTitle: string;
@@ -91,6 +96,9 @@ interface DiagramState {
   setToolMode: (mode: ToolMode) => void;
   setSelection: (selection: Selection) => void;
   setShowGrid: (show: boolean) => void;
+  setGridStyle: (style: GridStyle) => void;
+  setDiagramBackgroundMode: (mode: DiagramBackgroundMode) => void;
+  setAutosaveEnabled: (enabled: boolean) => void;
   setExportBounds: (bounds: Bounds | null) => void;
   setDiagramTitle: (title: string) => void;
   setDiagramSubtitle: (subtitle: string) => void;
@@ -145,10 +153,7 @@ interface DiagramState {
   endConnectDrag: (point: { x: number; y: number }) => void;
   cancelConnect: () => void;
   deleteSelected: () => void;
-  loadDiagram: (
-    diagram: Diagram,
-    options?: { showGrid?: boolean },
-  ) => Promise<void>;
+  loadDiagram: (diagram: Diagram) => Promise<void>;
   getDiagram: () => Diagram;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
@@ -178,6 +183,7 @@ export const useDiagramStore = create<DiagramState>()(
   connectFrom: null,
   connectDrag: null,
   showGrid: true,
+  gridStyle: "lines",
   exportBounds: null,
   stageSize: { width: 800, height: 600 },
   diagramTitle: "",
@@ -220,6 +226,17 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
   setShowGrid: (show) => set({ showGrid: show }),
+  setGridStyle: (style) => set({ gridStyle: style }),
+  setDiagramBackgroundMode: (mode) => {
+    const { diagramBackgroundColor } = get();
+    const next = applyDiagramBackgroundMode(mode, diagramBackgroundColor);
+    set({
+      showGrid: next.showGrid,
+      gridStyle: next.gridStyle,
+      diagramBackgroundColor: next.backgroundColor,
+    });
+  },
+  setAutosaveEnabled: (enabled) => set({ autosaveEnabled: enabled }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
   setDiagramTitle: (title) => set({ diagramTitle: title }),
@@ -264,23 +281,25 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   bootstrapApp: async () => {
+    const prefs = getAppPreferences();
     cancelScheduledAutosave();
     set({ autosaveEnabled: false });
 
-    const snapshot = await loadAutosave();
-    if (snapshot) {
-      await get().loadDiagram(snapshot.diagram, { showGrid: snapshot.showGrid });
+    if (prefs.autosaveEnabled) {
+      const snapshot = await loadAutosave();
+      if (snapshot) {
+        await get().loadDiagram(snapshot.diagram);
+      } else {
+        await get().initializeFonts();
+      }
     } else {
       await get().initializeFonts();
     }
 
-    set({ autosaveEnabled: true });
+    set({ autosaveEnabled: prefs.autosaveEnabled });
   },
 
-  getAutosaveSnapshot: () => {
-    const { showGrid } = get();
-    return createAutosaveSnapshot(get().getDiagram(), showGrid);
-  },
+  getAutosaveSnapshot: () => createAutosaveSnapshot(get().getDiagram()),
 
   flushAutosave: async () => {
     if (!get().autosaveEnabled) return;
@@ -295,11 +314,31 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   newDiagram: async () => {
+    const prefs = getAppPreferences();
     cancelScheduledAutosave();
     set({ autosaveEnabled: false });
-    await get().loadDiagram(EMPTY_DIAGRAM, { showGrid: true });
-    set({ autosaveEnabled: true });
-    await get().flushAutosave();
+
+    const { defaultBackgroundMode, defaultBackgroundColor } = prefs;
+    const background = applyDiagramBackgroundMode(
+      defaultBackgroundMode,
+      defaultBackgroundColor,
+    );
+
+    const diagram: Diagram = {
+      ...EMPTY_DIAGRAM,
+      showGrid: background.showGrid,
+      gridStyle: background.gridStyle,
+      showHeader: prefs.defaultShowHeader ? undefined : false,
+      backgroundColor: serializeDiagramBackground(background.backgroundColor),
+      fontFamily: isDefaultDiagramFont(prefs.defaultDiagramFont)
+        ? undefined
+        : prefs.defaultDiagramFont,
+    };
+    await get().loadDiagram(diagram);
+    set({ autosaveEnabled: prefs.autosaveEnabled });
+    if (prefs.autosaveEnabled) {
+      await get().flushAutosave();
+    }
   },
 
   screenToWorld: (screen) => {
@@ -719,7 +758,7 @@ export const useDiagramStore = create<DiagramState>()(
       get().deleteFloatingText(selection.id);
   },
 
-  loadDiagram: async (diagram, options) => {
+  loadDiagram: async (diagram) => {
     cancelScheduledAutosave();
     await cleanupDeprecatedFonts();
 
@@ -742,7 +781,8 @@ export const useDiagramStore = create<DiagramState>()(
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       diagramBackgroundColor: resolveDiagramBackground(diagram.backgroundColor),
-      showGrid: options?.showGrid ?? get().showGrid,
+      showGrid: diagram.showGrid ?? true,
+      gridStyle: diagram.gridStyle === "dots" ? "dots" : "lines",
       selection: null,
       connectFrom: null,
       connectDrag: null,
@@ -768,12 +808,16 @@ export const useDiagramStore = create<DiagramState>()(
       showDiagramHeader,
       diagramFontFamily,
       diagramBackgroundColor,
+      showGrid,
+      gridStyle,
     } = get();
     return {
       schemaVersion: 2 as const,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,
+      showGrid: showGrid ? undefined : false,
+      gridStyle: gridStyle === "lines" ? undefined : gridStyle,
       fontFamily:
         diagramFontFamily !== DEFAULT_DIAGRAM_FONT
           ? diagramFontFamily

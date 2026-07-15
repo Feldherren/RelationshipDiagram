@@ -5,6 +5,7 @@ import { useDiagramStore } from "../../store/diagramStore";
 import { exportStageToPng, getAutoExportBounds } from "../../utils/export";
 import { downloadDataUrl, getDefaultExportFilename } from "../../utils/persistence";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import { getAppPreferences } from "../../utils/appPreferences";
 import type { Bounds } from "../../models/types";
 
 interface ExportDialogProps {
@@ -40,14 +41,26 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const showGrid = useDiagramStore((s) => s.showGrid);
+  const gridStyle = useDiagramStore((s) => s.gridStyle);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setExportBounds = useDiagramStore((s) => s.setExportBounds);
 
-  const [mode, setMode] = useState<"auto" | "custom">("auto");
-  const [pixelRatio, setPixelRatio] = useState(1);
-  const [padding, setPadding] = useState(32);
+  const exportPrefs = getAppPreferences();
+  const [mode, setMode] = useState<"auto" | "custom">(
+    exportPrefs.defaultExportBoundsMode,
+  );
+  const [pixelRatio, setPixelRatio] = useState(exportPrefs.defaultExportPixelRatio);
+  const [padding, setPadding] = useState(exportPrefs.defaultExportPadding);
   const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const prefs = getAppPreferences();
+    setMode(prefs.defaultExportBoundsMode);
+    setPixelRatio(prefs.defaultExportPixelRatio);
+    setPadding(prefs.defaultExportPadding);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +113,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
         pixelRatio,
         backgroundColor: diagramBackgroundColor,
         showGrid,
+        gridStyle,
         header: exportHeader,
         viewportScale,
       });
@@ -164,7 +178,9 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
           <span>{t("export.resolution")}</span>
           <select
             value={pixelRatio}
-            onChange={(e) => setPixelRatio(Number(e.target.value))}
+            onChange={(e) =>
+              setPixelRatio(Number(e.target.value) as 1 | 2)
+            }
           >
             <option value={1}>{t("export.res1x")}</option>
             <option value={2}>{t("export.res2x")}</option>

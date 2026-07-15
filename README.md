@@ -80,7 +80,7 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
 | Edit properties | Select an item; use the floating panel near it |
 | Browse groups | **Groups** in the lower left |
-| Assign group membership | Select a character → check groups in the float, or select a group → **Edit members on canvas** |
+| Assign group membership | **Groups** (lower left) → **Edit members**, or select a group → **Edit members on canvas** |
 | Highlight / edit group | Click a membership chip, or pick a group from **Groups** — members stay prominent; edit in the floating panel |
 | Customise group chip | Select a group → **Customise chip…** in the floating panel |
 | Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |

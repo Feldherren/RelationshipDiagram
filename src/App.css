@@ -607,6 +607,13 @@ body,
   margin: 0 0 12px;
 }
 
+.hint-filename {
+  margin: 4px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .btn-primary,
 .btn-secondary,
 .btn-danger {

@@ -28,6 +28,8 @@ export interface Character {
   name: string;
   subtitle?: string;
   imageData?: string;
+  /** Original file name for display only; not required to render the image. */
+  imageFileName?: string;
   imageFocus?: { x: number; y: number };
   borderShape: BorderShape;
   borderColor: RGB;

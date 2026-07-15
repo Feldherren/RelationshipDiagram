@@ -123,13 +123,19 @@ export function SelectionFloat() {
 
     const handleImage = (file: File | null) => {
       if (!file) {
-        updateCharacter(character.id, { imageData: undefined });
+        updateCharacter(character.id, {
+          imageData: undefined,
+          imageFileName: undefined,
+        });
         return;
       }
+      const fileName = file.name;
+      const characterId = character.id;
       const reader = new FileReader();
       reader.onload = () => {
-        updateCharacter(character.id, {
+        updateCharacter(characterId, {
           imageData: reader.result as string,
+          imageFileName: fileName,
           imageFocus: DEFAULT_IMAGE_FOCUS,
         });
       };
@@ -139,6 +145,7 @@ export function SelectionFloat() {
     const handleRemoveImage = () => {
       updateCharacter(character.id, {
         imageData: undefined,
+        imageFileName: undefined,
         imageFocus: undefined,
       });
       if (imageInputRef.current) {
@@ -181,6 +188,13 @@ export function SelectionFloat() {
             accept="image/*"
             onChange={(e) => handleImage(e.target.files?.[0] ?? null)}
           />
+          {character.imageData && (
+            <p className="hint hint-filename" title={character.imageFileName}>
+              {character.imageFileName
+                ? character.imageFileName
+                : "Image attached"}
+            </p>
+          )}
           {character.imageData && (
             <button
               type="button"

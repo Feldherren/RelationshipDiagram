@@ -149,7 +149,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   const sections = [
     { id: "appearance", label: t("appSettings.appearanceSection") },
-    { id: "themeEditor", label: t("appSettings.themeEditorSection") },
+    {
+      id: "themeEditor",
+      label: t("appSettings.themeEditorSection"),
+      nested: true,
+    },
     { id: "general", label: t("appSettings.generalSection") },
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "newDiagrams", label: t("appSettings.newDiagramsSection") },

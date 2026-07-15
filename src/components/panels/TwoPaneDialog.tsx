@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 export interface TwoPaneSection {
   id: string;
   label: string;
+  /** Visually nest under the previous top-level section. */
+  nested?: boolean;
 }
 
 interface TwoPaneDialogProps {
@@ -46,13 +48,18 @@ export function TwoPaneDialog({
           <nav className="two-pane-nav" aria-label={title}>
             {sections.map((section) => {
               const active = section.id === activeSection;
+              const className = [
+                "two-pane-nav-item",
+                section.nested ? "nested" : "",
+                active ? "active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <button
                   key={section.id}
                   type="button"
-                  className={
-                    active ? "two-pane-nav-item active" : "two-pane-nav-item"
-                  }
+                  className={className}
                   aria-current={active ? "page" : undefined}
                   onClick={() => onSectionChange(section.id)}
                 >

@@ -793,6 +793,10 @@ body,
   cursor: pointer;
 }
 
+.two-pane-nav-item.nested {
+  padding-left: 1.25rem;
+}
+
 .two-pane-nav-item:hover {
   background: var(--ui-surface-hover);
 }

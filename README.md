@@ -14,7 +14,8 @@ Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pige
 - **Groups** - semantic membership (a character can belong to many groups). Shown as coloured chips on each character’s border; select a group to highlight its members
 - **Boxes** - labelled organisational regions with customisable colours. Drag characters or text into a box by position; collapse a box to hide whoever is inside it
 - **Text** - floating text
-- Customise the overall diagram - title and subtitle, grid or no grid, background colour, font
+- **Diagram properties** - title and subtitle, background style, background colour, font
+- **Themes**
 - Saving and loading (*.rdiagram)
 - Image export (entire graphic or selected area) at two distinct levels of zoom (it estimates the dimensions of the exported image)
 

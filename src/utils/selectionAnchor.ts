@@ -12,7 +12,9 @@ import {
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
   getBoxById,
+  getBoxEdgePoint,
   getCharacterById,
+  getCharacterEdgePoint,
   getCollapsedBoxSquareBounds,
   getFloatingTextBounds,
   getFloatingTextById,
@@ -145,6 +147,71 @@ export function shouldShowFloatConnector(
   return Math.hypot(dx, dy) >= minDistance;
 }
 
+/** Point on a rect edge in the direction of `toward` (from rect center). */
+function boundsEdgePoint(bounds: Bounds, toward: Point): Point {
+  const cx = bounds.x + bounds.width / 2;
+  const cy = bounds.y + bounds.height / 2;
+  const dx = toward.x - cx;
+  const dy = toward.y - cy;
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
+  const hw = bounds.width / 2;
+  const hh = bounds.height / 2;
+  const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+  return { x: cx + dx * scale, y: cy + dy * scale };
+}
+
+/**
+ * Live world attachment for the float connector: the point on the selected
+ * element's outline facing toward `towardWorld` (usually the panel center).
+ */
+export function getSelectionConnectorAnchorWorld(
+  selection: NonNullable<Selection>,
+  diagram: Diagram,
+  towardWorld: Point,
+): Point | null {
+  if (selection.type === "character") {
+    const character = getCharacterById(diagram, selection.id);
+    if (!character) return null;
+    return getCharacterEdgePoint(character, towardWorld);
+  }
+
+  if (selection.type === "box") {
+    const box = getBoxById(diagram, selection.id);
+    if (!box) return null;
+    return getBoxEdgePoint(box, towardWorld);
+  }
+
+  if (selection.type === "floatingText") {
+    const floatingText = getFloatingTextById(diagram, selection.id);
+    if (!floatingText) return null;
+    return boundsEdgePoint(
+      getFloatingTextBounds(
+        floatingText,
+        diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT,
+      ),
+      towardWorld,
+    );
+  }
+
+  if (selection.type === "line") {
+    const line = diagram.lines.find((l) => l.id === selection.id);
+    if (!line) return null;
+    return boundsEdgePoint(
+      getLineSelectionAvoidBounds(line, diagram),
+      towardWorld,
+    );
+  }
+
+  if (selection.type === "group") {
+    if (!selection.anchorCharacterId) return null;
+    const character = getCharacterById(diagram, selection.anchorCharacterId);
+    if (!character) return null;
+    return getCharacterEdgePoint(character, towardWorld);
+  }
+
+  return null;
+}
+
 const LINE_LABEL_FONT_SIZE = 12;
 /** Padding around the label midpoint when a line has no visible pill. */
 const UNLABELED_LINE_HIT = 14;
@@ -273,6 +340,13 @@ export function worldToScreen(world: Point, viewport: Viewport): Point {
   return {
     x: world.x * viewport.scale + viewport.x,
     y: world.y * viewport.scale + viewport.y,
+  };
+}
+
+export function screenToWorld(screen: Point, viewport: Viewport): Point {
+  return {
+    x: (screen.x - viewport.x) / viewport.scale,
+    y: (screen.y - viewport.y) / viewport.scale,
   };
 }
 

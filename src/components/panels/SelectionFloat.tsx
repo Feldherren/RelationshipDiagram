@@ -29,8 +29,10 @@ import {
   getGroupChipAnchorWorld,
   getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
+  getSelectionConnectorAnchorWorld,
   isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
+  screenToWorld,
   selectionFloatPlacementKey,
   SELECTION_FLOAT_WIDTH,
   shouldShowFloatConnector,
@@ -220,10 +222,6 @@ export function SelectionFloat() {
 
   const diagram = getDiagram();
   const isGroupSelection = selection.type === "group";
-
-  const connectorAnchorWorld = isGroupSelection
-    ? getGroupChipAnchorWorld(selection.anchorCharacterId, diagram)
-    : getSelectionAnchorWorld(selection, diagram);
 
   let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
   if (selection.type === "line") {
@@ -813,38 +811,49 @@ export function SelectionFloat() {
     .join(" ");
 
   let connector: ReactNode = null;
-  if (isDetached && connectorAnchorWorld) {
-    const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+  if (isDetached) {
     const panelBounds = {
       x: left,
       y: top,
       width: SELECTION_FLOAT_WIDTH,
       height: panelHeight,
     };
-    if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
-      const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
-      connector = (
-        <svg
-          className="selection-float-connector"
-          width={stageSize.width}
-          height={stageSize.height}
-          aria-hidden
-        >
-          <line
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            className="selection-float-connector-line"
-          />
-          <circle
-            cx={from.x}
-            cy={from.y}
-            r={3}
-            className="selection-float-connector-dot"
-          />
-        </svg>
-      );
+    const panelCenterScreen = {
+      x: left + SELECTION_FLOAT_WIDTH / 2,
+      y: top + panelHeight / 2,
+    };
+    const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
+      selection,
+      diagram,
+      screenToWorld(panelCenterScreen, viewport),
+    );
+    if (connectorAnchorWorld) {
+      const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+      if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
+        const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+        connector = (
+          <svg
+            className="selection-float-connector"
+            width={stageSize.width}
+            height={stageSize.height}
+            aria-hidden
+          >
+            <line
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              className="selection-float-connector-line"
+            />
+            <circle
+              cx={from.x}
+              cy={from.y}
+              r={3}
+              className="selection-float-connector-dot"
+            />
+          </svg>
+        );
+      }
     }
   }
 

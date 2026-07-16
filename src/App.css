@@ -659,7 +659,8 @@ body,
   border-radius: 0.5rem;
   cursor: pointer;
   flex-shrink: 0;
-  background: var(--ui-surface);
+  background: var(--symbol-swatch-bg, #ffffff);
+  color: var(--symbol-swatch-fg, #2f3a45);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -667,7 +668,7 @@ body,
 
 .symbol-swatch:hover {
   border-color: var(--ui-text-subtle);
-  background: var(--ui-surface-hover);
+  background: var(--symbol-swatch-bg, #ffffff);
 }
 
 .symbol-swatch.selected {

@@ -24,7 +24,6 @@ import {
 } from "../../utils/membershipSymbolGeometry";
 
 const ICON_SIZE = 22;
-const COLOR = "#2f3a45";
 
 function SvgShell({
   children,
@@ -73,20 +72,20 @@ export function MembershipSymbolIcon({
         <SvgShell title={label}>
           <polygon
             points={pointsAttr(starPolygonPoints(1, 0.4, 5))}
-            fill={COLOR}
+            fill="currentColor"
           />
         </SvgShell>
       );
     case "moon":
       return (
         <SvgShell title={label}>
-          <path d={MOON_PATH} fill={COLOR} />
+          <path d={MOON_PATH} fill="currentColor" />
         </SvgShell>
       );
     case "heart":
       return (
         <SvgShell title={label}>
-          <path d={HEART_PATH} fill={COLOR} />
+          <path d={HEART_PATH} fill="currentColor" />
         </SvgShell>
       );
     case "diamond":
@@ -94,20 +93,20 @@ export function MembershipSymbolIcon({
         <SvgShell title={label}>
           <polygon
             points={pointsAttr(regularPolygonPoints(4, 1))}
-            fill={COLOR}
+            fill="currentColor"
           />
         </SvgShell>
       );
     case "circle":
       return (
         <SvgShell title={label}>
-          <circle r={0.72} fill={COLOR} />
+          <circle r={0.72} fill="currentColor" />
         </SvgShell>
       );
     case "ring":
       return (
         <SvgShell title={label}>
-          <circle r={0.68} fill="none" stroke={COLOR} strokeWidth={0.22} />
+          <circle r={0.68} fill="none" stroke="currentColor" strokeWidth={0.22} />
         </SvgShell>
       );
     case "square":
@@ -119,7 +118,7 @@ export function MembershipSymbolIcon({
             width={1.24}
             height={1.24}
             rx={0.12}
-            fill={COLOR}
+            fill="currentColor"
           />
         </SvgShell>
       );
@@ -128,7 +127,7 @@ export function MembershipSymbolIcon({
         <SvgShell title={label}>
           <polygon
             points={pointsAttr(regularPolygonPoints(3, 1))}
-            fill={COLOR}
+            fill="currentColor"
           />
         </SvgShell>
       );
@@ -137,7 +136,7 @@ export function MembershipSymbolIcon({
         <SvgShell title={label}>
           <polygon
             points={pointsAttr(regularPolygonPoints(6, 0.95))}
-            fill={COLOR}
+            fill="currentColor"
           />
         </SvgShell>
       );
@@ -149,7 +148,7 @@ export function MembershipSymbolIcon({
             y1={0}
             x2={0.85}
             y2={0}
-            stroke={COLOR}
+            stroke="currentColor"
             strokeWidth={0.24}
             strokeLinecap="round"
           />
@@ -158,7 +157,7 @@ export function MembershipSymbolIcon({
             y1={-0.85}
             x2={0}
             y2={0.85}
-            stroke={COLOR}
+            stroke="currentColor"
             strokeWidth={0.24}
             strokeLinecap="round"
           />
@@ -172,7 +171,7 @@ export function MembershipSymbolIcon({
             y1={-0.7}
             x2={0.7}
             y2={0.7}
-            stroke={COLOR}
+            stroke="currentColor"
             strokeWidth={0.24}
             strokeLinecap="round"
           />
@@ -181,7 +180,7 @@ export function MembershipSymbolIcon({
             y1={0.7}
             x2={0.7}
             y2={-0.7}
-            stroke={COLOR}
+            stroke="currentColor"
             strokeWidth={0.24}
             strokeLinecap="round"
           />
@@ -195,7 +194,7 @@ export function MembershipSymbolIcon({
             y1={0.65}
             x2={0.65}
             y2={-0.65}
-            stroke={COLOR}
+            stroke="currentColor"
             strokeWidth={0.24}
             strokeLinecap="round"
           />
@@ -207,7 +206,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${MUSIC_NOTE_LAYOUT.unitScale}) translate(${-MUSIC_NOTE_LAYOUT.centerX} ${-MUSIC_NOTE_LAYOUT.centerY})`}
           >
-            <path d={MUSIC_NOTE_PATH} fill={COLOR} />
+            <path d={MUSIC_NOTE_PATH} fill="currentColor" />
           </g>
         </SvgShell>
       );
@@ -217,7 +216,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${SWORD_LAYOUT.unitScale}) translate(${-SWORD_LAYOUT.centerX} ${-SWORD_LAYOUT.centerY})`}
           >
-            <path d={SWORD_PATH} fill={COLOR} fillRule="evenodd" />
+            <path d={SWORD_PATH} fill="currentColor" fillRule="evenodd" />
           </g>
         </SvgShell>
       );
@@ -227,7 +226,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${FLAME_LAYOUT.unitScale}) translate(${-FLAME_LAYOUT.centerX} ${-FLAME_LAYOUT.centerY})`}
           >
-            <path d={FLAME_PATH} fill={COLOR} />
+            <path d={FLAME_PATH} fill="currentColor" />
           </g>
         </SvgShell>
       );
@@ -237,7 +236,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${DROPLET_LAYOUT.unitScale}) translate(${-DROPLET_LAYOUT.centerX} ${-DROPLET_LAYOUT.centerY})`}
           >
-            <path d={DROPLET_PATH} fill={COLOR} fillRule="evenodd" />
+            <path d={DROPLET_PATH} fill="currentColor" fillRule="evenodd" />
           </g>
         </SvgShell>
       );
@@ -248,7 +247,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`${symbol === "plant" ? "rotate(-90) " : ""}scale(${BREEZE_LAYOUT.unitScale}) translate(${-BREEZE_LAYOUT.centerX} ${-BREEZE_LAYOUT.centerY})`}
           >
-            <path d={BREEZE_PATH} fill={COLOR} fillRule="evenodd" />
+            <path d={BREEZE_PATH} fill="currentColor" fillRule="evenodd" />
           </g>
         </SvgShell>
       );
@@ -258,7 +257,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${ROCK_LAYOUT.unitScale}) translate(${-ROCK_LAYOUT.centerX} ${-ROCK_LAYOUT.centerY})`}
           >
-            <path d={ROCK_PATH} fill={COLOR} />
+            <path d={ROCK_PATH} fill="currentColor" />
           </g>
         </SvgShell>
       );
@@ -268,7 +267,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${SPARKLE_LAYOUT.unitScale}) translate(${-SPARKLE_LAYOUT.centerX} ${-SPARKLE_LAYOUT.centerY})`}
           >
-            <path d={SPARKLE_PATH} fill={COLOR} />
+            <path d={SPARKLE_PATH} fill="currentColor" />
           </g>
         </SvgShell>
       );
@@ -278,7 +277,7 @@ export function MembershipSymbolIcon({
           <g
             transform={`scale(${SKULL_LAYOUT.unitScale}) translate(${-SKULL_LAYOUT.centerX} ${-SKULL_LAYOUT.centerY})`}
           >
-            <path d={SKULL_PATH} fill={COLOR} fillRule="evenodd" />
+            <path d={SKULL_PATH} fill="currentColor" fillRule="evenodd" />
           </g>
         </SvgShell>
       );

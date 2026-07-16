@@ -316,3 +316,23 @@ export function colorsEqual(a: RGB, b: RGB): boolean {
 export function defaultRgb(): RGB {
   return { r: 80, g: 120, b: 200 };
 }
+
+/** WCAG relative luminance (0 = black, 1 = white). */
+export function relativeLuminance(color: RGB): number {
+  const toLinear = (channel: number) => {
+    const s = channel / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return (
+    0.2126 * toLinear(color.r) +
+    0.7152 * toLinear(color.g) +
+    0.0722 * toLinear(color.b)
+  );
+}
+
+/** Prefer dark ink when background luminance is above this (WCAG). */
+export const LIGHT_BACKGROUND_LUMINANCE_THRESHOLD = 0.179;
+
+export function isLightColor(color: RGB): boolean {
+  return relativeLuminance(color) > LIGHT_BACKGROUND_LUMINANCE_THRESHOLD;
+}

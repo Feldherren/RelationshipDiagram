@@ -10,6 +10,7 @@ import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
+import { AddObjectControls } from "./components/panels/AddObjectControls";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useDiagramStore } from "./store/diagramStore";
@@ -99,6 +100,7 @@ function App() {
           <DiagramCanvas stageRef={stageRef} />
           <SelectionFloat />
           <ViewportControls />
+          <AddObjectControls />
           <GroupsListPopup />
           <ZoomIndicator />
         </div>

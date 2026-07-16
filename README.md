@@ -134,20 +134,28 @@ I vibe-coded this, *mostly*, but should anyone want to use or modify this tool, 
 
 None of these SVGs have been used as files, but their paths have been used for icons. Still worth attribution.
 
-Arrows Reload 01 SVC: https://www.svgrepo.com/svg/472960/arrows-repeat (jtblabs, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Arrows Reload 01: https://www.svgrepo.com/svg/472960/arrows-repeat (jtblabs, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
-Droplet SVG: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Bookmark Add: https://www.svgrepo.com/svg/471101/bookmark-add (SVG Repo, [CC0 License/Public Domain](https://www.svgrepo.com/page/licensing/#CC0))
 
-Flame Symbol SVG: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
+Bookmark Filled: https://www.svgrepo.com/svg/472457/bookmark-filled (jtblabs, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
-Music Note SVG: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+Droplet: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
-Skull SVG: https://www.svgrepo.com/svg/510199/skull (zest, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Eye: https://www.svgrepo.com/svg/528962/eye (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
-Glitter 2 SVG: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+Eye Closed: https://www.svgrepo.com/svg/528958/eye-closed (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
-Stone Block SVG: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+Flame Symbol: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
 
-Sword F SVG: https://www.svgrepo.com/svg/360818/sword-f (michaelampr, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Music Note: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
-Wind SVG: https://www.svgrepo.com/svg/394565/wind (Kenan Gundogan, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+Skull: https://www.svgrepo.com/svg/510199/skull (zest, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
+Glitter 2: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+
+Stone Block: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
+
+Sword F: https://www.svgrepo.com/svg/360818/sword-f (michaelampr, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
+Wind: https://www.svgrepo.com/svg/394565/wind (Kenan Gundogan, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))

@@ -16,6 +16,7 @@ Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pige
 - **Text** - floating text
 - **Diagram properties** - title and subtitle, background style, background colour, font
 - **Themes** - in-app UI theme and diagram theme editors (themes are stored in localStorage), theme export and import (JSON)
+- **Bookmarks** - user-definable easy navigation
 - Saving and loading (*.rdiagram)
 - Image export (entire graphic or selected area) at two distinct levels of zoom (it estimates the dimensions of the exported image)
 

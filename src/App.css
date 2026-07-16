@@ -262,6 +262,10 @@ body,
   font-size: 0.9375rem;
 }
 
+.selection-float h2 + .hint {
+  margin-top: -0.5rem;
+}
+
 .float-details {
   margin-bottom: 0.875rem;
   font-size: 0.8125rem;

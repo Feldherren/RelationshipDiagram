@@ -265,6 +265,7 @@
   "selection": {
     "character": "Character",
     "line": "Line",
+    "lineEndpoints": "{{from}} → {{to}}",
     "box": "Box",
     "text": "Text",
     "group": "Group",

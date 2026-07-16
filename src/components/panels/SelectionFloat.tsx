@@ -244,9 +244,26 @@ export function SelectionFloat() {
     const line = lines.find((l) => l.id === selection.id);
     if (!line) return null;
 
+    const endpointLabel = (ref: (typeof line)["from"]) => {
+      if (ref.kind === "character") {
+        const character = getCharacterById({ characters }, ref.id);
+        const name = character?.name.trim();
+        return name || t("selection.nameless");
+      }
+      const box = getBoxById({ boxes }, ref.id);
+      const name = box?.name.trim();
+      return name || t("selection.box");
+    };
+
     body = (
       <>
         <h2>{t("selection.line")}</h2>
+        <p className="hint">
+          {t("selection.lineEndpoints", {
+            from: endpointLabel(line.from),
+            to: endpointLabel(line.to),
+          })}
+        </p>
         <label className="field">
           <span>{t("selection.label")}</span>
           <input

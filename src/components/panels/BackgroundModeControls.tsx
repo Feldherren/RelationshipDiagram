@@ -1,24 +1,42 @@
 import { useTranslation } from "react-i18next";
-import type { DiagramBackgroundColor, DiagramBackgroundMode } from "../../utils/diagramBackground";
-import { backgroundModeUsesColour } from "../../utils/diagramBackground";
+import type { RGB } from "../../models/types";
+import type {
+  DiagramBackgroundColor,
+  DiagramBackgroundMode,
+} from "../../utils/diagramBackground";
+import {
+  backgroundModeUsesColour,
+  backgroundModeUsesGridColour,
+} from "../../utils/diagramBackground";
 import { BackgroundColorPicker } from "../pickers/BackgroundColorPicker";
+import { RgbPicker } from "../pickers/RgbPicker";
+import { BackgroundPatternPreview } from "./BackgroundPatternPreview";
 
 interface BackgroundModeControlsProps {
   mode: DiagramBackgroundMode;
   backgroundColor: DiagramBackgroundColor;
+  gridColor: RGB;
   onModeChange: (mode: DiagramBackgroundMode) => void;
   onBackgroundColorChange: (color: DiagramBackgroundColor) => void;
+  onGridColorChange: (color: RGB) => void;
   colourLabel?: string;
+  gridColourLabel?: string;
 }
 
 export function BackgroundModeControls({
   mode,
   backgroundColor,
+  gridColor,
   onModeChange,
   onBackgroundColorChange,
+  onGridColorChange,
   colourLabel,
+  gridColourLabel,
 }: BackgroundModeControlsProps) {
   const { t } = useTranslation();
+  const showPrimaryColour = backgroundModeUsesColour(mode);
+  const showGridColour = backgroundModeUsesGridColour(mode);
+  const showPreview = showPrimaryColour || showGridColour || mode === "blank";
 
   return (
     <>
@@ -37,12 +55,35 @@ export function BackgroundModeControls({
         </select>
       </label>
 
-      {backgroundModeUsesColour(mode) && (
-        <BackgroundColorPicker
-          label={colourLabel ?? t("diagramProperties.backgroundColour")}
-          value={backgroundColor}
-          onChange={onBackgroundColorChange}
-        />
+      {showPreview && (
+        <div className="background-mode-editor">
+          <BackgroundPatternPreview
+            mode={mode}
+            backgroundColor={backgroundColor}
+            gridColor={gridColor}
+          />
+          {(showPrimaryColour || showGridColour) && (
+            <div className="background-mode-pickers">
+              {showPrimaryColour && (
+                <BackgroundColorPicker
+                  label={colourLabel ?? t("diagramProperties.backgroundColour")}
+                  value={backgroundColor}
+                  onChange={onBackgroundColorChange}
+                />
+              )}
+              {showGridColour && (
+                <RgbPicker
+                  label={
+                    gridColourLabel ??
+                    t("diagramAppearance.backgroundGridColour")
+                  }
+                  value={gridColor}
+                  onChange={onGridColorChange}
+                />
+              )}
+            </div>
+          )}
+        </div>
       )}
     </>
   );

@@ -9,6 +9,7 @@ import {
   type DiagramBackgroundMode,
   type DiagramBackgroundColor,
 } from "./diagramBackground";
+import { DEFAULT_DIAGRAM_GRID_COLOR } from "./gridBackground";
 
 export type { DiagramAppearance, LabelChrome };
 
@@ -59,6 +60,7 @@ function defaultSubtitleChrome(): LabelChrome {
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
+  backgroundGridColor: cloneRgb(DEFAULT_DIAGRAM_GRID_COLOR),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
   characterPlaceholderFill: cloneRgb(DEFAULT_CHARACTER_PLACEHOLDER_FILL),
@@ -134,6 +136,7 @@ export function cloneDiagramAppearance(
   return {
     backgroundMode: appearance.backgroundMode,
     backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
+    backgroundGridColor: cloneRgb(appearance.backgroundGridColor),
     defaultLineColor: cloneRgb(appearance.defaultLineColor),
     defaultCharacterBorderColor: cloneRgb(
       appearance.defaultCharacterBorderColor,
@@ -165,6 +168,10 @@ export function resolveDiagramAppearance(
     backgroundColor: resolveBackgroundColor(
       partial.backgroundColor,
       defaults.backgroundColor,
+    ),
+    backgroundGridColor: resolveRgb(
+      partial.backgroundGridColor,
+      defaults.backgroundGridColor,
     ),
     defaultLineColor: resolveRgb(
       partial.defaultLineColor,
@@ -248,6 +255,12 @@ export function serializeDiagramAppearance(
     )
   ) {
     out.backgroundColor = cloneBackgroundColor(appearance.backgroundColor);
+  }
+
+  if (
+    !colorsEqual(appearance.backgroundGridColor, defaults.backgroundGridColor)
+  ) {
+    out.backgroundGridColor = cloneRgb(appearance.backgroundGridColor);
   }
 
   if (!colorsEqual(appearance.defaultLineColor, defaults.defaultLineColor)) {
@@ -353,6 +366,9 @@ export function patchDiagramAppearance(
   }
   if (patch.backgroundColor !== undefined) {
     next.backgroundColor = cloneBackgroundColor(patch.backgroundColor);
+  }
+  if (patch.backgroundGridColor) {
+    next.backgroundGridColor = cloneRgb(patch.backgroundGridColor);
   }
   if (patch.defaultLineColor) {
     next.defaultLineColor = cloneRgb(patch.defaultLineColor);

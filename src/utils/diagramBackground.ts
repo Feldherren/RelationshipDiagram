@@ -107,3 +107,9 @@ export function applyDiagramBackgroundMode(
 export function backgroundModeUsesColour(mode: DiagramBackgroundMode): boolean {
   return mode !== "blank";
 }
+
+export function backgroundModeUsesGridColour(
+  mode: DiagramBackgroundMode,
+): boolean {
+  return mode === "grid" || mode === "dots";
+}

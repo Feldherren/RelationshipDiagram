@@ -186,6 +186,8 @@
     "canvasSetupHint": "Background is part of the selected diagram theme. Font and header defaults below apply when you create a new diagram.",
     "groupHeaderColours": "Header colours",
     "groupBackground": "Background",
+    "backgroundGridColour": "Grid colour",
+    "previewBackgroundAria": "Background pattern preview",
     "groupFont": "Font",
     "groupCharacters": "Characters",
     "groupLines": "Lines",

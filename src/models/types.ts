@@ -202,6 +202,8 @@ export interface DiagramAppearance {
   backgroundMode: "plain" | "blank" | "grid" | "dots";
   /** Canvas fill; null means transparent (blank). */
   backgroundColor: RGB | null;
+  /** Grid line or dot colour when background mode is grid or dots. */
+  backgroundGridColor: RGB;
   defaultLineColor: RGB;
   defaultCharacterBorderColor: RGB;
   /** Fill inside character shapes when no image is set; diagram-wide. */

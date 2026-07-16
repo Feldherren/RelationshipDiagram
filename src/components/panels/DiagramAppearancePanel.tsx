@@ -123,9 +123,13 @@ export function DiagramAppearancePanel({
           <BackgroundModeControls
             mode={value.backgroundMode}
             backgroundColor={value.backgroundColor}
+            gridColor={value.backgroundGridColor}
             onModeChange={setBackgroundMode}
             onBackgroundColorChange={(backgroundColor) =>
               onChange({ backgroundColor })
+            }
+            onGridColorChange={(backgroundGridColor) =>
+              onChange({ backgroundGridColor })
             }
             colourLabel={
               settingsLabels

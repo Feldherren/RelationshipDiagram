@@ -3,11 +3,11 @@ import { Shape } from "react-konva";
 import {
   computeViewportGridLineBounds,
   DIAGRAM_GRID_SIZE,
-  DIAGRAM_GRID_STROKE,
   drawGrid,
 } from "../../utils/gridBackground";
 import { GRID_NODE_NAME } from "../../utils/export";
 import { useDiagramStore } from "../../store/diagramStore";
+import { rgbToCss } from "../../models/types";
 
 interface GridBackgroundProps {
   stageWidth: number;
@@ -22,6 +22,10 @@ export function GridBackground({
 }: GridBackgroundProps) {
   const viewport = useDiagramStore((s) => s.viewport);
   const gridStyle = useDiagramStore((s) => s.gridStyle);
+  const gridColor = useDiagramStore(
+    (s) => s.diagramAppearance.backgroundGridColor,
+  );
+  const gridCss = rgbToCss(gridColor);
 
   const bounds = useMemo(
     () =>
@@ -41,8 +45,8 @@ export function GridBackground({
     <Shape
       name={GRID_NODE_NAME}
       listening={false}
-      stroke={isDots ? undefined : DIAGRAM_GRID_STROKE}
-      fill={isDots ? DIAGRAM_GRID_STROKE : undefined}
+      stroke={isDots ? undefined : gridCss}
+      fill={isDots ? gridCss : undefined}
       strokeWidth={isDots ? undefined : strokeWidth}
       sceneFunc={(ctx, shape) => {
         drawGrid(ctx, bounds, gridStyle, gridSize);

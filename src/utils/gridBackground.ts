@@ -1,7 +1,9 @@
-import type { Bounds, GridStyle, Viewport } from "../models/types";
+import type { Bounds, GridStyle, RGB, Viewport } from "../models/types";
+import { rgbToCss } from "../models/types";
 
 export const DIAGRAM_GRID_SIZE = 40;
-export const DIAGRAM_GRID_STROKE = "#e0e0e0";
+export const DEFAULT_DIAGRAM_GRID_COLOR: RGB = { r: 224, g: 224, b: 224 };
+export const DIAGRAM_GRID_STROKE = rgbToCss(DEFAULT_DIAGRAM_GRID_COLOR);
 export const DIAGRAM_GRID_DOT_RADIUS = 1.25;
 
 export function computeGridLineBounds(

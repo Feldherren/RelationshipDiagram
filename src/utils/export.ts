@@ -20,8 +20,8 @@ import {
 
 import {
   computeGridLineBounds,
+  DEFAULT_DIAGRAM_GRID_COLOR,
   DIAGRAM_GRID_SIZE,
-  DIAGRAM_GRID_STROKE,
   drawGrid,
 } from "./gridBackground";
 
@@ -112,6 +112,7 @@ export interface ExportOptions {
   backgroundColor?: RGB | null;
   showGrid?: boolean;
   gridStyle?: GridStyle;
+  gridColor?: RGB;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -185,9 +186,12 @@ export async function exportStageToPng(
     backgroundColor,
     showGrid,
     gridStyle = "lines",
+    gridColor = DEFAULT_DIAGRAM_GRID_COLOR,
     header,
     viewportScale = 1,
   } = options;
+
+  const gridCss = rgbToCss(gridColor);
 
   if (header?.showHeader) {
     await ensureFontLoaded(header.fontFamily);
@@ -250,8 +254,8 @@ export async function exportStageToPng(
     const exportGrid = new KonvaLib.Shape({
       name: EXPORT_GRID_NODE_NAME,
       listening: false,
-      stroke: isDots ? undefined : DIAGRAM_GRID_STROKE,
-      fill: isDots ? DIAGRAM_GRID_STROKE : undefined,
+      stroke: isDots ? undefined : gridCss,
+      fill: isDots ? gridCss : undefined,
       strokeWidth: isDots ? undefined : 1,
       sceneFunc: (ctx, shape) => {
         drawGrid(ctx, gridBounds, gridStyle, DIAGRAM_GRID_SIZE);

@@ -51,6 +51,9 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const showGrid = useDiagramStore((s) => s.showGrid);
   const gridStyle = useDiagramStore((s) => s.gridStyle);
+  const gridColor = useDiagramStore(
+    (s) => s.diagramAppearance.backgroundGridColor,
+  );
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const setExportBounds = useDiagramStore((s) => s.setExportBounds);
@@ -130,6 +133,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
         backgroundColor: diagramBackgroundColor,
         showGrid,
         gridStyle,
+        gridColor,
         header: exportHeader,
         viewportScale,
       });

@@ -204,6 +204,10 @@ export interface DiagramAppearance {
   backgroundColor: RGB | null;
   defaultLineColor: RGB;
   defaultCharacterBorderColor: RGB;
+  /** Fill inside character shapes when no image is set; diagram-wide. */
+  characterPlaceholderFill: RGB;
+  /** Abbreviated name text inside character shapes without an image; diagram-wide. */
+  characterInitialsColor: RGB;
   defaultBoxBorderColor: RGB;
   defaultFloatingTextColor: RGB;
   characterNameLabel: LabelChrome;

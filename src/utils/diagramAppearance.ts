@@ -19,6 +19,8 @@ const PILL_BORDER: RGB = { r: 208, g: 208, b: 208 };
 
 const DEFAULT_LINE_COLOR: RGB = { r: 60, g: 60, b: 60 };
 const DEFAULT_BOX_BORDER: RGB = { r: 100, g: 140, b: 100 };
+const DEFAULT_CHARACTER_PLACEHOLDER_FILL: RGB = { r: 255, g: 255, b: 255 };
+const DEFAULT_CHARACTER_INITIALS_COLOR: RGB = { r: 51, g: 51, b: 51 };
 
 function cloneRgb(color: RGB): RGB {
   return { r: color.r, g: color.g, b: color.b };
@@ -59,6 +61,8 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
+  characterPlaceholderFill: cloneRgb(DEFAULT_CHARACTER_PLACEHOLDER_FILL),
+  characterInitialsColor: cloneRgb(DEFAULT_CHARACTER_INITIALS_COLOR),
   defaultBoxBorderColor: cloneRgb(DEFAULT_BOX_BORDER),
   defaultFloatingTextColor: cloneRgb(DEFAULT_FLOATING_TEXT_COLOR),
   characterNameLabel: defaultNameChrome(),
@@ -134,6 +138,8 @@ export function cloneDiagramAppearance(
     defaultCharacterBorderColor: cloneRgb(
       appearance.defaultCharacterBorderColor,
     ),
+    characterPlaceholderFill: cloneRgb(appearance.characterPlaceholderFill),
+    characterInitialsColor: cloneRgb(appearance.characterInitialsColor),
     defaultBoxBorderColor: cloneRgb(appearance.defaultBoxBorderColor),
     defaultFloatingTextColor: cloneRgb(appearance.defaultFloatingTextColor),
     characterNameLabel: cloneChrome(appearance.characterNameLabel),
@@ -167,6 +173,14 @@ export function resolveDiagramAppearance(
     defaultCharacterBorderColor: resolveRgb(
       partial.defaultCharacterBorderColor,
       defaults.defaultCharacterBorderColor,
+    ),
+    characterPlaceholderFill: resolveRgb(
+      partial.characterPlaceholderFill,
+      defaults.characterPlaceholderFill,
+    ),
+    characterInitialsColor: resolveRgb(
+      partial.characterInitialsColor,
+      defaults.characterInitialsColor,
     ),
     defaultBoxBorderColor: resolveRgb(
       partial.defaultBoxBorderColor,
@@ -251,6 +265,22 @@ export function serializeDiagramAppearance(
   }
   if (
     !colorsEqual(
+      appearance.characterPlaceholderFill,
+      defaults.characterPlaceholderFill,
+    )
+  ) {
+    out.characterPlaceholderFill = cloneRgb(appearance.characterPlaceholderFill);
+  }
+  if (
+    !colorsEqual(
+      appearance.characterInitialsColor,
+      defaults.characterInitialsColor,
+    )
+  ) {
+    out.characterInitialsColor = cloneRgb(appearance.characterInitialsColor);
+  }
+  if (
+    !colorsEqual(
       appearance.defaultBoxBorderColor,
       defaults.defaultBoxBorderColor,
     )
@@ -331,6 +361,12 @@ export function patchDiagramAppearance(
     next.defaultCharacterBorderColor = cloneRgb(
       patch.defaultCharacterBorderColor,
     );
+  }
+  if (patch.characterPlaceholderFill) {
+    next.characterPlaceholderFill = cloneRgb(patch.characterPlaceholderFill);
+  }
+  if (patch.characterInitialsColor) {
+    next.characterInitialsColor = cloneRgb(patch.characterInitialsColor);
   }
   if (patch.defaultBoxBorderColor) {
     next.defaultBoxBorderColor = cloneRgb(patch.defaultBoxBorderColor);

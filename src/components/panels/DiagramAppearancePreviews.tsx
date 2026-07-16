@@ -50,12 +50,16 @@ export function CharacterAppearancePreview({
   borderColor,
   nameLabel,
   subtitleLabel,
+  placeholderFill,
+  initialsColor,
   fontFamily = DEFAULT_DIAGRAM_FONT,
   canvasBackground = null,
 }: {
   borderColor: RGB;
   nameLabel: LabelChrome;
   subtitleLabel: LabelChrome;
+  placeholderFill: RGB;
+  initialsColor: RGB;
   fontFamily?: string;
   canvasBackground?: DiagramBackgroundColor;
 }) {
@@ -68,9 +72,20 @@ export function CharacterAppearancePreview({
     >
       <div
         className="diagram-appearance-preview-avatar"
-        style={{ borderColor: rgbToCss(borderColor) }}
+        style={{
+          borderColor: rgbToCss(borderColor),
+          backgroundColor: rgbToCss(placeholderFill),
+        }}
       >
-        <span className="diagram-appearance-preview-initials">AB</span>
+        <span
+          className="diagram-appearance-preview-initials"
+          style={{
+            color: rgbToCss(initialsColor),
+            fontFamily: formatUiFontFamily(fontFamily),
+          }}
+        >
+          AB
+        </span>
       </div>
       <div className="diagram-appearance-preview-pills">
         <PreviewPill

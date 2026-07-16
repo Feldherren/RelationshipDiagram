@@ -195,6 +195,8 @@ export function DiagramAppearancePanel({
             borderColor={value.defaultCharacterBorderColor}
             nameLabel={value.characterNameLabel}
             subtitleLabel={value.characterSubtitleLabel}
+            placeholderFill={value.characterPlaceholderFill}
+            initialsColor={value.characterInitialsColor}
             fontFamily={fontFamily}
             canvasBackground={canvasBackground}
           />
@@ -206,6 +208,23 @@ export function DiagramAppearancePanel({
                 value={value.defaultCharacterBorderColor}
                 onChange={(defaultCharacterBorderColor) =>
                   onChange({ defaultCharacterBorderColor })
+                }
+              />
+              <p className="hint">
+                {t("diagramAppearance.characterPlaceholderHint")}
+              </p>
+              <RgbPicker
+                label={t("diagramAppearance.characterPlaceholderFill")}
+                value={value.characterPlaceholderFill}
+                onChange={(characterPlaceholderFill) =>
+                  onChange({ characterPlaceholderFill })
+                }
+              />
+              <RgbPicker
+                label={t("diagramAppearance.characterInitialsColor")}
+                value={value.characterInitialsColor}
+                onChange={(characterInitialsColor) =>
+                  onChange({ characterInitialsColor })
                 }
               />
               <p className="hint">{t("diagramAppearance.labelChromeHint")}</p>

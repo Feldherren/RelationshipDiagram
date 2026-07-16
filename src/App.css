@@ -1113,7 +1113,6 @@ body,
   height: 2.75rem;
   border-radius: 50%;
   border: 3px solid;
-  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1122,7 +1121,6 @@ body,
 .diagram-appearance-preview-initials {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #333333;
   line-height: 1;
 }
 

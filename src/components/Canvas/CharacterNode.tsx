@@ -135,6 +135,12 @@ export function CharacterNode({
   const subtitleLabel = useDiagramStore(
     (s) => s.diagramAppearance.characterSubtitleLabel,
   );
+  const characterPlaceholderFill = useDiagramStore(
+    (s) => s.diagramAppearance.characterPlaceholderFill,
+  );
+  const characterInitialsColor = useDiagramStore(
+    (s) => s.diagramAppearance.characterInitialsColor,
+  );
   const handleOffset = getConnectHandleOffset(size);
   const showConnectHandle = selected || hovered || isConnectSource;
   const showAura =
@@ -194,7 +200,11 @@ export function CharacterNode({
         shape={character.borderShape}
         size={size}
         color={color}
-        fill={character.imageData ? "transparent" : "#ffffff"}
+        fill={
+          character.imageData
+            ? "transparent"
+            : rgbToCss(characterPlaceholderFill)
+        }
       />
       {character.imageData ? (
         <CharacterImage
@@ -209,7 +219,7 @@ export function CharacterNode({
           fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={size * 0.55}
           fontStyle="bold"
-          fill="#333"
+          fill={rgbToCss(characterInitialsColor)}
           align="center"
           verticalAlign="middle"
           width={size * 2}

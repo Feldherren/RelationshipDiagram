@@ -9,6 +9,18 @@ import { getAppPreferences } from "../../utils/appPreferences";
 import type { Bounds } from "../../models/types";
 import { formatZoomPercent } from "./ZoomIndicator";
 
+const EXPORT_ZOOM_PRESETS = [100, 200] as const;
+const MIN_EXPORT_ZOOM_PERCENT = 15;
+const MAX_EXPORT_ZOOM_PERCENT = 400;
+
+function clampExportZoomPercent(value: number): number {
+  if (!Number.isFinite(value)) return 100;
+  return Math.min(
+    MAX_EXPORT_ZOOM_PERCENT,
+    Math.max(MIN_EXPORT_ZOOM_PERCENT, Math.round(value)),
+  );
+}
+
 interface ExportDialogProps {
   open: boolean;
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -53,15 +65,28 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const [mode, setMode] = useState<"auto" | "custom">(
     exportPrefs.defaultExportBoundsMode,
   );
-  const [pixelRatio, setPixelRatio] = useState(exportPrefs.defaultExportPixelRatio);
+  const [zoomPercent, setZoomPercent] = useState(
+    () => exportPrefs.defaultExportPixelRatio * 100,
+  );
+  const [zoomDraft, setZoomDraft] = useState(() =>
+    String(exportPrefs.defaultExportPixelRatio * 100),
+  );
   const [padding, setPadding] = useState(exportPrefs.defaultExportPadding);
   const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
+
+  const applyZoomPercent = (next: number) => {
+    const clamped = clampExportZoomPercent(next);
+    setZoomPercent(clamped);
+    setZoomDraft(String(clamped));
+  };
 
   useEffect(() => {
     if (!open) return;
     const prefs = getAppPreferences();
+    const initialZoom = prefs.defaultExportPixelRatio * 100;
     setMode(prefs.defaultExportBoundsMode);
-    setPixelRatio(prefs.defaultExportPixelRatio);
+    setZoomPercent(initialZoom);
+    setZoomDraft(String(initialZoom));
     setPadding(prefs.defaultExportPadding);
   }, [open]);
 
@@ -104,18 +129,25 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
 
   if (!open) return null;
 
+  const pixelRatio = zoomPercent / 100;
   const width = activeBounds ? Math.round(activeBounds.width * pixelRatio) : 0;
   const height = activeBounds
     ? Math.round(activeBounds.height * pixelRatio)
     : 0;
 
+  const commitZoomDraft = () => {
+    applyZoomPercent(Number(zoomDraft));
+  };
+
   const handleExport = async () => {
     const stage = stageRef.current;
     if (!stage || !activeBounds) return;
+    const exportZoom = clampExportZoomPercent(Number(zoomDraft));
+    applyZoomPercent(exportZoom);
     try {
       const dataUrl = await exportStageToPng(stage, {
         bounds: activeBounds,
-        pixelRatio,
+        pixelRatio: exportZoom / 100,
         backgroundColor: diagramBackgroundColor,
         showGrid,
         gridStyle,
@@ -179,23 +211,64 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
           </button>
         )}
 
-        <label className="field">
+        <div className="field">
           <span>{t("export.resolution")}</span>
-          <select
-            value={pixelRatio}
-            onChange={(e) =>
-              setPixelRatio(Number(e.target.value) as 1 | 2)
-            }
-          >
-            <option value={1}>{t("export.res1x")}</option>
-            <option value={2}>{t("export.res2x")}</option>
-          </select>
-        </label>
-        <p className="hint">
-          {t("export.currentZoom", {
-            percent: formatZoomPercent(viewportScale),
-          })}
-        </p>
+          <div className="export-zoom-row" role="group" aria-label={t("export.resolution")}>
+            {EXPORT_ZOOM_PRESETS.map((preset) => {
+              const selected = zoomPercent === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`export-zoom-preset${selected ? " selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => applyZoomPercent(preset)}
+                >
+                  {t(preset === 100 ? "export.res1x" : "export.res2x")}
+                </button>
+              );
+            })}
+            <label className="export-zoom-custom">
+              <span className="sr-only">{t("export.customZoom")}</span>
+              <input
+                type="number"
+                min={MIN_EXPORT_ZOOM_PERCENT}
+                max={MAX_EXPORT_ZOOM_PERCENT}
+                step={1}
+                value={zoomDraft}
+                aria-label={t("export.customZoom")}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setZoomDraft(next);
+                  if (next.trim() === "") return;
+                  const parsed = Number(next);
+                  if (
+                    !Number.isFinite(parsed) ||
+                    parsed < MIN_EXPORT_ZOOM_PERCENT ||
+                    parsed > MAX_EXPORT_ZOOM_PERCENT
+                  ) {
+                    return;
+                  }
+                  setZoomPercent(Math.round(parsed));
+                }}
+                onBlur={commitZoomDraft}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitZoomDraft();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+              />
+              <span aria-hidden="true">{t("export.customZoomSuffix")}</span>
+            </label>
+          </div>
+          <p className="hint">
+            {t("export.currentZoom", {
+              percent: formatZoomPercent(viewportScale),
+            })}
+          </p>
+        </div>
 
         {activeBounds ? (
           <div className="export-preview">

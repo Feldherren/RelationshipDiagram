@@ -134,6 +134,8 @@ I vibe-coded this, *mostly*, but should anyone want to use or modify this tool, 
 
 None of these SVGs have been used as files, but their paths have been used for icons. Still worth attribution.
 
+Arrows Reload 01 SVC: https://www.svgrepo.com/svg/472960/arrows-repeat (jtblabs, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Droplet SVG: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
 Flame Symbol SVG: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))

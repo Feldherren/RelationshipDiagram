@@ -73,6 +73,78 @@ export function isSelectionFloatInteractiveTarget(
   );
 }
 
+/** Stable key for float placement state across a selection session. */
+export function selectionFloatPlacementKey(
+  selection: NonNullable<Selection>,
+): string | null {
+  if (selection.type === "bookmark") return null;
+  if (selection.type === "group") {
+    return `group:${selection.id}:${selection.anchorCharacterId ?? ""}`;
+  }
+  return `${selection.type}:${selection.id}`;
+}
+
+/**
+ * Closest point on the panel rectangle edge to `anchorScreen`.
+ * Used to draw a connector from the selected element to a detached float.
+ */
+export function connectorEndpoints(
+  panel: Bounds,
+  anchorScreen: Point,
+): { from: Point; to: Point } {
+  const left = panel.x;
+  const right = panel.x + panel.width;
+  const top = panel.y;
+  const bottom = panel.y + panel.height;
+
+  const clampedX = clamp(anchorScreen.x, left, right);
+  const clampedY = clamp(anchorScreen.y, top, bottom);
+
+  // Anchor is outside (or on edge): project onto the nearest edge.
+  let toX = clampedX;
+  let toY = clampedY;
+  const insideX = anchorScreen.x > left && anchorScreen.x < right;
+  const insideY = anchorScreen.y > top && anchorScreen.y < bottom;
+
+  if (insideX && insideY) {
+    // Anchor somehow inside the panel: pick nearest side.
+    const distLeft = anchorScreen.x - left;
+    const distRight = right - anchorScreen.x;
+    const distTop = anchorScreen.y - top;
+    const distBottom = bottom - anchorScreen.y;
+    const min = Math.min(distLeft, distRight, distTop, distBottom);
+    if (min === distLeft) toX = left;
+    else if (min === distRight) toX = right;
+    else if (min === distTop) toY = top;
+    else toY = bottom;
+  } else if (insideX) {
+    toY = anchorScreen.y <= top ? top : bottom;
+  } else if (insideY) {
+    toX = anchorScreen.x <= left ? left : right;
+  } else {
+    // Corner case: already clamped to a corner via clampedX/Y.
+    toX = clampedX;
+    toY = clampedY;
+  }
+
+  return {
+    from: { ...anchorScreen },
+    to: { x: toX, y: toY },
+  };
+}
+
+/** Hide connector when the panel is still effectively next to the anchor. */
+export function shouldShowFloatConnector(
+  panel: Bounds,
+  anchorScreen: Point,
+  minDistance: number = SELECTION_FLOAT_GAP,
+): boolean {
+  const { from, to } = connectorEndpoints(panel, anchorScreen);
+  const dx = from.x - to.x;
+  const dy = from.y - to.y;
+  return Math.hypot(dx, dy) >= minDistance;
+}
+
 const LINE_LABEL_FONT_SIZE = 12;
 /** Padding around the label midpoint when a line has no visible pill. */
 const UNLABELED_LINE_HIT = 14;

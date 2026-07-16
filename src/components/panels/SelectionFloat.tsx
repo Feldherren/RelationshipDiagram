@@ -24,13 +24,16 @@ import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
 import { MembershipChip } from "../Canvas/MembershipChips";
 import {
   clampSelectionFloatPosition,
+  connectorEndpoints,
   defaultFloatAnchorScreen,
   getGroupChipAnchorWorld,
   getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
   isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
+  selectionFloatPlacementKey,
   SELECTION_FLOAT_WIDTH,
+  shouldShowFloatConnector,
   worldBoundsToScreen,
   worldToScreen,
 } from "../../utils/selectionAnchor";
@@ -43,6 +46,16 @@ import {
 const LINE_STYLES: LineStyle[] = ["straight", "wavy", "dotted", "jagged"];
 
 const ESTIMATED_FLOAT_HEIGHT = 280;
+/** Ignore tiny pointer moves so a click does not detach the panel. */
+const FLOAT_DRAG_DETACH_THRESHOLD_PX = 3;
+
+type FloatPlacement = {
+  key: string;
+  left: number;
+  top: number;
+  /** Screen-fixed after user drag (or group open). */
+  detached: boolean;
+};
 
 /** Arrows-repeat glyph: right arrow above, left arrow below. */
 function ReverseLineIcon() {
@@ -98,18 +111,17 @@ export function SelectionFloat() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [panelHeight, setPanelHeight] = useState(ESTIMATED_FLOAT_HEIGHT);
   const [chipAppearanceOpen, setChipAppearanceOpen] = useState(false);
-  const [groupFloatPlacement, setGroupFloatPlacement] = useState<{
-    key: string;
-    left: number;
-    top: number;
-  } | null>(null);
-  const [isDraggingGroupFloat, setIsDraggingGroupFloat] = useState(false);
-  const groupDragRef = useRef<{
+  const [floatPlacement, setFloatPlacement] = useState<FloatPlacement | null>(
+    null,
+  );
+  const [isDraggingFloat, setIsDraggingFloat] = useState(false);
+  const floatDragRef = useRef<{
     pointerId: number;
     startX: number;
     startY: number;
     originLeft: number;
     originTop: number;
+    moved: boolean;
   } | null>(null);
 
   const selection = useDiagramStore((s) => s.selection);
@@ -134,14 +146,20 @@ export function SelectionFloat() {
 
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
-  const groupPlacementKey =
-    selection?.type === "group"
-      ? `${selection.id}:${selection.anchorCharacterId ?? ""}`
-      : null;
+  const placementKey = selection
+    ? selectionFloatPlacementKey(selection)
+    : null;
 
   useEffect(() => {
     setChipAppearanceOpen(false);
   }, [selectedGroupId]);
+
+  useEffect(() => {
+    if (placementKey) return;
+    setFloatPlacement(null);
+    setIsDraggingFloat(false);
+    floatDragRef.current = null;
+  }, [placementKey]);
 
   useLayoutEffect(() => {
     const el = panelRef.current;
@@ -152,13 +170,10 @@ export function SelectionFloat() {
     }
   }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
 
+  // Groups freeze in screen space as soon as they open (detached).
   useLayoutEffect(() => {
-    if (selection?.type !== "group" || !groupPlacementKey) {
-      return;
-    }
-    if (groupFloatPlacement?.key === groupPlacementKey) {
-      return;
-    }
+    if (selection?.type !== "group" || !placementKey) return;
+    if (floatPlacement?.key === placementKey) return;
 
     const diagram = getDiagram();
     const chipAnchor = getGroupChipAnchorWorld(
@@ -175,17 +190,18 @@ export function SelectionFloat() {
       panelHeight,
     });
 
-    setGroupFloatPlacement({
-      key: groupPlacementKey,
+    setFloatPlacement({
+      key: placementKey,
       left: placed.left,
       top: placed.top,
+      detached: true,
     });
-    setIsDraggingGroupFloat(false);
-    groupDragRef.current = null;
+    setIsDraggingFloat(false);
+    floatDragRef.current = null;
   }, [
     selection,
-    groupPlacementKey,
-    groupFloatPlacement?.key,
+    placementKey,
+    floatPlacement?.key,
     getDiagram,
     viewport,
     stageSize.width,
@@ -205,51 +221,57 @@ export function SelectionFloat() {
   const diagram = getDiagram();
   const isGroupSelection = selection.type === "group";
 
+  const connectorAnchorWorld = isGroupSelection
+    ? getGroupChipAnchorWorld(selection.anchorCharacterId, diagram)
+    : getSelectionAnchorWorld(selection, diagram);
+
+  let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
+  if (selection.type === "line") {
+    const line = lines.find((l) => l.id === selection.id);
+    if (line) {
+      avoidScreen = worldBoundsToScreen(
+        getLineSelectionAvoidBounds(line, diagram),
+        viewport,
+      );
+    }
+  }
+
+  const placementMatches =
+    Boolean(placementKey) && floatPlacement?.key === placementKey;
+  const isDetached = Boolean(placementMatches && floatPlacement?.detached);
+
   let left: number;
   let top: number;
 
-  if (isGroupSelection && groupPlacementKey) {
-    if (groupFloatPlacement?.key === groupPlacementKey) {
-      ({ left, top } = clampSelectionFloatPosition({
-        left: groupFloatPlacement.left,
-        top: groupFloatPlacement.top,
-        stageWidth: stageSize.width,
-        stageHeight: stageSize.height,
-        panelWidth: SELECTION_FLOAT_WIDTH,
-        panelHeight,
-      }));
-    } else {
-      const chipAnchor = getGroupChipAnchorWorld(
-        selection.anchorCharacterId,
-        diagram,
-      );
-      ({ left, top } = placeSelectionFloat({
-        anchorScreen: chipAnchor
-          ? worldToScreen(chipAnchor, viewport)
-          : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
-        stageWidth: stageSize.width,
-        stageHeight: stageSize.height,
-        panelWidth: SELECTION_FLOAT_WIDTH,
-        panelHeight,
-      }));
-    }
+  if (isDetached && floatPlacement) {
+    ({ left, top } = clampSelectionFloatPosition({
+      left: floatPlacement.left,
+      top: floatPlacement.top,
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    }));
+  } else if (isGroupSelection) {
+    // Provisional group placement before the freeze layout effect commits.
+    const chipAnchor = getGroupChipAnchorWorld(
+      selection.anchorCharacterId,
+      diagram,
+    );
+    ({ left, top } = placeSelectionFloat({
+      anchorScreen: chipAnchor
+        ? worldToScreen(chipAnchor, viewport)
+        : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    }));
   } else {
     const anchorWorld = getSelectionAnchorWorld(selection, diagram);
     const anchorScreen = anchorWorld
       ? worldToScreen(anchorWorld, viewport)
       : defaultFloatAnchorScreen(stageSize.width, stageSize.height);
-
-    let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
-    if (selection.type === "line") {
-      const line = lines.find((l) => l.id === selection.id);
-      if (line) {
-        avoidScreen = worldBoundsToScreen(
-          getLineSelectionAvoidBounds(line, diagram),
-          viewport,
-        );
-      }
-    }
-
     ({ left, top } = placeSelectionFloat({
       anchorScreen,
       stageWidth: stageSize.width,
@@ -260,56 +282,65 @@ export function SelectionFloat() {
     }));
   }
 
-  const endGroupFloatDrag = (pointerId: number) => {
-    const drag = groupDragRef.current;
+  const endFloatDrag = (pointerId: number) => {
+    const drag = floatDragRef.current;
     if (!drag || drag.pointerId !== pointerId) return;
-    groupDragRef.current = null;
-    setIsDraggingGroupFloat(false);
+    floatDragRef.current = null;
+    setIsDraggingFloat(false);
     const el = panelRef.current;
     if (el?.hasPointerCapture(pointerId)) {
       el.releasePointerCapture(pointerId);
     }
   };
 
-  const handleGroupFloatPointerDown = (
-    e: PointerEvent<HTMLElement>,
-  ) => {
-    if (!isGroupSelection || !groupPlacementKey || e.button !== 0) return;
+  const handleFloatPointerDown = (e: PointerEvent<HTMLElement>) => {
+    if (!placementKey || e.button !== 0) return;
     if (isSelectionFloatInteractiveTarget(e.target)) return;
     e.preventDefault();
-    groupDragRef.current = {
+    floatDragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
       originLeft: left,
       originTop: top,
+      moved: false,
     };
-    setIsDraggingGroupFloat(true);
+    setIsDraggingFloat(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const handleGroupFloatPointerMove = (
-    e: PointerEvent<HTMLElement>,
-  ) => {
-    const drag = groupDragRef.current;
-    if (!drag || !groupPlacementKey || drag.pointerId !== e.pointerId) return;
+  const handleFloatPointerMove = (e: PointerEvent<HTMLElement>) => {
+    const drag = floatDragRef.current;
+    if (!drag || !placementKey || drag.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (
+      !drag.moved &&
+      Math.hypot(dx, dy) < FLOAT_DRAG_DETACH_THRESHOLD_PX
+    ) {
+      return;
+    }
+    drag.moved = true;
+
     const next = clampSelectionFloatPosition({
-      left: drag.originLeft + (e.clientX - drag.startX),
-      top: drag.originTop + (e.clientY - drag.startY),
+      left: drag.originLeft + dx,
+      top: drag.originTop + dy,
       stageWidth: stageSize.width,
       stageHeight: stageSize.height,
       panelWidth: SELECTION_FLOAT_WIDTH,
       panelHeight,
     });
-    setGroupFloatPlacement({
-      key: groupPlacementKey,
+    setFloatPlacement({
+      key: placementKey,
       left: next.left,
       top: next.top,
+      detached: true,
     });
   };
 
-  const handleGroupFloatPointerUp = (e: PointerEvent<HTMLElement>) => {
-    endGroupFloatDrag(e.pointerId);
+  const handleFloatPointerUp = (e: PointerEvent<HTMLElement>) => {
+    endFloatDrag(e.pointerId);
   };
 
   let body: ReactNode = null;
@@ -775,14 +806,51 @@ export function SelectionFloat() {
 
   const floatClassName = [
     "selection-float",
-    isGroupSelection ? "selection-float-draggable" : "",
-    isDraggingGroupFloat ? "is-dragging" : "",
+    "selection-float-draggable",
+    isDraggingFloat ? "is-dragging" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  let connector: ReactNode = null;
+  if (isDetached && connectorAnchorWorld) {
+    const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+    const panelBounds = {
+      x: left,
+      y: top,
+      width: SELECTION_FLOAT_WIDTH,
+      height: panelHeight,
+    };
+    if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
+      const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+      connector = (
+        <svg
+          className="selection-float-connector"
+          width={stageSize.width}
+          height={stageSize.height}
+          aria-hidden
+        >
+          <line
+            x1={from.x}
+            y1={from.y}
+            x2={to.x}
+            y2={to.y}
+            className="selection-float-connector-line"
+          />
+          <circle
+            cx={from.x}
+            cy={from.y}
+            r={3}
+            className="selection-float-connector-dot"
+          />
+        </svg>
+      );
+    }
+  }
+
   return (
     <>
+      {connector}
       <aside
         ref={panelRef}
         className={floatClassName}
@@ -790,11 +858,11 @@ export function SelectionFloat() {
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => {
           e.stopPropagation();
-          handleGroupFloatPointerDown(e);
+          handleFloatPointerDown(e);
         }}
-        onPointerMove={handleGroupFloatPointerMove}
-        onPointerUp={handleGroupFloatPointerUp}
-        onPointerCancel={handleGroupFloatPointerUp}
+        onPointerMove={handleFloatPointerMove}
+        onPointerUp={handleFloatPointerUp}
+        onPointerCancel={handleFloatPointerUp}
       >
         {body}
       </aside>

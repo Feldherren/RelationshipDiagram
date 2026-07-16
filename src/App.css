@@ -283,6 +283,26 @@ body,
   cursor: text;
 }
 
+.selection-float-connector {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 14;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.selection-float-connector-line {
+  stroke: var(--ui-border-strong);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+  fill: none;
+}
+
+.selection-float-connector-dot {
+  fill: var(--ui-border-strong);
+}
+
 .selection-float h2 {
   margin: 0 0 0.75rem;
   font-size: 0.9375rem;

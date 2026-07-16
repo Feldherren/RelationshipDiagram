@@ -1048,6 +1048,13 @@ body,
   min-width: 0;
 }
 
+/* Fixed preview column so colour pickers align across element groups. */
+.diagram-appearance-element > .diagram-appearance-preview {
+  flex: 0 0 9rem;
+  width: 9rem;
+  box-sizing: border-box;
+}
+
 .diagram-appearance-element-controls {
   flex: 1 1 14rem;
   min-width: 0;
@@ -1127,8 +1134,6 @@ body,
 }
 
 .diagram-appearance-preview-line {
-  width: 100%;
-  min-width: 9rem;
   position: relative;
   justify-content: center;
   padding-block: 1.25rem;

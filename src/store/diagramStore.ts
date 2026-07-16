@@ -101,6 +101,8 @@ interface DiagramState {
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
   selection: Selection;
+  /** When false, the selection float stays closed even if something is selected. */
+  selectionDetailsOpen: boolean;
   toolMode: ToolMode;
   connectFrom: NodeRef | null;
   connectDrag: ConnectDrag | null;
@@ -126,7 +128,10 @@ interface DiagramState {
   undo: () => void;
   redo: () => void;
   setToolMode: (mode: ToolMode) => void;
-  setSelection: (selection: Selection) => void;
+  setSelection: (
+    selection: Selection,
+    options?: { openDetails?: boolean },
+  ) => void;
   setShowGrid: (show: boolean) => void;
   setGridStyle: (style: GridStyle) => void;
   setDiagramBackgroundMode: (mode: DiagramBackgroundMode) => void;
@@ -296,6 +301,7 @@ function restoreHistorySnapshot(
     ...snapshot,
     viewport,
     selection: null,
+    selectionDetailsOpen: false,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -314,6 +320,7 @@ export const useDiagramStore = create<DiagramState>()(
   bookmarks: [],
   bookmarksVisible: true,
   selection: null,
+  selectionDetailsOpen: false,
   toolMode: "select",
   connectFrom: null,
   connectDrag: null,
@@ -382,7 +389,7 @@ export const useDiagramStore = create<DiagramState>()(
       exportBounds: mode === "exportBounds" ? get().exportBounds : null,
     });
   },
-  setSelection: (selection) => {
+  setSelection: (selection, options) => {
     const { toolMode, selection: prev } = get();
     const editingGroupId =
       toolMode === "editGroupMembers" && prev?.type === "group"
@@ -392,8 +399,12 @@ export const useDiagramStore = create<DiagramState>()(
       editingGroupId != null &&
       selection?.type === "group" &&
       selection.id === editingGroupId;
+    const openDetails =
+      options?.openDetails ??
+      (selection != null && selection.type !== "bookmark");
     set({
       selection,
+      selectionDetailsOpen: openDetails,
       ...(editingGroupId != null && !stayingOnEditedGroup
         ? { toolMode: "select" as const }
         : {}),
@@ -643,6 +654,7 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       characters: [...s.characters, character],
       selection: { type: "character", id: character.id },
+      selectionDetailsOpen: false,
     }));
   },
 
@@ -705,6 +717,7 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       lines: [...s.lines, line],
       selection: { type: "line", id: line.id },
+      selectionDetailsOpen: false,
       connectFrom: null,
       connectDrag: null,
     }));
@@ -740,6 +753,7 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       groups: [...s.groups, group],
       selection: { type: "group", id: group.id },
+      selectionDetailsOpen: false,
     }));
   },
 
@@ -835,6 +849,7 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       boxes: [...s.boxes, box],
       selection: { type: "box", id: box.id },
+      selectionDetailsOpen: false,
     }));
   },
 
@@ -955,6 +970,7 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       floatingTexts: [...s.floatingTexts, floatingText],
       selection: { type: "floatingText", id: floatingText.id },
+      selectionDetailsOpen: false,
     }));
   },
 
@@ -1002,9 +1018,9 @@ export const useDiagramStore = create<DiagramState>()(
       return;
     }
     if (ref.kind === "character") {
-      set({ selection: { type: "character", id: ref.id } });
+      get().setSelection({ type: "character", id: ref.id });
     } else {
-      set({ selection: { type: "box", id: ref.id } });
+      get().setSelection({ type: "box", id: ref.id });
     }
   },
 
@@ -1213,6 +1229,7 @@ export const useDiagramStore = create<DiagramState>()(
       showGrid,
       gridStyle,
       selection: null,
+      selectionDetailsOpen: false,
       connectFrom: null,
       connectDrag: null,
       toolMode: "select",

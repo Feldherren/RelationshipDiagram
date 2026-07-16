@@ -127,6 +127,7 @@ export function SelectionFloat() {
   } | null>(null);
 
   const selection = useDiagramStore((s) => s.selection);
+  const selectionDetailsOpen = useDiagramStore((s) => s.selectionDetailsOpen);
   const characters = useDiagramStore((s) => s.characters);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const lines = useDiagramStore((s) => s.lines);
@@ -211,7 +212,7 @@ export function SelectionFloat() {
     panelHeight,
   ]);
 
-  if (!selection) {
+  if (!selection || !selectionDetailsOpen) {
     return null;
   }
 

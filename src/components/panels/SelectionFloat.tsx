@@ -62,6 +62,32 @@ function ReverseLineIcon() {
   );
 }
 
+function ArrowToggleIcon({ direction }: { direction: "left" | "right" }) {
+  const path =
+    direction === "left"
+      ? "M19 12H5m0 0 5-5m-5 5 5 5"
+      : "M5 12h14m0 0-5-5m5 5-5 5";
+
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d={path}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SelectionFloat() {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -315,6 +341,34 @@ export function SelectionFloat() {
             })}
           </p>
         </div>
+        <div className="line-arrow-toggles">
+          <button
+            type="button"
+            className={`btn-icon line-arrow-toggle${
+              line.startArrow ? " is-active" : ""
+            }`}
+            aria-label={t("selection.arrowStart")}
+            aria-pressed={line.startArrow}
+            title={t("selection.arrowStart")}
+            onClick={() =>
+              updateLine(line.id, { startArrow: !line.startArrow })
+            }
+          >
+            <ArrowToggleIcon direction="left" />
+          </button>
+          <button
+            type="button"
+            className={`btn-icon line-arrow-toggle${
+              line.endArrow ? " is-active" : ""
+            }`}
+            aria-label={t("selection.arrowEnd")}
+            aria-pressed={line.endArrow}
+            title={t("selection.arrowEnd")}
+            onClick={() => updateLine(line.id, { endArrow: !line.endArrow })}
+          >
+            <ArrowToggleIcon direction="right" />
+          </button>
+        </div>
         <label className="field">
           <span>{t("selection.label")}</span>
           <input
@@ -345,26 +399,6 @@ export function SelectionFloat() {
           value={line.color}
           onChange={(color) => updateLine(line.id, { color })}
         />
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={line.startArrow}
-            onChange={(e) =>
-              updateLine(line.id, { startArrow: e.target.checked })
-            }
-          />
-          <span>{t("selection.arrowStart")}</span>
-        </label>
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={line.endArrow}
-            onChange={(e) =>
-              updateLine(line.id, { endArrow: e.target.checked })
-            }
-          />
-          <span>{t("selection.arrowEnd")}</span>
-        </label>
         <button
           type="button"
           className="btn-secondary"

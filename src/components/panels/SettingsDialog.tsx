@@ -25,10 +25,13 @@ import {
   type UiScale,
 } from "../../utils/uiTheme";
 import {
+  createDiagramThemeDocument,
   patchDiagramAppearance,
   resolveDiagramThemeAppearance,
+  uniqueDiagramThemeId,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
+import type { DiagramAppearance } from "../../models/types";
 import {
   exportZoomPercentFromRatio,
   exportZoomRatioFromPercent,
@@ -179,6 +182,50 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     replaceDiagramAppearance(prefs.diagramAppearance);
   };
 
+  const handleDiagramAppearanceChange = (
+    patch: Partial<DiagramAppearance>,
+  ) => {
+    // Read storage so rapid picker updates after a fork don't re-prompt.
+    const current = getAppPreferences();
+    const diagramAppearance = patchDiagramAppearance(
+      current.diagramAppearance,
+      patch,
+    );
+    const backgroundPatch =
+      patch.backgroundMode !== undefined || patch.backgroundColor !== undefined
+        ? {
+            defaultBackgroundMode: diagramAppearance.backgroundMode,
+            defaultBackgroundColor: diagramAppearance.backgroundColor,
+          }
+        : {};
+
+    if (current.diagramThemePreference === "default") {
+      if (!window.confirm(t("diagramAppearance.themeForkFromDefaultConfirm"))) {
+        return;
+      }
+      const prompted = window.prompt(
+        t("diagramAppearance.themeForkFromDefaultNamePrompt"),
+        t("diagramAppearance.themeDefaultName"),
+      );
+      if (prompted === null) return;
+      const name = prompted.trim() || t("diagramAppearance.themeDefaultName");
+      const id = uniqueDiagramThemeId(name, current.customDiagramThemes);
+      const theme = createDiagramThemeDocument(id, name, diagramAppearance);
+      updatePrefs({
+        customDiagramThemes: [...current.customDiagramThemes, theme],
+        diagramThemePreference: theme.id,
+        diagramAppearance,
+        ...backgroundPatch,
+      });
+      return;
+    }
+
+    updatePrefs({
+      diagramAppearance,
+      ...backgroundPatch,
+    });
+  };
+
   const sections = [
     { id: "appearance", label: t("appSettings.appearanceSection") },
     {
@@ -305,23 +352,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
           <DiagramAppearancePanel
             value={prefs.diagramAppearance}
-            onChange={(patch) => {
-              const diagramAppearance = patchDiagramAppearance(
-                prefs.diagramAppearance,
-                patch,
-              );
-              updatePrefs({
-                diagramAppearance,
-                ...(patch.backgroundMode !== undefined ||
-                patch.backgroundColor !== undefined
-                  ? {
-                      defaultBackgroundMode: diagramAppearance.backgroundMode,
-                      defaultBackgroundColor: diagramAppearance.backgroundColor,
-                    }
-                  : {}),
-              });
-            }}
-            showAppearanceColours={prefs.diagramThemePreference !== "default"}
+            onChange={handleDiagramAppearanceChange}
             canvasSetup={{
               diagramFont: prefs.defaultDiagramFont,
               showHeader: prefs.defaultShowHeader,

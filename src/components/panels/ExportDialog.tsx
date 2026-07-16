@@ -30,10 +30,9 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
-  const diagramTitleColor = useDiagramStore((s) => s.diagramTitleColor);
-  const diagramSubtitleColor = useDiagramStore((s) => s.diagramSubtitleColor);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const diagram = {
     schemaVersion: 2 as const,
     title: diagramTitle || undefined,
@@ -108,8 +107,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     subtitle: diagramSubtitle,
     showHeader: showDiagramHeader,
     fontFamily: diagramFontFamily,
-    titleColor: diagramTitleColor,
-    subtitleColor: diagramSubtitleColor,
+    titleLabel: diagramAppearance.diagramTitleLabel,
+    subtitleLabel: diagramAppearance.diagramSubtitleLabel,
     diagram,
   };
 

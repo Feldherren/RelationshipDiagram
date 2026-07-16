@@ -2,17 +2,21 @@ import { useDiagramStore } from "../../store/diagramStore";
 import {
   getDiagramHeaderPillClassName,
   getDiagramHeaderPillFontSize,
-  getDiagramHeaderPillTextFill,
 } from "../../utils/diagramHeaderPill";
+import { rgbToCss } from "../../models/types";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 
 export function DiagramTitle() {
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
-  const diagramTitleColor = useDiagramStore((s) => s.diagramTitleColor);
-  const diagramSubtitleColor = useDiagramStore((s) => s.diagramSubtitleColor);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const titleLabel = useDiagramStore(
+    (s) => s.diagramAppearance.diagramTitleLabel,
+  );
+  const subtitleLabel = useDiagramStore(
+    (s) => s.diagramAppearance.diagramSubtitleLabel,
+  );
 
   const title = diagramTitle.trim();
   const subtitle = diagramSubtitle.trim();
@@ -21,16 +25,20 @@ export function DiagramTitle() {
 
   const fontFamily = formatUiFontFamily(diagramFontFamily);
 
+  const pillStyle = (chrome: typeof titleLabel, variant: "title" | "subtitle") => ({
+    fontFamily,
+    fontSize: getDiagramHeaderPillFontSize(variant),
+    color: rgbToCss(chrome.textColor),
+    backgroundColor: rgbToCss(chrome.backgroundColor),
+    borderColor: rgbToCss(chrome.borderColor),
+  });
+
   return (
     <div className="diagram-title-bar">
       {title && (
         <span
           className={getDiagramHeaderPillClassName("title")}
-          style={{
-            fontFamily,
-            fontSize: getDiagramHeaderPillFontSize("title"),
-            color: getDiagramHeaderPillTextFill(diagramTitleColor),
-          }}
+          style={pillStyle(titleLabel, "title")}
         >
           {title}
         </span>
@@ -38,11 +46,7 @@ export function DiagramTitle() {
       {subtitle && (
         <span
           className={getDiagramHeaderPillClassName("subtitle")}
-          style={{
-            fontFamily,
-            fontSize: getDiagramHeaderPillFontSize("subtitle"),
-            color: getDiagramHeaderPillTextFill(diagramSubtitleColor),
-          }}
+          style={pillStyle(subtitleLabel, "subtitle")}
         >
           {subtitle}
         </span>

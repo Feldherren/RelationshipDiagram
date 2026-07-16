@@ -216,6 +216,10 @@ export interface DiagramAppearance {
   characterSubtitleLabel: LabelChrome;
   lineLabel: LabelChrome;
   boxNameLabel: LabelChrome;
+  /** Diagram header title pill chrome; diagram-wide. */
+  diagramTitleLabel: LabelChrome;
+  /** Diagram header subtitle pill chrome; diagram-wide. */
+  diagramSubtitleLabel: LabelChrome;
 }
 
 export interface Diagram {

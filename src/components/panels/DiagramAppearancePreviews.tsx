@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { LabelChrome, RGB } from "../../models/types";
 import { rgbToCss } from "../../models/types";
 import { rgbaWithAlpha } from "../../utils/geometry";
-import { DEFAULT_DIAGRAM_FONT } from "../../utils/diagramFont";
+import { DEFAULT_DIAGRAM_FONT, DIAGRAM_SUBTITLE_FONT_SIZE, DIAGRAM_TITLE_FONT_SIZE } from "../../utils/diagramFont";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 import type { DiagramBackgroundColor } from "../../utils/diagramBackground";
 
@@ -196,6 +196,42 @@ export function FloatingTextAppearancePreview({
       >
         {t("diagramAppearance.previewFloatingText")}
       </span>
+    </div>
+  );
+}
+
+export function HeaderAppearancePreview({
+  titleLabel,
+  subtitleLabel,
+  fontFamily = DEFAULT_DIAGRAM_FONT,
+  canvasBackground = null,
+}: {
+  titleLabel: LabelChrome;
+  subtitleLabel: LabelChrome;
+  fontFamily?: string;
+  canvasBackground?: DiagramBackgroundColor;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={`${previewSurfaceClass(canvasBackground)} diagram-appearance-preview-header`}
+      style={previewSurfaceStyle(canvasBackground)}
+      aria-label={t("diagramAppearance.previewHeaderAria")}
+    >
+      <div className="diagram-appearance-preview-pills">
+        <PreviewPill
+          text={t("diagramAppearance.previewHeaderTitle")}
+          chrome={titleLabel}
+          fontFamily={fontFamily}
+          fontSize={DIAGRAM_TITLE_FONT_SIZE}
+        />
+        <PreviewPill
+          text={t("diagramAppearance.previewHeaderSubtitle")}
+          chrome={subtitleLabel}
+          fontFamily={fontFamily}
+          fontSize={DIAGRAM_SUBTITLE_FONT_SIZE}
+        />
+      </div>
     </div>
   );
 }

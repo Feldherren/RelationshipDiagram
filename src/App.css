@@ -231,9 +231,7 @@ body,
   justify-content: center;
   line-height: 1;
   padding: 0.375rem 1rem;
-  /* Fixed export-matching chrome — not UI theme tokens. */
-  background: #ffffff;
-  border: 1px solid #c8c8c8;
+  border: 1px solid;
   border-radius: 999px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   max-width: calc(100% - 2rem);
@@ -1152,6 +1150,14 @@ body,
 
 .diagram-appearance-preview-character {
   gap: 0.4rem;
+}
+
+.diagram-appearance-preview-header {
+  gap: 0.35rem;
+}
+
+.diagram-appearance-preview-header .diagram-appearance-preview-pill {
+  max-width: 8.5rem;
 }
 
 .diagram-appearance-preview-avatar {

@@ -21,18 +21,12 @@ export function DiagramPropertiesDialog({
     useState<PropertiesSectionId>("header");
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
-  const diagramTitleColor = useDiagramStore((s) => s.diagramTitleColor);
-  const diagramSubtitleColor = useDiagramStore((s) => s.diagramSubtitleColor);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
-  const setDiagramTitleColor = useDiagramStore((s) => s.setDiagramTitleColor);
-  const setDiagramSubtitleColor = useDiagramStore(
-    (s) => s.setDiagramSubtitleColor,
-  );
   const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
   const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
@@ -100,12 +94,6 @@ export function DiagramPropertiesDialog({
           <DiagramAppearancePanel
             value={diagramAppearance}
             onChange={setDiagramAppearance}
-            headerColors={{
-              titleColor: diagramTitleColor,
-              subtitleColor: diagramSubtitleColor,
-              onTitleColorChange: setDiagramTitleColor,
-              onSubtitleColorChange: setDiagramSubtitleColor,
-            }}
             canvasSetup={{
               diagramFont: diagramFontFamily,
               onDiagramFontChange: (fontFamily) =>

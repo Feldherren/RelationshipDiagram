@@ -1,12 +1,10 @@
-import type { Bounds, Diagram, RGB } from "../models/types";
+import type { Bounds, Diagram, LabelChrome, RGB } from "../models/types";
+import { rgbToCss } from "../models/types";
 import {
-  DIAGRAM_HEADER_PILL_FILL,
   DIAGRAM_HEADER_PILL_GAP,
   DIAGRAM_HEADER_PILL_SHADOW,
-  DIAGRAM_HEADER_PILL_STROKE,
   formatDiagramHeaderCanvasFont,
   getDiagramHeaderPillFontSize,
-  getDiagramHeaderPillTextFill,
   measureDiagramHeaderPill,
   type DiagramHeaderPillVariant,
 } from "./diagramHeaderPill";
@@ -25,8 +23,8 @@ export interface ExportHeaderConfig {
   subtitle: string;
   showHeader: boolean;
   fontFamily: string;
-  titleColor: RGB;
-  subtitleColor: RGB;
+  titleLabel: LabelChrome;
+  subtitleLabel: LabelChrome;
   diagram: Diagram;
 }
 
@@ -41,8 +39,8 @@ interface ExportHeaderPillLayout {
 export interface ExportHeaderLayout {
   centerX: number;
   pills: ExportHeaderPillLayout[];
-  titleColor: RGB;
-  subtitleColor: RGB;
+  titleLabel: LabelChrome;
+  subtitleLabel: LabelChrome;
 }
 
 function measureHeaderBlock(
@@ -246,8 +244,8 @@ export function layoutExportHeader(
   return {
     centerX,
     pills,
-    titleColor: config.titleColor,
-    subtitleColor: config.subtitleColor,
+    titleLabel: config.titleLabel,
+    subtitleLabel: config.subtitleLabel,
   };
 }
 
@@ -267,6 +265,8 @@ export function drawExportHeaderPills(
     const y = centerY - pillHeight / 2;
     const radius = pillHeight / 2;
     const fontSize = getDiagramHeaderPillFontSize(pill.variant) * pixelRatio;
+    const chrome =
+      pill.variant === "title" ? layout.titleLabel : layout.subtitleLabel;
 
     ctx.save();
     ctx.shadowColor = DIAGRAM_HEADER_PILL_SHADOW;
@@ -275,18 +275,16 @@ export function drawExportHeaderPills(
 
     ctx.beginPath();
     ctx.roundRect(x, y, pillWidth, pillHeight, radius);
-    ctx.fillStyle = DIAGRAM_HEADER_PILL_FILL;
+    ctx.fillStyle = rgbToCss(chrome.backgroundColor);
     ctx.fill();
 
     ctx.shadowColor = "transparent";
-    ctx.strokeStyle = DIAGRAM_HEADER_PILL_STROKE;
+    ctx.strokeStyle = rgbToCss(chrome.borderColor);
     ctx.lineWidth = Math.max(1, pixelRatio);
     ctx.stroke();
 
     ctx.font = formatDiagramHeaderCanvasFont(fontSize, fontFamily);
-    ctx.fillStyle = getDiagramHeaderPillTextFill(
-      pill.variant === "title" ? layout.titleColor : layout.subtitleColor,
-    );
+    ctx.fillStyle = rgbToCss(chrome.textColor);
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     const metrics = ctx.measureText(pill.text);

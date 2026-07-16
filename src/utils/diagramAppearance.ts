@@ -9,6 +9,10 @@ import {
   type DiagramBackgroundMode,
   type DiagramBackgroundColor,
 } from "./diagramBackground";
+import {
+  DEFAULT_DIAGRAM_SUBTITLE_COLOR,
+  DEFAULT_DIAGRAM_TITLE_COLOR,
+} from "./diagramHeaderPill";
 import { DEFAULT_DIAGRAM_GRID_COLOR } from "./gridBackground";
 
 export type { DiagramAppearance, LabelChrome };
@@ -17,6 +21,8 @@ const PILL_TEXT: RGB = { r: 31, g: 31, b: 31 };
 const PILL_SUBTITLE_TEXT: RGB = { r: 92, g: 92, b: 92 };
 const PILL_FILL: RGB = { r: 255, g: 255, b: 255 };
 const PILL_BORDER: RGB = { r: 208, g: 208, b: 208 };
+const HEADER_PILL_FILL: RGB = { r: 255, g: 255, b: 255 };
+const HEADER_PILL_BORDER: RGB = { r: 200, g: 200, b: 200 };
 
 const DEFAULT_LINE_COLOR: RGB = { r: 60, g: 60, b: 60 };
 const DEFAULT_BOX_BORDER: RGB = { r: 100, g: 140, b: 100 };
@@ -57,6 +63,22 @@ function defaultSubtitleChrome(): LabelChrome {
   };
 }
 
+function defaultDiagramTitleLabel(): LabelChrome {
+  return {
+    textColor: cloneRgb(DEFAULT_DIAGRAM_TITLE_COLOR),
+    backgroundColor: cloneRgb(HEADER_PILL_FILL),
+    borderColor: cloneRgb(HEADER_PILL_BORDER),
+  };
+}
+
+function defaultDiagramSubtitleLabel(): LabelChrome {
+  return {
+    textColor: cloneRgb(DEFAULT_DIAGRAM_SUBTITLE_COLOR),
+    backgroundColor: cloneRgb(HEADER_PILL_FILL),
+    borderColor: cloneRgb(HEADER_PILL_BORDER),
+  };
+}
+
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
@@ -71,6 +93,8 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   characterSubtitleLabel: defaultSubtitleChrome(),
   lineLabel: defaultNameChrome(),
   boxNameLabel: defaultNameChrome(),
+  diagramTitleLabel: defaultDiagramTitleLabel(),
+  diagramSubtitleLabel: defaultDiagramSubtitleLabel(),
 };
 
 function isRgb(value: unknown): value is RGB {
@@ -149,6 +173,8 @@ export function cloneDiagramAppearance(
     characterSubtitleLabel: cloneChrome(appearance.characterSubtitleLabel),
     lineLabel: cloneChrome(appearance.lineLabel),
     boxNameLabel: cloneChrome(appearance.boxNameLabel),
+    diagramTitleLabel: cloneChrome(appearance.diagramTitleLabel),
+    diagramSubtitleLabel: cloneChrome(appearance.diagramSubtitleLabel),
   };
 }
 
@@ -207,7 +233,37 @@ export function resolveDiagramAppearance(
     ),
     lineLabel: resolveChrome(partial.lineLabel, defaults.lineLabel),
     boxNameLabel: resolveChrome(partial.boxNameLabel, defaults.boxNameLabel),
+    diagramTitleLabel: resolveChrome(
+      partial.diagramTitleLabel,
+      defaults.diagramTitleLabel,
+    ),
+    diagramSubtitleLabel: resolveChrome(
+      partial.diagramSubtitleLabel,
+      defaults.diagramSubtitleLabel,
+    ),
   };
+}
+
+/** Apply legacy per-diagram title/subtitle text colours when loading older files. */
+export function mergeLegacyHeaderColors(
+  appearance: DiagramAppearance,
+  titleColor: unknown,
+  subtitleColor: unknown,
+): DiagramAppearance {
+  const next = cloneDiagramAppearance(appearance);
+  if (titleColor !== undefined) {
+    next.diagramTitleLabel = {
+      ...next.diagramTitleLabel,
+      textColor: resolveRgb(titleColor, next.diagramTitleLabel.textColor),
+    };
+  }
+  if (subtitleColor !== undefined) {
+    next.diagramSubtitleLabel = {
+      ...next.diagramSubtitleLabel,
+      textColor: resolveRgb(subtitleColor, next.diagramSubtitleLabel.textColor),
+    };
+  }
+  return next;
 }
 
 function chromeEqual(a: LabelChrome, b: LabelChrome): boolean {
@@ -336,6 +392,22 @@ export function serializeDiagramAppearance(
   );
   if (boxNameLabel) out.boxNameLabel = boxNameLabel as LabelChrome;
 
+  const diagramTitleLabel = serializeChrome(
+    appearance.diagramTitleLabel,
+    defaults.diagramTitleLabel,
+  );
+  if (diagramTitleLabel) {
+    out.diagramTitleLabel = diagramTitleLabel as LabelChrome;
+  }
+
+  const diagramSubtitleLabel = serializeChrome(
+    appearance.diagramSubtitleLabel,
+    defaults.diagramSubtitleLabel,
+  );
+  if (diagramSubtitleLabel) {
+    out.diagramSubtitleLabel = diagramSubtitleLabel as LabelChrome;
+  }
+
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
@@ -407,6 +479,18 @@ export function patchDiagramAppearance(
   }
   if (patch.boxNameLabel) {
     next.boxNameLabel = patchChrome(next.boxNameLabel, patch.boxNameLabel);
+  }
+  if (patch.diagramTitleLabel) {
+    next.diagramTitleLabel = patchChrome(
+      next.diagramTitleLabel,
+      patch.diagramTitleLabel,
+    );
+  }
+  if (patch.diagramSubtitleLabel) {
+    next.diagramSubtitleLabel = patchChrome(
+      next.diagramSubtitleLabel,
+      patch.diagramSubtitleLabel,
+    );
   }
   return next;
 }

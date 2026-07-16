@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { DiagramAppearance, LabelChrome, RGB } from "../../models/types";
+import type { DiagramAppearance, LabelChrome } from "../../models/types";
 import {
   applyDiagramBackgroundMode,
   type DiagramBackgroundMode,
@@ -11,6 +11,7 @@ import {
   BoxAppearancePreview,
   CharacterAppearancePreview,
   FloatingTextAppearancePreview,
+  HeaderAppearancePreview,
   LineAppearancePreview,
 } from "./DiagramAppearancePreviews";
 import { FontPicker } from "./FontPicker";
@@ -26,20 +27,11 @@ interface CanvasSetupProps {
   showFontHints?: boolean;
 }
 
-interface HeaderColorsProps {
-  titleColor: RGB;
-  subtitleColor: RGB;
-  onTitleColorChange: (color: RGB) => void;
-  onSubtitleColorChange: (color: RGB) => void;
-}
-
 interface DiagramAppearancePanelProps {
   value: DiagramAppearance;
   onChange: (patch: Partial<DiagramAppearance>) => void;
   /** Font / optional show-header controls (not part of diagram themes). */
   canvasSetup?: CanvasSetupProps;
-  /** Diagram title/subtitle text colours. */
-  headerColors?: HeaderColorsProps;
   /** When false, hide colour pickers but keep element previews. */
   showAppearanceColours?: boolean;
 }
@@ -79,7 +71,6 @@ export function DiagramAppearancePanel({
   value,
   onChange,
   canvasSetup,
-  headerColors,
   showAppearanceColours = true,
 }: DiagramAppearancePanelProps) {
   const { t } = useTranslation();
@@ -97,22 +88,6 @@ export function DiagramAppearancePanel({
 
   return (
     <div className="diagram-appearance-panel">
-      {headerColors && (
-        <fieldset className="theme-editor-group">
-          <legend>{t("diagramAppearance.groupHeaderColours")}</legend>
-          <RgbPicker
-            label={t("diagramProperties.titleColour")}
-            value={headerColors.titleColor}
-            onChange={headerColors.onTitleColorChange}
-          />
-          <RgbPicker
-            label={t("diagramProperties.subtitleColour")}
-            value={headerColors.subtitleColor}
-            onChange={headerColors.onSubtitleColorChange}
-          />
-        </fieldset>
-      )}
-
       {canvasSetup && settingsLabels && (
         <p className="hint">{t("diagramAppearance.canvasSetupHint")}</p>
       )}
@@ -191,6 +166,53 @@ export function DiagramAppearancePanel({
           </fieldset>
         </>
       )}
+
+      <fieldset className="theme-editor-group">
+        <legend>{t("diagramAppearance.groupHeader")}</legend>
+        <div className="diagram-appearance-element">
+          <HeaderAppearancePreview
+            titleLabel={value.diagramTitleLabel}
+            subtitleLabel={value.diagramSubtitleLabel}
+            fontFamily={fontFamily}
+            canvasBackground={canvasBackground}
+          />
+          {showAppearanceColours && (
+            <div className="diagram-appearance-element-controls">
+              <p className="hint">{t("diagramAppearance.headerChromeHint")}</p>
+              <p className="diagram-appearance-subgroup">
+                {t("diagramAppearance.headerTitleLabel")}
+              </p>
+              <LabelChromeEditors
+                labelPrefix="diagramAppearance.label"
+                chrome={value.diagramTitleLabel}
+                onChange={(patch) =>
+                  onChange({
+                    diagramTitleLabel: {
+                      ...value.diagramTitleLabel,
+                      ...patch,
+                    },
+                  })
+                }
+              />
+              <p className="diagram-appearance-subgroup">
+                {t("diagramAppearance.headerSubtitleLabel")}
+              </p>
+              <LabelChromeEditors
+                labelPrefix="diagramAppearance.label"
+                chrome={value.diagramSubtitleLabel}
+                onChange={(patch) =>
+                  onChange({
+                    diagramSubtitleLabel: {
+                      ...value.diagramSubtitleLabel,
+                      ...patch,
+                    },
+                  })
+                }
+              />
+            </div>
+          )}
+        </div>
+      </fieldset>
 
       <fieldset className="theme-editor-group">
         <legend>{t("diagramAppearance.groupCharacters")}</legend>

@@ -790,6 +790,10 @@ body,
   z-index: 100;
 }
 
+.dialog-overlay.dialog-overlay-nested {
+  z-index: 110;
+}
+
 .dialog {
   background: var(--ui-surface);
   color: var(--ui-text);

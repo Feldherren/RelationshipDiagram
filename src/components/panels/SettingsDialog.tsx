@@ -38,6 +38,7 @@ import {
 } from "../../utils/exportZoom";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
+import { ForkDiagramThemeDialog } from "./ForkDiagramThemeDialog";
 import { ExportZoomControls } from "./ExportZoomControls";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { DefaultFolderField } from "./DefaultFolderField";
@@ -76,13 +77,20 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [prefs, setPrefsState] = useState<AppPreferences>(getAppPreferences);
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("appearance");
+  const [forkDialogOpen, setForkDialogOpen] = useState(false);
+  const [forkPendingAppearance, setForkPendingAppearance] =
+    useState<DiagramAppearance | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setForkDialogOpen(false);
+      setForkPendingAppearance(null);
+      return;
+    }
     setPrefsState(getAppPreferences());
     setLanguagePreferenceState(getLanguagePreference());
     setActiveSection("appearance");
@@ -188,7 +196,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     // Read storage so rapid picker updates after a fork don't re-prompt.
     const current = getAppPreferences();
     const diagramAppearance = patchDiagramAppearance(
-      current.diagramAppearance,
+      forkPendingAppearance ?? current.diagramAppearance,
       patch,
     );
     const backgroundPatch =
@@ -200,23 +208,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         : {};
 
     if (current.diagramThemePreference === "default") {
-      if (!window.confirm(t("diagramAppearance.themeForkFromDefaultConfirm"))) {
-        return;
-      }
-      const prompted = window.prompt(
-        t("diagramAppearance.themeForkFromDefaultNamePrompt"),
-        t("diagramAppearance.themeDefaultName"),
-      );
-      if (prompted === null) return;
-      const name = prompted.trim() || t("diagramAppearance.themeDefaultName");
-      const id = uniqueDiagramThemeId(name, current.customDiagramThemes);
-      const theme = createDiagramThemeDocument(id, name, diagramAppearance);
-      updatePrefs({
-        customDiagramThemes: [...current.customDiagramThemes, theme],
-        diagramThemePreference: theme.id,
-        diagramAppearance,
-        ...backgroundPatch,
-      });
+      setForkPendingAppearance(diagramAppearance);
+      setForkDialogOpen(true);
       return;
     }
 
@@ -224,6 +217,34 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       diagramAppearance,
       ...backgroundPatch,
     });
+  };
+
+  const handleForkDialogCancel = () => {
+    setForkDialogOpen(false);
+    setForkPendingAppearance(null);
+  };
+
+  const handleForkDialogConfirm = (name: string) => {
+    if (!forkPendingAppearance) {
+      handleForkDialogCancel();
+      return;
+    }
+    const current = getAppPreferences();
+    const id = uniqueDiagramThemeId(name, current.customDiagramThemes);
+    const theme = createDiagramThemeDocument(
+      id,
+      name,
+      forkPendingAppearance,
+    );
+    updatePrefs({
+      customDiagramThemes: [...current.customDiagramThemes, theme],
+      diagramThemePreference: theme.id,
+      diagramAppearance: forkPendingAppearance,
+      defaultBackgroundMode: forkPendingAppearance.backgroundMode,
+      defaultBackgroundColor: forkPendingAppearance.backgroundColor,
+    });
+    setForkDialogOpen(false);
+    setForkPendingAppearance(null);
   };
 
   const sections = [
@@ -351,7 +372,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           <hr className="theme-editor-divider" />
 
           <DiagramAppearancePanel
-            value={prefs.diagramAppearance}
+            value={forkPendingAppearance ?? prefs.diagramAppearance}
             onChange={handleDiagramAppearanceChange}
             canvasSetup={{
               diagramFont: prefs.defaultDiagramFont,
@@ -515,16 +536,23 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   }
 
   return (
-    <TwoPaneDialog
-      open={open}
-      onClose={onClose}
-      title={t("appSettings.title")}
-      sections={sections}
-      activeSection={activeSection}
-      onSectionChange={(id) => setActiveSection(id as SettingsSectionId)}
-      doneLabel={t("appSettings.done")}
-    >
-      {content}
-    </TwoPaneDialog>
+    <>
+      <TwoPaneDialog
+        open={open}
+        onClose={onClose}
+        title={t("appSettings.title")}
+        sections={sections}
+        activeSection={activeSection}
+        onSectionChange={(id) => setActiveSection(id as SettingsSectionId)}
+        doneLabel={t("appSettings.done")}
+      >
+        {content}
+      </TwoPaneDialog>
+      <ForkDiagramThemeDialog
+        open={forkDialogOpen}
+        onCancel={handleForkDialogCancel}
+        onConfirm={handleForkDialogConfirm}
+      />
+    </>
   );
 }

@@ -4,6 +4,7 @@ import {
   applyDiagramBackgroundMode,
   type DiagramBackgroundMode,
 } from "../../utils/diagramBackground";
+import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
@@ -11,19 +12,34 @@ import { FontPicker } from "./FontPicker";
 interface CanvasSetupProps {
   backgroundMode: DiagramBackgroundMode;
   backgroundColor: RGB | null;
-  showHeader: boolean;
   diagramFont: string;
   onBackgroundModeChange: (mode: DiagramBackgroundMode) => void;
   onBackgroundColorChange: (color: RGB | null) => void;
-  onShowHeaderChange: (show: boolean) => void;
   onDiagramFontChange: (fontFamily: string) => void;
+  showHeader?: boolean;
+  onShowHeaderChange?: (show: boolean) => void;
+  /** Use Settings labels for defaults vs Diagram properties labels. */
+  settingsLabels?: boolean;
+  fontMissing?: boolean;
+  showFontHints?: boolean;
+}
+
+interface HeaderColorsProps {
+  titleColor: RGB;
+  subtitleColor: RGB;
+  onTitleColorChange: (color: RGB) => void;
+  onSubtitleColorChange: (color: RGB) => void;
 }
 
 interface DiagramAppearancePanelProps {
   value: DiagramAppearance;
   onChange: (patch: Partial<DiagramAppearance>) => void;
-  /** When set, shows background / header / font defaults above colour groups. */
+  /** Background / font / optional show-header controls. */
   canvasSetup?: CanvasSetupProps;
+  /** Diagram title/subtitle text colours. */
+  headerColors?: HeaderColorsProps;
+  /** When false, hide creation-default and label-chrome colour editors. */
+  showAppearanceColours?: boolean;
 }
 
 function LabelChromeEditors({
@@ -61,143 +77,202 @@ export function DiagramAppearancePanel({
   value,
   onChange,
   canvasSetup,
+  headerColors,
+  showAppearanceColours = true,
 }: DiagramAppearancePanelProps) {
   const { t } = useTranslation();
+  const settingsLabels = canvasSetup?.settingsLabels ?? false;
 
   return (
     <div className="diagram-appearance-panel">
+      {headerColors && (
+        <fieldset className="theme-editor-group">
+          <legend>{t("diagramAppearance.groupHeaderColours")}</legend>
+          <RgbPicker
+            label={t("diagramProperties.titleColour")}
+            value={headerColors.titleColor}
+            onChange={headerColors.onTitleColorChange}
+          />
+          <RgbPicker
+            label={t("diagramProperties.subtitleColour")}
+            value={headerColors.subtitleColor}
+            onChange={headerColors.onSubtitleColorChange}
+          />
+        </fieldset>
+      )}
+
       {canvasSetup && (
         <>
-          <p className="hint">{t("diagramAppearance.canvasSetupHint")}</p>
+          {settingsLabels && (
+            <p className="hint">{t("diagramAppearance.canvasSetupHint")}</p>
+          )}
 
-          <BackgroundModeControls
-            mode={canvasSetup.backgroundMode}
-            backgroundColor={canvasSetup.backgroundColor}
-            onModeChange={(mode) => {
-              const background = applyDiagramBackgroundMode(
-                mode,
-                canvasSetup.backgroundColor,
-              );
-              canvasSetup.onBackgroundModeChange(mode);
-              canvasSetup.onBackgroundColorChange(background.backgroundColor);
-            }}
-            onBackgroundColorChange={canvasSetup.onBackgroundColorChange}
-            colourLabel={t("appSettings.defaultBackgroundColour")}
-          />
-
-          <label className="field checkbox">
-            <input
-              type="checkbox"
-              checked={canvasSetup.showHeader}
-              onChange={(e) =>
-                canvasSetup.onShowHeaderChange(e.target.checked)
+          <fieldset className="theme-editor-group">
+            <legend>{t("diagramAppearance.groupBackground")}</legend>
+            <BackgroundModeControls
+              mode={canvasSetup.backgroundMode}
+              backgroundColor={canvasSetup.backgroundColor}
+              onModeChange={(mode) => {
+                const background = applyDiagramBackgroundMode(
+                  mode,
+                  canvasSetup.backgroundColor,
+                );
+                canvasSetup.onBackgroundModeChange(mode);
+                canvasSetup.onBackgroundColorChange(background.backgroundColor);
+              }}
+              onBackgroundColorChange={canvasSetup.onBackgroundColorChange}
+              colourLabel={
+                settingsLabels
+                  ? t("appSettings.defaultBackgroundColour")
+                  : t("diagramProperties.backgroundColour")
               }
             />
-            <span>{t("appSettings.defaultShowHeader")}</span>
-          </label>
+          </fieldset>
 
-          <div className="field">
-            <span>{t("appSettings.defaultDiagramFont")}</span>
-            <FontPicker
-              value={canvasSetup.diagramFont}
-              onChange={canvasSetup.onDiagramFontChange}
-            />
-          </div>
+          {canvasSetup.onShowHeaderChange != null &&
+            canvasSetup.showHeader !== undefined && (
+              <label className="field checkbox">
+                <input
+                  type="checkbox"
+                  checked={canvasSetup.showHeader}
+                  onChange={(e) =>
+                    canvasSetup.onShowHeaderChange?.(e.target.checked)
+                  }
+                />
+                <span>
+                  {settingsLabels
+                    ? t("appSettings.defaultShowHeader")
+                    : t("diagramProperties.showHeader")}
+                </span>
+              </label>
+            )}
 
-          <hr className="theme-editor-divider" />
+          <fieldset className="theme-editor-group">
+            <legend>{t("diagramAppearance.groupFont")}</legend>
+            <div className="field">
+              <span>
+                {settingsLabels
+                  ? t("appSettings.defaultDiagramFont")
+                  : t("diagramProperties.diagramFont")}
+              </span>
+              <FontPicker
+                value={canvasSetup.diagramFont}
+                onChange={canvasSetup.onDiagramFontChange}
+              />
+            </div>
+            {canvasSetup.fontMissing && (
+              <p className="hint">
+                {t("diagramProperties.fontMissing", {
+                  font: canvasSetup.diagramFont,
+                })}
+              </p>
+            )}
+            {canvasSetup.showFontHints &&
+              !canvasSetup.fontMissing &&
+              !isDefaultDiagramFont(canvasSetup.diagramFont) && (
+                <p className="hint">{t("diagramProperties.customFontHint")}</p>
+              )}
+            {canvasSetup.showFontHints && (
+              <p className="hint">{t("diagramProperties.uiFontHint")}</p>
+            )}
+          </fieldset>
         </>
       )}
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupCreationDefaults")}</legend>
-        <p className="hint">{t("diagramAppearance.creationDefaultsHint")}</p>
-        <RgbPicker
-          label={t("diagramAppearance.defaultLineColour")}
-          value={value.defaultLineColor}
-          onChange={(defaultLineColor) => onChange({ defaultLineColor })}
-        />
-        <RgbPicker
-          label={t("diagramAppearance.defaultCharacterBorder")}
-          value={value.defaultCharacterBorderColor}
-          onChange={(defaultCharacterBorderColor) =>
-            onChange({ defaultCharacterBorderColor })
-          }
-        />
-        <RgbPicker
-          label={t("diagramAppearance.defaultBoxBorder")}
-          value={value.defaultBoxBorderColor}
-          onChange={(defaultBoxBorderColor) =>
-            onChange({ defaultBoxBorderColor })
-          }
-        />
-        <RgbPicker
-          label={t("diagramAppearance.defaultFloatingText")}
-          value={value.defaultFloatingTextColor}
-          onChange={(defaultFloatingTextColor) =>
-            onChange({ defaultFloatingTextColor })
-          }
-        />
-      </fieldset>
+      {showAppearanceColours && (
+        <>
+          <fieldset className="theme-editor-group">
+            <legend>{t("diagramAppearance.groupCreationDefaults")}</legend>
+            <p className="hint">{t("diagramAppearance.creationDefaultsHint")}</p>
+            <RgbPicker
+              label={t("diagramAppearance.defaultLineColour")}
+              value={value.defaultLineColor}
+              onChange={(defaultLineColor) => onChange({ defaultLineColor })}
+            />
+            <RgbPicker
+              label={t("diagramAppearance.defaultCharacterBorder")}
+              value={value.defaultCharacterBorderColor}
+              onChange={(defaultCharacterBorderColor) =>
+                onChange({ defaultCharacterBorderColor })
+              }
+            />
+            <RgbPicker
+              label={t("diagramAppearance.defaultBoxBorder")}
+              value={value.defaultBoxBorderColor}
+              onChange={(defaultBoxBorderColor) =>
+                onChange({ defaultBoxBorderColor })
+              }
+            />
+            <RgbPicker
+              label={t("diagramAppearance.defaultFloatingText")}
+              value={value.defaultFloatingTextColor}
+              onChange={(defaultFloatingTextColor) =>
+                onChange({ defaultFloatingTextColor })
+              }
+            />
+          </fieldset>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupLabelChrome")}</legend>
-        <p className="hint">{t("diagramAppearance.labelChromeHint")}</p>
+          <fieldset className="theme-editor-group">
+            <legend>{t("diagramAppearance.groupLabelChrome")}</legend>
+            <p className="hint">{t("diagramAppearance.labelChromeHint")}</p>
 
-        <p className="diagram-appearance-subgroup">
-          {t("diagramAppearance.characterNameLabel")}
-        </p>
-        <LabelChromeEditors
-          labelPrefix="diagramAppearance.label"
-          chrome={value.characterNameLabel}
-          onChange={(patch) =>
-            onChange({
-              characterNameLabel: { ...value.characterNameLabel, ...patch },
-            })
-          }
-        />
+            <p className="diagram-appearance-subgroup">
+              {t("diagramAppearance.characterNameLabel")}
+            </p>
+            <LabelChromeEditors
+              labelPrefix="diagramAppearance.label"
+              chrome={value.characterNameLabel}
+              onChange={(patch) =>
+                onChange({
+                  characterNameLabel: { ...value.characterNameLabel, ...patch },
+                })
+              }
+            />
 
-        <p className="diagram-appearance-subgroup">
-          {t("diagramAppearance.characterSubtitleLabel")}
-        </p>
-        <LabelChromeEditors
-          labelPrefix="diagramAppearance.label"
-          chrome={value.characterSubtitleLabel}
-          onChange={(patch) =>
-            onChange({
-              characterSubtitleLabel: {
-                ...value.characterSubtitleLabel,
-                ...patch,
-              },
-            })
-          }
-        />
+            <p className="diagram-appearance-subgroup">
+              {t("diagramAppearance.characterSubtitleLabel")}
+            </p>
+            <LabelChromeEditors
+              labelPrefix="diagramAppearance.label"
+              chrome={value.characterSubtitleLabel}
+              onChange={(patch) =>
+                onChange({
+                  characterSubtitleLabel: {
+                    ...value.characterSubtitleLabel,
+                    ...patch,
+                  },
+                })
+              }
+            />
 
-        <p className="diagram-appearance-subgroup">
-          {t("diagramAppearance.lineLabel")}
-        </p>
-        <LabelChromeEditors
-          labelPrefix="diagramAppearance.label"
-          chrome={value.lineLabel}
-          onChange={(patch) =>
-            onChange({
-              lineLabel: { ...value.lineLabel, ...patch },
-            })
-          }
-        />
+            <p className="diagram-appearance-subgroup">
+              {t("diagramAppearance.lineLabel")}
+            </p>
+            <LabelChromeEditors
+              labelPrefix="diagramAppearance.label"
+              chrome={value.lineLabel}
+              onChange={(patch) =>
+                onChange({
+                  lineLabel: { ...value.lineLabel, ...patch },
+                })
+              }
+            />
 
-        <p className="diagram-appearance-subgroup">
-          {t("diagramAppearance.boxNameLabel")}
-        </p>
-        <LabelChromeEditors
-          labelPrefix="diagramAppearance.label"
-          chrome={value.boxNameLabel}
-          onChange={(patch) =>
-            onChange({
-              boxNameLabel: { ...value.boxNameLabel, ...patch },
-            })
-          }
-        />
-      </fieldset>
+            <p className="diagram-appearance-subgroup">
+              {t("diagramAppearance.boxNameLabel")}
+            </p>
+            <LabelChromeEditors
+              labelPrefix="diagramAppearance.label"
+              chrome={value.boxNameLabel}
+              onChange={(patch) =>
+                onChange({
+                  boxNameLabel: { ...value.boxNameLabel, ...patch },
+                })
+              }
+            />
+          </fieldset>
+        </>
+      )}
     </div>
   );
 }

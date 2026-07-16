@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import packageJson from "../../../package.json";
 import {
@@ -24,12 +24,17 @@ import {
   type ThemePreference,
   type UiScale,
 } from "../../utils/uiTheme";
-import { patchDiagramAppearance } from "../../utils/diagramAppearance";
+import {
+  patchDiagramAppearance,
+  resolveDiagramThemeAppearance,
+  type DiagramThemePreference,
+} from "../../utils/diagramAppearance";
 import {
   exportZoomPercentFromRatio,
   exportZoomRatioFromPercent,
 } from "../../utils/exportZoom";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
+import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { ExportZoomControls } from "./ExportZoomControls";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
@@ -49,6 +54,16 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
+function downloadJson(filename: string, contents: string) {
+  const blob = new Blob([contents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation();
   const [languagePreference, setLanguagePreferenceState] = useState(
@@ -58,7 +73,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("appearance");
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const replaceDiagramAppearance = useDiagramStore(
+    (s) => s.replaceDiagramAppearance,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -120,15 +137,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         prefs.themePreference,
         prefs.customThemes,
       );
-    const blob = new Blob([themeDocumentToJson(theme)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${theme.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJson(`${theme.id}.json`, themeDocumentToJson(theme));
   };
 
   const handleRemoveTheme = (themeId: string, themeName: string) => {
@@ -149,6 +158,21 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       customThemes,
       ...(activateId ? { themePreference: activateId } : {}),
     });
+  };
+
+  const selectDiagramTheme = (preference: DiagramThemePreference) => {
+    updatePrefs({
+      diagramThemePreference: preference,
+      diagramAppearance: resolveDiagramThemeAppearance(
+        preference,
+        prefs.customDiagramThemes,
+      ),
+    });
+  };
+
+  const handleApplyDiagramThemeToCurrent = () => {
+    if (!window.confirm(t("appSettings.diagramThemeApplyConfirm"))) return;
+    replaceDiagramAppearance(prefs.diagramAppearance);
   };
 
   const sections = [
@@ -217,57 +241,35 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             </select>
           </label>
 
-          <p className="hint">{t("appSettings.customThemesHint")}</p>
-          {prefs.customThemes.length > 0 && (
-            <ul className="custom-theme-list">
-              {prefs.customThemes.map((theme) => (
-                <li key={theme.id} className="custom-theme-row">
-                  <span style={{ flex: 1 }}>{theme.name}</span>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => handleExportTheme(theme.id)}
-                  >
-                    {t("appSettings.themeExport")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-danger"
-                    onClick={() => handleRemoveTheme(theme.id, theme.name)}
-                  >
-                    {t("appSettings.themeRemove")}
-                  </button>
-                </li>
+          <hr className="theme-editor-divider" />
+
+          <label className="field">
+            <span>{t("appSettings.diagramTheme")}</span>
+            <select
+              value={prefs.diagramThemePreference}
+              onChange={(e) =>
+                selectDiagramTheme(e.target.value as DiagramThemePreference)
+              }
+            >
+              <option value="default">
+                {t("appSettings.diagramThemeDefault")}
+              </option>
+              {prefs.customDiagramThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
               ))}
-            </ul>
-          )}
-          <div className="custom-theme-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => importInputRef.current?.click()}
-            >
-              {t("appSettings.themeImport")}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => handleExportTheme(prefs.themePreference)}
-            >
-              {t("appSettings.themeExportActive")}
-            </button>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json,.json"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) void handleImportTheme(file);
-              }}
-            />
-          </div>
+            </select>
+          </label>
+          <p className="hint">{t("appSettings.diagramThemeHint")}</p>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleApplyDiagramThemeToCurrent}
+          >
+            {t("appSettings.diagramThemeApply")}
+          </button>
         </>
       );
       break;
@@ -275,37 +277,56 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       content = (
         <ThemeEditorPanel
           customThemes={prefs.customThemes}
+          themePreference={prefs.themePreference}
           onThemesChange={handleThemesChange}
+          onImportTheme={(file) => void handleImportTheme(file)}
+          onExportTheme={handleExportTheme}
+          onRemoveTheme={handleRemoveTheme}
         />
       );
       break;
     case "diagramDefaults":
       content = (
-        <DiagramAppearancePanel
-          value={prefs.diagramAppearance}
-          onChange={(patch) =>
-            updatePrefs({
-              diagramAppearance: patchDiagramAppearance(
-                prefs.diagramAppearance,
-                patch,
-              ),
-            })
-          }
-          canvasSetup={{
-            backgroundMode: prefs.defaultBackgroundMode,
-            backgroundColor: prefs.defaultBackgroundColor,
-            showHeader: prefs.defaultShowHeader,
-            diagramFont: prefs.defaultDiagramFont,
-            onBackgroundModeChange: (mode) =>
-              updatePrefs({ defaultBackgroundMode: mode }),
-            onBackgroundColorChange: (color) =>
-              updatePrefs({ defaultBackgroundColor: color }),
-            onShowHeaderChange: (show) =>
-              updatePrefs({ defaultShowHeader: show }),
-            onDiagramFontChange: (fontFamily) =>
-              updatePrefs({ defaultDiagramFont: fontFamily }),
-          }}
-        />
+        <>
+          <DiagramThemeLibraryControls
+            appearance={prefs.diagramAppearance}
+            prefs={prefs}
+            onPrefsChange={setPrefsState}
+            editorMode
+            onApplyAppearance={replaceDiagramAppearance}
+            hintKey="appSettings.diagramThemesLibraryHint"
+          />
+
+          <hr className="theme-editor-divider" />
+
+          <DiagramAppearancePanel
+            value={prefs.diagramAppearance}
+            onChange={(patch) =>
+              updatePrefs({
+                diagramAppearance: patchDiagramAppearance(
+                  prefs.diagramAppearance,
+                  patch,
+                ),
+              })
+            }
+            showAppearanceColours={prefs.diagramThemePreference !== "default"}
+            canvasSetup={{
+              backgroundMode: prefs.defaultBackgroundMode,
+              backgroundColor: prefs.defaultBackgroundColor,
+              diagramFont: prefs.defaultDiagramFont,
+              showHeader: prefs.defaultShowHeader,
+              settingsLabels: true,
+              onBackgroundModeChange: (mode) =>
+                updatePrefs({ defaultBackgroundMode: mode }),
+              onBackgroundColorChange: (color) =>
+                updatePrefs({ defaultBackgroundColor: color }),
+              onShowHeaderChange: (show) =>
+                updatePrefs({ defaultShowHeader: show }),
+              onDiagramFontChange: (fontFamily) =>
+                updatePrefs({ defaultDiagramFont: fontFamily }),
+            }}
+          />
+        </>
       );
       break;
     case "general":

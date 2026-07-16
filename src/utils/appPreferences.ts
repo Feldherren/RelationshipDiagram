@@ -8,6 +8,9 @@ import {
   cloneDiagramAppearance,
   DEFAULT_DIAGRAM_APPEARANCE,
   resolveDiagramAppearance,
+  validateDiagramThemeDocument,
+  type DiagramThemeDocument,
+  type DiagramThemePreference,
 } from "./diagramAppearance";
 import {
   isUiScale,
@@ -30,6 +33,8 @@ export interface AppPreferences {
   defaultBackgroundColor: RGB | null;
   defaultDiagramFont: string;
   diagramAppearance: DiagramAppearance;
+  diagramThemePreference: DiagramThemePreference;
+  customDiagramThemes: DiagramThemeDocument[];
   defaultExportPadding: number;
   /** Export scale multiplier (1 = 100%, 2 = 200%). */
   defaultExportPixelRatio: number;
@@ -47,6 +52,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   defaultDiagramFont: DEFAULT_DIAGRAM_FONT,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
+  diagramThemePreference: "default",
+  customDiagramThemes: [],
   defaultExportPadding: 32,
   defaultExportPixelRatio: 1,
   defaultExportBoundsMode: "auto",
@@ -95,6 +102,25 @@ function parseCustomThemes(value: unknown): ThemeDocument[] {
   return themes;
 }
 
+function parseCustomDiagramThemes(value: unknown): DiagramThemeDocument[] {
+  if (!Array.isArray(value)) return [];
+  const themes: DiagramThemeDocument[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const theme = validateDiagramThemeDocument(entry);
+    if (!theme || theme.id === "default" || seen.has(theme.id)) continue;
+    seen.add(theme.id);
+    themes.push(theme);
+  }
+  return themes;
+}
+
+function isDiagramThemePreference(
+  value: unknown,
+): value is DiagramThemePreference {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function migrateLegacyBackgroundMode(
   stored: Record<string, unknown>,
   defaultBackgroundColor: RGB | null,
@@ -138,6 +164,21 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     themePreference = defaults.themePreference;
   }
 
+  const customDiagramThemes = parseCustomDiagramThemes(
+    stored.customDiagramThemes,
+  );
+  let diagramThemePreference: DiagramThemePreference =
+    isDiagramThemePreference(stored.diagramThemePreference)
+      ? stored.diagramThemePreference.trim()
+      : defaults.diagramThemePreference;
+
+  if (
+    diagramThemePreference !== "default" &&
+    !customDiagramThemes.some((theme) => theme.id === diagramThemePreference)
+  ) {
+    diagramThemePreference = defaults.diagramThemePreference;
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -159,6 +200,8 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
         ? stored.defaultDiagramFont
         : defaults.defaultDiagramFont,
     diagramAppearance: resolveDiagramAppearance(stored.diagramAppearance),
+    diagramThemePreference,
+    customDiagramThemes,
     defaultExportPadding:
       typeof stored.defaultExportPadding === "number" &&
       Number.isFinite(stored.defaultExportPadding)
@@ -185,6 +228,7 @@ export function getAppPreferences(): AppPreferences {
       return {
         ...DEFAULT_APP_PREFERENCES,
         customThemes: [],
+        customDiagramThemes: [],
         diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
       };
     }
@@ -193,6 +237,7 @@ export function getAppPreferences(): AppPreferences {
     return {
       ...DEFAULT_APP_PREFERENCES,
       customThemes: [],
+      customDiagramThemes: [],
       diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
     };
   }
@@ -206,6 +251,12 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
     diagramAppearance: patch.diagramAppearance
       ? cloneDiagramAppearance(patch.diagramAppearance)
       : current.diagramAppearance,
+    customDiagramThemes: patch.customDiagramThemes
+      ? patch.customDiagramThemes.map((theme) => ({
+          ...theme,
+          appearance: cloneDiagramAppearance(theme.appearance),
+        }))
+      : current.customDiagramThemes,
     defaultExportPixelRatio:
       patch.defaultExportPixelRatio !== undefined
         ? exportZoomRatioFromPercent(patch.defaultExportPixelRatio * 100)

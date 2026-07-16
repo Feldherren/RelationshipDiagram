@@ -291,3 +291,94 @@ export function patchDiagramAppearance(
   }
   return next;
 }
+
+/** Named diagram appearance theme (prefs / import-export JSON). */
+export interface DiagramThemeDocument {
+  id: string;
+  name: string;
+  schemaVersion: 1;
+  appearance: DiagramAppearance;
+}
+
+/** Built-in default, or a custom theme id. */
+export type DiagramThemePreference = "default" | string;
+
+export function validateDiagramThemeDocument(
+  raw: unknown,
+): DiagramThemeDocument | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const record = raw as Record<string, unknown>;
+  if (record.schemaVersion !== 1) return null;
+  if (typeof record.id !== "string" || !record.id.trim()) return null;
+  if (typeof record.name !== "string" || !record.name.trim()) return null;
+  if (typeof record.appearance !== "object" || record.appearance === null) {
+    return null;
+  }
+  return {
+    id: record.id.trim(),
+    name: record.name.trim(),
+    schemaVersion: 1,
+    appearance: resolveDiagramAppearance(record.appearance),
+  };
+}
+
+export function diagramThemeDocumentToJson(
+  theme: DiagramThemeDocument,
+): string {
+  return JSON.stringify(
+    {
+      id: theme.id,
+      name: theme.name,
+      schemaVersion: 1,
+      appearance: cloneDiagramAppearance(theme.appearance),
+    },
+    null,
+    2,
+  );
+}
+
+export function createDiagramThemeDocument(
+  id: string,
+  name: string,
+  appearance: DiagramAppearance,
+): DiagramThemeDocument {
+  return {
+    id,
+    name,
+    schemaVersion: 1,
+    appearance: cloneDiagramAppearance(appearance),
+  };
+}
+
+export function resolveDiagramThemeAppearance(
+  preference: DiagramThemePreference,
+  customThemes: readonly DiagramThemeDocument[],
+): DiagramAppearance {
+  if (preference === "default") {
+    return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
+  }
+  const custom = customThemes.find((theme) => theme.id === preference);
+  if (custom) return cloneDiagramAppearance(custom.appearance);
+  return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
+}
+
+function slugifyDiagramThemeId(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "diagram-theme";
+}
+
+export function uniqueDiagramThemeId(
+  name: string,
+  existing: readonly { id: string }[],
+): string {
+  const base = slugifyDiagramThemeId(name);
+  const used = new Set(existing.map((theme) => theme.id));
+  if (!used.has(base) && base !== "default") return base;
+  let n = 2;
+  while (used.has(`${base}-${n}`) || `${base}-${n}` === "default") n += 1;
+  return `${base}-${n}`;
+}
+

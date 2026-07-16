@@ -125,6 +125,7 @@ interface DiagramState {
   setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
   setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
+  replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -298,6 +299,9 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       diagramAppearance: patchDiagramAppearance(s.diagramAppearance, patch),
     })),
+
+  replaceDiagramAppearance: (appearance) =>
+    set({ diagramAppearance: cloneDiagramAppearance(appearance) }),
 
   initializeFonts: async () => {
     await cleanupDeprecatedFonts();

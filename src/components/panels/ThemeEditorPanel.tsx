@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
 import type { ThemeDocument, UiTokenKey, UiTokenMap } from "../../utils/uiTheme";
@@ -16,9 +16,87 @@ import {
 } from "../../utils/uiTheme";
 import { FontPicker } from "./FontPicker";
 
+function ThemeLibraryActions({
+  customThemes,
+  themePreference,
+  importInputRef,
+  onImportTheme,
+  onExportTheme,
+  onRemoveTheme,
+}: {
+  customThemes: ThemeDocument[];
+  themePreference: string;
+  importInputRef: RefObject<HTMLInputElement | null>;
+  onImportTheme: (file: File) => void;
+  onExportTheme: (themeId: string) => void;
+  onRemoveTheme: (themeId: string, themeName: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <p className="hint">{t("appSettings.customThemesHint")}</p>
+      {customThemes.length > 0 && (
+        <ul className="custom-theme-list">
+          {customThemes.map((theme) => (
+            <li key={theme.id} className="custom-theme-row">
+              <span style={{ flex: 1 }}>{theme.name}</span>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => onExportTheme(theme.id)}
+              >
+                {t("appSettings.themeExport")}
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => onRemoveTheme(theme.id, theme.name)}
+              >
+                {t("appSettings.themeRemove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="custom-theme-actions">
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => importInputRef.current?.click()}
+        >
+          {t("appSettings.themeImport")}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => onExportTheme(themePreference)}
+        >
+          {t("appSettings.themeExportActive")}
+        </button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onImportTheme(file);
+          }}
+        />
+      </div>
+      <hr className="theme-editor-divider" />
+    </>
+  );
+}
+
 interface ThemeEditorPanelProps {
   customThemes: ThemeDocument[];
+  themePreference: string;
   onThemesChange: (themes: ThemeDocument[], activateId?: string) => void;
+  onImportTheme: (file: File) => void;
+  onExportTheme: (themeId: string) => void;
+  onRemoveTheme: (themeId: string, themeName: string) => void;
 }
 
 function resolveCreateBaseTokens(
@@ -35,9 +113,14 @@ function resolveCreateBaseTokens(
 
 export function ThemeEditorPanel({
   customThemes,
+  themePreference,
   onThemesChange,
+  onImportTheme,
+  onExportTheme,
+  onRemoveTheme,
 }: ThemeEditorPanelProps) {
   const { t } = useTranslation();
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = useState<string | null>(
     customThemes[0]?.id ?? null,
   );
@@ -161,6 +244,14 @@ export function ThemeEditorPanel({
   if (customThemes.length === 0 || !editingId) {
     return (
       <div className="theme-editor">
+        <ThemeLibraryActions
+          customThemes={customThemes}
+          themePreference={themePreference}
+          importInputRef={importInputRef}
+          onImportTheme={onImportTheme}
+          onExportTheme={onExportTheme}
+          onRemoveTheme={onRemoveTheme}
+        />
         <p className="hint">{t("appSettings.themeEditorEmptyHint")}</p>
         <label className="field">
           <span>{t("appSettings.themeEditorNewName")}</span>
@@ -189,6 +280,15 @@ export function ThemeEditorPanel({
 
   return (
     <div className="theme-editor">
+      <ThemeLibraryActions
+        customThemes={customThemes}
+        themePreference={themePreference}
+        importInputRef={importInputRef}
+        onImportTheme={onImportTheme}
+        onExportTheme={onExportTheme}
+        onRemoveTheme={onRemoveTheme}
+      />
+
       <p className="hint">{t("appSettings.themeEditorHint")}</p>
 
       <div className="theme-editor-create-row">

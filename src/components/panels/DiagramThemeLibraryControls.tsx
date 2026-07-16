@@ -1,0 +1,511 @@
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { DiagramAppearance } from "../../models/types";
+import {
+  getAppPreferences,
+  setAppPreferences,
+  type AppPreferences,
+} from "../../utils/appPreferences";
+import {
+  cloneDiagramAppearance,
+  createDiagramThemeDocument,
+  diagramThemeDocumentToJson,
+  resolveDiagramThemeAppearance,
+  uniqueDiagramThemeId,
+  validateDiagramThemeDocument,
+  type DiagramThemeDocument,
+  type DiagramThemePreference,
+} from "../../utils/diagramAppearance";
+
+function downloadJson(filename: string, contents: string) {
+  const blob = new Blob([contents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resolveThemeName(
+  preference: DiagramThemePreference,
+  customThemes: readonly DiagramThemeDocument[],
+  defaultLabel: string,
+  fallback: string,
+): string {
+  if (preference === "default") return defaultLabel;
+  return (
+    customThemes.find((theme) => theme.id === preference)?.name ?? fallback
+  );
+}
+
+export interface DiagramThemeLibraryControlsProps {
+  appearance: DiagramAppearance;
+  /** Prefs snapshot; when omitted, reads from storage on each action. */
+  prefs?: AppPreferences;
+  onPrefsChange?: (prefs: AppPreferences) => void;
+  /** When set, import applies appearance to the open diagram after confirm. */
+  onApplyAppearance?: (appearance: DiagramAppearance) => void;
+  /**
+   * Full editor: create / select / apply / library list.
+   * Compact: name + save / import / export (Diagram properties).
+   */
+  editorMode?: boolean;
+  hintKey?: string;
+}
+
+export function DiagramThemeLibraryControls({
+  appearance,
+  prefs: prefsProp,
+  onPrefsChange,
+  onApplyAppearance,
+  editorMode = false,
+  hintKey = "diagramProperties.appearanceThemesHint",
+}: DiagramThemeLibraryControlsProps) {
+  const { t } = useTranslation();
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const defaultName = t("diagramAppearance.themeDefaultName");
+  const defaultThemeLabel = t("appSettings.diagramThemeDefault");
+
+  const readPrefs = () => prefsProp ?? getAppPreferences();
+
+  const [themeName, setThemeName] = useState(() => {
+    const prefs = readPrefs();
+    return resolveThemeName(
+      prefs.diagramThemePreference,
+      prefs.customDiagramThemes,
+      defaultThemeLabel,
+      defaultName,
+    );
+  });
+  const [newName, setNewName] = useState("");
+  const [createBase, setCreateBase] =
+    useState<DiagramThemePreference>("default");
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const prefs = readPrefs();
+    if (prefs.diagramThemePreference === "default") {
+      setThemeName(defaultName);
+    } else {
+      setThemeName(
+        resolveThemeName(
+          prefs.diagramThemePreference,
+          prefs.customDiagramThemes,
+          defaultThemeLabel,
+          defaultName,
+        ),
+      );
+    }
+    if (
+      createBase !== "default" &&
+      !prefs.customDiagramThemes.some((theme) => theme.id === createBase)
+    ) {
+      setCreateBase("default");
+    }
+  }, [
+    prefsProp?.diagramThemePreference,
+    prefsProp?.customDiagramThemes,
+    defaultName,
+    defaultThemeLabel,
+  ]);
+
+  useEffect(() => {
+    if (!status) return;
+    const timer = window.setTimeout(() => setStatus(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
+  const commitPrefs = (patch: Partial<AppPreferences>) => {
+    const next = setAppPreferences(patch);
+    onPrefsChange?.(next);
+    return next;
+  };
+
+  const handleSelectTheme = (preference: DiagramThemePreference) => {
+    const prefs = readPrefs();
+    const nextAppearance = resolveDiagramThemeAppearance(
+      preference,
+      prefs.customDiagramThemes,
+    );
+    commitPrefs({
+      diagramThemePreference: preference,
+      diagramAppearance: nextAppearance,
+    });
+    if (preference === "default") {
+      setThemeName(defaultName);
+    } else {
+      setThemeName(
+        resolveThemeName(
+          preference,
+          prefs.customDiagramThemes,
+          defaultThemeLabel,
+          defaultName,
+        ),
+      );
+    }
+    setStatus(null);
+  };
+
+  const handleCreate = () => {
+    const prefs = readPrefs();
+    const name = newName.trim() || defaultName;
+    const id = uniqueDiagramThemeId(name, prefs.customDiagramThemes);
+    const baseAppearance = resolveDiagramThemeAppearance(
+      createBase,
+      prefs.customDiagramThemes,
+    );
+    const theme = createDiagramThemeDocument(id, name, baseAppearance);
+    commitPrefs({
+      customDiagramThemes: [...prefs.customDiagramThemes, theme],
+      diagramThemePreference: theme.id,
+      diagramAppearance: theme.appearance,
+    });
+    setNewName("");
+    setThemeName(theme.name);
+    setStatus(t("diagramAppearance.themeCreatedFeedback", { name: theme.name }));
+  };
+
+  const handleSave = () => {
+    const prefs = readPrefs();
+    if (prefs.diagramThemePreference === "default" && editorMode) {
+      return;
+    }
+    const name = themeName.trim() || defaultName;
+    const preference = prefs.diagramThemePreference;
+    const editing =
+      preference !== "default"
+        ? prefs.customDiagramThemes.find((theme) => theme.id === preference)
+        : undefined;
+
+    if (editing) {
+      const updated: DiagramThemeDocument = {
+        ...editing,
+        name,
+        appearance: cloneDiagramAppearance(appearance),
+      };
+      const customDiagramThemes = prefs.customDiagramThemes.map((theme) =>
+        theme.id === editing.id ? updated : theme,
+      );
+      commitPrefs({
+        customDiagramThemes,
+        diagramThemePreference: updated.id,
+        diagramAppearance: updated.appearance,
+      });
+      setThemeName(updated.name);
+      setStatus(
+        t("diagramAppearance.themeUpdatedFeedback", { name: updated.name }),
+      );
+      return;
+    }
+
+    const id = uniqueDiagramThemeId(name, prefs.customDiagramThemes);
+    const theme = createDiagramThemeDocument(id, name, appearance);
+    commitPrefs({
+      customDiagramThemes: [...prefs.customDiagramThemes, theme],
+      diagramThemePreference: theme.id,
+      diagramAppearance: theme.appearance,
+    });
+    setThemeName(theme.name);
+    setStatus(t("diagramAppearance.themeSavedFeedback", { name: theme.name }));
+  };
+
+  const handleApplyToDiagram = () => {
+    if (!onApplyAppearance) return;
+    if (!window.confirm(t("appSettings.diagramThemeApplyConfirm"))) return;
+    onApplyAppearance(cloneDiagramAppearance(appearance));
+    setStatus(t("diagramAppearance.themeAppliedFeedback"));
+  };
+
+  const handleExport = () => {
+    const prefs = readPrefs();
+    const preference = prefs.diagramThemePreference;
+    const custom =
+      preference !== "default"
+        ? prefs.customDiagramThemes.find((theme) => theme.id === preference)
+        : undefined;
+    const name =
+      preference === "default"
+        ? defaultThemeLabel
+        : themeName.trim() || custom?.name || defaultName;
+    const theme =
+      custom ??
+      createDiagramThemeDocument(
+        preference === "default" ? "default" : preference,
+        name,
+        appearance,
+      );
+    downloadJson(
+      `${theme.id}.json`,
+      diagramThemeDocumentToJson({
+        ...theme,
+        name,
+        appearance: cloneDiagramAppearance(appearance),
+      }),
+    );
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      const theme = validateDiagramThemeDocument(parsed);
+      if (!theme) {
+        setStatus(t("diagramAppearance.themeImportInvalid"));
+        return;
+      }
+      if (onApplyAppearance && !editorMode) {
+        if (!window.confirm(t("diagramAppearance.themeImportConfirm"))) {
+          return;
+        }
+      }
+      const prefs = readPrefs();
+      const existing = prefs.customDiagramThemes.filter(
+        (entry) => entry.id !== theme.id,
+      );
+      commitPrefs({
+        customDiagramThemes: [...existing, theme],
+        diagramThemePreference: theme.id,
+        diagramAppearance: theme.appearance,
+      });
+      setThemeName(theme.name);
+      if (!editorMode) {
+        onApplyAppearance?.(theme.appearance);
+      }
+      setStatus(
+        t("diagramAppearance.themeImportedFeedback", { name: theme.name }),
+      );
+    } catch {
+      setStatus(t("diagramAppearance.themeImportInvalid"));
+    }
+  };
+
+  const handleRemove = (themeId: string, name: string) => {
+    if (
+      !window.confirm(t("appSettings.diagramThemeRemoveConfirm", { name }))
+    ) {
+      return;
+    }
+    const prefs = readPrefs();
+    const customDiagramThemes = prefs.customDiagramThemes.filter(
+      (theme) => theme.id !== themeId,
+    );
+    const wasActive = prefs.diagramThemePreference === themeId;
+    const next = commitPrefs({
+      customDiagramThemes,
+      diagramThemePreference: wasActive
+        ? "default"
+        : prefs.diagramThemePreference,
+      ...(wasActive
+        ? {
+            diagramAppearance: resolveDiagramThemeAppearance(
+              "default",
+              customDiagramThemes,
+            ),
+          }
+        : {}),
+    });
+    if (wasActive || next.diagramThemePreference === "default") {
+      setThemeName(defaultName);
+    } else {
+      setThemeName(
+        resolveThemeName(
+          next.diagramThemePreference,
+          next.customDiagramThemes,
+          defaultThemeLabel,
+          defaultName,
+        ),
+      );
+    }
+    if (createBase === themeId) setCreateBase("default");
+    setStatus(t("diagramAppearance.themeRemovedFeedback", { name }));
+  };
+
+  const handleExportListed = (themeId: string) => {
+    const prefs = readPrefs();
+    const theme = prefs.customDiagramThemes.find(
+      (entry) => entry.id === themeId,
+    );
+    if (!theme) return;
+    downloadJson(`${theme.id}.json`, diagramThemeDocumentToJson(theme));
+  };
+
+  const prefs = readPrefs();
+  const isDefaultSelected = prefs.diagramThemePreference === "default";
+  const editingCustom =
+    !isDefaultSelected &&
+    prefs.customDiagramThemes.some(
+      (theme) => theme.id === prefs.diagramThemePreference,
+    );
+
+  const createBaseOptions = (
+    <>
+      <option value="default">{defaultThemeLabel}</option>
+      {prefs.customDiagramThemes.map((theme) => (
+        <option key={theme.id} value={theme.id}>
+          {theme.name}
+        </option>
+      ))}
+    </>
+  );
+
+  return (
+    <div className="diagram-theme-library">
+      <p className="hint">{t(hintKey)}</p>
+
+      {editorMode && (
+        <div className="theme-editor-create-row">
+          <label className="field theme-editor-create-name">
+            <span>{t("diagramAppearance.themeNewName")}</span>
+            <input
+              type="text"
+              value={newName}
+              placeholder={defaultName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>{t("diagramAppearance.themeCreateBase")}</span>
+            <select
+              value={createBase}
+              onChange={(e) =>
+                setCreateBase(e.target.value as DiagramThemePreference)
+              }
+            >
+              {createBaseOptions}
+            </select>
+          </label>
+          <button type="button" className="btn-secondary" onClick={handleCreate}>
+            {t("diagramAppearance.themeCreate")}
+          </button>
+        </div>
+      )}
+
+      {editorMode && <hr className="theme-editor-divider" />}
+
+      {editorMode && (
+        <>
+          <label className="field">
+            <span>{t("diagramAppearance.themeSelected")}</span>
+            <select
+              value={prefs.diagramThemePreference}
+              onChange={(e) =>
+                handleSelectTheme(e.target.value as DiagramThemePreference)
+              }
+            >
+              <option value="default">{defaultThemeLabel}</option>
+              {prefs.customDiagramThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">
+            {isDefaultSelected
+              ? t("diagramAppearance.themeSelectedDefaultHint")
+              : t("diagramAppearance.themeSelectedCustomHint", {
+                  name: themeName,
+                })}
+          </p>
+
+          {prefs.customDiagramThemes.length > 0 && (
+            <ul className="custom-theme-list">
+              {prefs.customDiagramThemes.map((theme) => {
+                const selected = prefs.diagramThemePreference === theme.id;
+                return (
+                  <li
+                    key={theme.id}
+                    className={`custom-theme-row${selected ? " selected" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="custom-theme-select"
+                      onClick={() => handleSelectTheme(theme.id)}
+                    >
+                      <span style={{ flex: 1 }}>{theme.name}</span>
+                      {selected && (
+                        <span className="custom-theme-editing-badge">
+                          {t("diagramAppearance.themeSelectedBadge")}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => handleExportListed(theme.id)}
+                    >
+                      {t("appSettings.themeExport")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={() => handleRemove(theme.id, theme.name)}
+                    >
+                      {t("appSettings.themeRemove")}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+
+      {(!editorMode || editingCustom) && (
+        <label className="field">
+          <span>{t("diagramAppearance.themeName")}</span>
+          <input
+            type="text"
+            value={themeName}
+            placeholder={defaultName}
+            onChange={(e) => {
+              setThemeName(e.target.value);
+              setStatus(null);
+            }}
+          />
+        </label>
+      )}
+
+      <div className="custom-theme-actions">
+        {(!editorMode || editingCustom) && (
+          <button type="button" className="btn-primary" onClick={handleSave}>
+            {t("diagramAppearance.themeSave")}
+          </button>
+        )}
+        {editorMode && onApplyAppearance && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleApplyToDiagram}
+          >
+            {t("appSettings.diagramThemeApply")}
+          </button>
+        )}
+        <button type="button" className="btn-secondary" onClick={handleExport}>
+          {t("diagramAppearance.themeExport")}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => importInputRef.current?.click()}
+        >
+          {t("diagramAppearance.themeImport")}
+        </button>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void handleImport(file);
+          }}
+        />
+      </div>
+
+      {status && <p className="hint diagram-theme-status">{status}</p>}
+    </div>
+  );
+}

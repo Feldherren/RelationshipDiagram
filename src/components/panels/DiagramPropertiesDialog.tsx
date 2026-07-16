@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
-import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getDiagramBackgroundMode } from "../../utils/diagramBackground";
-import { RgbPicker } from "../pickers/RgbPicker";
-import { BackgroundModeControls } from "./BackgroundModeControls";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
-import { FontPicker } from "./FontPicker";
+import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
-type PropertiesSectionId = "header" | "background" | "font" | "appearance";
+type PropertiesSectionId = "header" | "appearance";
 
 interface DiagramPropertiesDialogProps {
   open: boolean;
@@ -49,6 +46,9 @@ export function DiagramPropertiesDialog({
   );
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
   const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
+  const replaceDiagramAppearance = useDiagramStore(
+    (s) => s.replaceDiagramAppearance,
+  );
 
   const backgroundMode = getDiagramBackgroundMode(
     showGrid,
@@ -63,8 +63,6 @@ export function DiagramPropertiesDialog({
 
   const sections = [
     { id: "header", label: t("diagramProperties.sectionHeader") },
-    { id: "background", label: t("diagramProperties.sectionBackground") },
-    { id: "font", label: t("diagramProperties.sectionFont") },
     { id: "appearance", label: t("diagramProperties.sectionAppearance") },
   ] as const;
 
@@ -83,12 +81,6 @@ export function DiagramPropertiesDialog({
             />
           </label>
 
-          <RgbPicker
-            label={t("diagramProperties.titleColour")}
-            value={diagramTitleColor}
-            onChange={setDiagramTitleColor}
-          />
-
           <label className="field">
             <span>{t("diagramProperties.diagramSubtitle")}</span>
             <input
@@ -98,12 +90,6 @@ export function DiagramPropertiesDialog({
               onChange={(e) => setDiagramSubtitle(e.target.value)}
             />
           </label>
-
-          <RgbPicker
-            label={t("diagramProperties.subtitleColour")}
-            value={diagramSubtitleColor}
-            onChange={setDiagramSubtitleColor}
-          />
 
           <label className="field checkbox">
             <input
@@ -116,47 +102,39 @@ export function DiagramPropertiesDialog({
         </>
       );
       break;
-    case "background":
-      content = (
-        <BackgroundModeControls
-          mode={backgroundMode}
-          backgroundColor={diagramBackgroundColor}
-          onModeChange={setDiagramBackgroundMode}
-          onBackgroundColorChange={setDiagramBackgroundColor}
-        />
-      );
-      break;
-    case "font":
-      content = (
-        <>
-          <div className="field">
-            <span>{t("diagramProperties.diagramFont")}</span>
-            <FontPicker
-              value={diagramFontFamily}
-              onChange={(fontFamily) => void setDiagramFontFamily(fontFamily)}
-            />
-          </div>
-
-          {fontMissing && (
-            <p className="hint">
-              {t("diagramProperties.fontMissing", { font: diagramFontFamily })}
-            </p>
-          )}
-
-          {!fontMissing && !isDefaultDiagramFont(diagramFontFamily) && (
-            <p className="hint">{t("diagramProperties.customFontHint")}</p>
-          )}
-
-          <p className="hint">{t("diagramProperties.uiFontHint")}</p>
-        </>
-      );
-      break;
     case "appearance":
       content = (
-        <DiagramAppearancePanel
-          value={diagramAppearance}
-          onChange={setDiagramAppearance}
-        />
+        <>
+          <DiagramThemeLibraryControls
+            appearance={diagramAppearance}
+            onApplyAppearance={replaceDiagramAppearance}
+            hintKey="diagramProperties.appearanceThemesHint"
+          />
+
+          <hr className="theme-editor-divider" />
+
+          <DiagramAppearancePanel
+            value={diagramAppearance}
+            onChange={setDiagramAppearance}
+            headerColors={{
+              titleColor: diagramTitleColor,
+              subtitleColor: diagramSubtitleColor,
+              onTitleColorChange: setDiagramTitleColor,
+              onSubtitleColorChange: setDiagramSubtitleColor,
+            }}
+            canvasSetup={{
+              backgroundMode,
+              backgroundColor: diagramBackgroundColor,
+              diagramFont: diagramFontFamily,
+              onBackgroundModeChange: setDiagramBackgroundMode,
+              onBackgroundColorChange: setDiagramBackgroundColor,
+              onDiagramFontChange: (fontFamily) =>
+                void setDiagramFontFamily(fontFamily),
+              fontMissing,
+              showFontHints: true,
+            }}
+          />
+        </>
       );
       break;
   }

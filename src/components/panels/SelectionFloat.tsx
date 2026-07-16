@@ -30,10 +30,37 @@ import {
   worldBoundsToScreen,
   worldToScreen,
 } from "../../utils/selectionAnchor";
+import {
+  isSelfConnection,
+  nextRouteIndex,
+  resolveLineBend,
+} from "../../utils/lineRouting";
 
 const LINE_STYLES: LineStyle[] = ["straight", "wavy", "dotted", "jagged"];
 
 const ESTIMATED_FLOAT_HEIGHT = 280;
+
+/** Arrows-repeat glyph: right arrow above, left arrow below. */
+function ReverseLineIcon() {
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m16 10 3-3m0 0-3-3m3 3H5v3m3 4-3 3m0 0 3 3m-3-3h14v-3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function SelectionFloat() {
   const { t } = useTranslation();
@@ -255,15 +282,39 @@ export function SelectionFloat() {
       return name || t("selection.box");
     };
 
+    const reverseLine = () => {
+      const from = line.to;
+      const to = line.from;
+      const others = lines.filter((l) => l.id !== line.id);
+      const bend = resolveLineBend(line);
+      updateLine(line.id, {
+        from,
+        to,
+        routeIndex: nextRouteIndex(from, to, others),
+        bend: isSelfConnection(line) ? bend : -bend,
+      });
+    };
+
     body = (
       <>
         <h2>{t("selection.line")}</h2>
-        <p className="hint">
-          {t("selection.lineEndpoints", {
-            from: endpointLabel(line.from),
-            to: endpointLabel(line.to),
-          })}
-        </p>
+        <div className="selection-line-endpoints">
+          <button
+            type="button"
+            className="btn-icon"
+            aria-label={t("selection.reverseLine")}
+            title={t("selection.reverseLine")}
+            onClick={reverseLine}
+          >
+            <ReverseLineIcon />
+          </button>
+          <p className="hint">
+            {t("selection.lineEndpoints", {
+              from: endpointLabel(line.from),
+              to: endpointLabel(line.to),
+            })}
+          </p>
+        </div>
         <label className="field">
           <span>{t("selection.label")}</span>
           <input

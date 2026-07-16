@@ -266,6 +266,7 @@
     "character": "Character",
     "line": "Line",
     "lineEndpoints": "{{from}} → {{to}}",
+    "reverseLine": "Reverse connection",
     "box": "Box",
     "text": "Text",
     "group": "Group",

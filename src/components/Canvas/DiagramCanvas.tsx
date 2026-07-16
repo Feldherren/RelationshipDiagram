@@ -12,10 +12,6 @@ import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
 import {
-  CanvasContextMenu,
-  type CanvasContextMenuState,
-} from "./CanvasContextMenu";
-import {
   useDiagramStore,
   isCharacterHidden,
   isFloatingTextHidden,
@@ -117,10 +113,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     updateBox,
     moveBox,
     screenToWorld,
-    addCharacterAt,
-    addBoxAt,
-    addGroup,
-    addFloatingTextAt,
     startConnectDrag,
     updateConnectDrag,
     endConnectDrag,
@@ -151,10 +143,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       updateBox: s.updateBox,
       moveBox: s.moveBox,
       screenToWorld: s.screenToWorld,
-      addCharacterAt: s.addCharacterAt,
-      addBoxAt: s.addBoxAt,
-      addGroup: s.addGroup,
-      addFloatingTextAt: s.addFloatingTextAt,
       startConnectDrag: s.startConnectDrag,
       updateConnectDrag: s.updateConnectDrag,
       endConnectDrag: s.endConnectDrag,
@@ -180,9 +168,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const [isDraggingBox, setIsDraggingBox] = useState(false);
   const isInteractingWithBox = isResizingBox || isDraggingBox;
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
-    null,
-  );
 
   const highlightedGroupId =
     selection?.type === "group" ? selection.id : null;
@@ -377,21 +362,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     }
   };
 
-  const handleStageContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
-    e.evt.preventDefault();
-    if (connectDrag || toolMode === "exportBounds" || toolMode === "editGroupMembers")
-      return;
-    if (e.target !== e.target.getStage()) return;
-
-    const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
-    setContextMenu({
-      screenX: e.evt.clientX,
-      screenY: e.evt.clientY,
-      worldX: world.x,
-      worldY: world.y,
-    });
-  };
-
   const diagram = {
     schemaVersion: 2 as const,
     characters,
@@ -426,14 +396,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       onContextMenu={(e) => e.preventDefault()}
     >
       <DiagramTitle />
-      <CanvasContextMenu
-        menu={contextMenu}
-        onClose={() => setContextMenu(null)}
-        onAddCharacter={addCharacterAt}
-        onAddBox={addBoxAt}
-        onAddGroup={() => addGroup()}
-        onAddFloatingText={addFloatingTextAt}
-      />
       {connectFrom && (
         <div className="connect-hint">{t("canvas.connectHint")}</div>
       )}
@@ -448,7 +410,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onClick={handleStageClick}
-        onContextMenu={handleStageContextMenu}
       >
         <Layer ref={layerRef}>
           {showGrid && (

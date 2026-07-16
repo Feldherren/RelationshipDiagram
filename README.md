@@ -78,10 +78,10 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 
 | Action | How |
 |--------|-----|
-| Add character | **+ Character** in the toolbar, or right-click canvas → **Add character** |
-| Add box | Right-click canvas → **Add box** |
-| Add group | **Groups** (lower left) → **Add group**, or right-click canvas → **Add group** |
-| Add floating text | Right-click canvas → **Add text** |
+| Add character | Upper-right **Add character** button |
+| Add box | Upper-right **Add box** button |
+| Add group | **Groups** (lower left) → **Add group** |
+| Add floating text | Upper-right **Add text** button |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |

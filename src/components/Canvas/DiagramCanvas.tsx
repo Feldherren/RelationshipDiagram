@@ -474,9 +474,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onBoundsChange={(bounds) =>
+                  updateBox(box.id, { bounds }, { recordHistory: false })
+                }
                 onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents)
+                  moveBox(box.id, delta, contents, { recordHistory: false })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -503,7 +505,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onSelect={() =>
                   setSelection({ type: "line", id: line.id })
                 }
-                onBendChange={(bend) => updateLine(line.id, { bend })}
+                onBendChange={(bend) =>
+                  updateLine(line.id, { bend }, { recordHistory: false })
+                }
                 part="stroke"
                 hovered={hoveredLineId === line.id}
                 onHoverChange={(hovered) =>
@@ -527,7 +531,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onSelect={() =>
                   setSelection({ type: "line", id: line.id })
                 }
-                onBendChange={(bend) => updateLine(line.id, { bend })}
+                onBendChange={(bend) =>
+                  updateLine(line.id, { bend }, { recordHistory: false })
+                }
                 part="label"
                 hovered={hoveredLineId === line.id}
                 onHoverChange={(hovered) =>
@@ -602,8 +608,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     id: character.id,
                     kind: "character",
                   })}
-                  onDragMove={(pos) => moveCharacter(character.id, pos)}
-                  onDragEnd={(pos) => moveCharacter(character.id, pos)}
+                  onDragMove={(pos) =>
+                    moveCharacter(character.id, pos, { recordHistory: false })
+                  }
+                  onDragEnd={(pos) =>
+                    moveCharacter(character.id, pos, { recordHistory: false })
+                  }
                 />
               );
             })}
@@ -624,9 +634,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onBoundsChange={(bounds) =>
+                  updateBox(box.id, { bounds }, { recordHistory: false })
+                }
                 onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents)
+                  moveBox(box.id, delta, contents, { recordHistory: false })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -656,9 +668,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) => updateBox(box.id, { bounds })}
+                onBoundsChange={(bounds) =>
+                  updateBox(box.id, { bounds }, { recordHistory: false })
+                }
                 onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents)
+                  moveBox(box.id, delta, contents, { recordHistory: false })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -697,8 +711,16 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               onSelect={() =>
                 setSelection({ type: "floatingText", id: floatingText.id })
               }
-              onDragMove={(pos) => moveFloatingText(floatingText.id, pos)}
-              onDragEnd={(pos) => moveFloatingText(floatingText.id, pos)}
+              onDragMove={(pos) =>
+                moveFloatingText(floatingText.id, pos, {
+                  recordHistory: false,
+                })
+              }
+              onDragEnd={(pos) =>
+                moveFloatingText(floatingText.id, pos, {
+                  recordHistory: false,
+                })
+              }
             />
           ))}
 

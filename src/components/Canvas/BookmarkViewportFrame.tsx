@@ -50,7 +50,9 @@ export function BookmarkViewportFrame({ bookmark }: BookmarkViewportFrameProps) 
   const scale = useDiagramStore((s) => s.viewport.scale);
   const stageSize = useDiagramStore((s) => s.stageSize);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const updateBookmarkFrame = useDiagramStore((s) => s.updateBookmarkFrame);
+  const historyCapturedRef = useRef(false);
 
   const bounds = viewportToWorldBounds(bookmark.viewport, stageSize);
   const center = {
@@ -84,11 +86,15 @@ export function BookmarkViewportFrame({ bookmark }: BookmarkViewportFrameProps) 
         world,
         stageSize,
       );
+      if (!historyCapturedRef.current) {
+        historyCapturedRef.current = true;
+        captureHistory();
+      }
       updateBookmarkFrame(bookmark.id, {
         viewport: nextViewport,
         // Keep the marker at the frame centre while resizing.
         anchor: { ...centerPoint },
-      });
+      }, { recordHistory: false });
     };
 
     const onUp = () => {
@@ -116,6 +122,7 @@ export function BookmarkViewportFrame({ bookmark }: BookmarkViewportFrameProps) 
     bookmark.id,
     screenToWorld,
     stageSize,
+    captureHistory,
     updateBookmarkFrame,
   ]);
 
@@ -129,6 +136,7 @@ export function BookmarkViewportFrame({ bookmark }: BookmarkViewportFrameProps) 
     if (!stage) return;
     stageRef.current = stage;
     resizeCenterRef.current = { ...center };
+    historyCapturedRef.current = false;
     resizingRef.current = true;
     const cursor = cursorForCorner(corner);
     document.body.style.cursor = cursor;

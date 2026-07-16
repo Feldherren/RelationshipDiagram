@@ -4,6 +4,11 @@
     "open": "Open",
     "save": "Save",
     "export": "Export",
+    "history": "History",
+    "undo": "Undo",
+    "undoTitle": "Undo (Ctrl+Z)",
+    "redo": "Redo",
+    "redoTitle": "Redo (Ctrl+Y)",
     "diagramProperties": "Diagram properties",
     "settings": "Settings",
     "settingsAria": "Application settings"

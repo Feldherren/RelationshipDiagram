@@ -152,6 +152,7 @@ export function BoxContainer({
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const boxNameLabel = useDiagramStore(
@@ -165,6 +166,8 @@ export function BoxContainer({
   const stageRef = useRef<Konva.Stage | null>(null);
   const resizeStartRef = useRef<ResizeDragStart | null>(null);
   const moveStartRef = useRef<MoveDragStart | null>(null);
+  const resizeHistoryCapturedRef = useRef(false);
+  const moveHistoryCapturedRef = useRef(false);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onMoveByDeltaRef = useRef(onMoveByDelta);
   const onResizeEndRef = useRef(onResizeEnd);
@@ -208,6 +211,10 @@ export function BoxContainer({
         setSelection(null);
       }
 
+      if (!resizeHistoryCapturedRef.current) {
+        resizeHistoryCapturedRef.current = true;
+        captureHistory();
+      }
       const newBounds = resizeBoxBounds(
         dragStart.bounds,
         dragStart.edge,
@@ -230,7 +237,7 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [resizing, screenToWorld, clickGuard.noticeDrag, setSelection]);
+  }, [resizing, screenToWorld, clickGuard.noticeDrag, setSelection, captureHistory]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -258,6 +265,10 @@ export function BoxContainer({
         setSelection(null);
       }
 
+      if (!moveHistoryCapturedRef.current) {
+        moveHistoryCapturedRef.current = true;
+        captureHistory();
+      }
       onMoveByDeltaRef.current(
         {
           dx: pointer.x - dragStart.pointer.x,
@@ -284,7 +295,7 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, screenToWorld, clickGuard.noticeDrag, setSelection]);
+  }, [dragging, screenToWorld, clickGuard.noticeDrag, setSelection, captureHistory]);
 
   const beginResize = (
     e: Konva.KonvaEventObject<MouseEvent>,
@@ -298,6 +309,7 @@ export function BoxContainer({
     if (!pointer) return;
 
     gestureClearedSelectionRef.current = false;
+    resizeHistoryCapturedRef.current = false;
     resizeStartRef.current = {
       bounds,
       pointer: screenToWorld(pointer),
@@ -317,6 +329,7 @@ export function BoxContainer({
 
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
+    moveHistoryCapturedRef.current = false;
     moveStartRef.current = {
       pointer: world,
       origin: world,

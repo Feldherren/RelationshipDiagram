@@ -117,6 +117,7 @@ export function CharacterNode({
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -179,6 +180,7 @@ export function CharacterNode({
           return;
         }
         // Dragging is layout, not inspect — close any open float.
+        captureHistory();
         setSelection(null);
       }}
       onDragMove={(e) => {

@@ -59,6 +59,7 @@ export function LineEdge({
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const lineLabel = useDiagramStore((s) => s.diagramAppearance.lineLabel);
   const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
@@ -72,6 +73,7 @@ export function LineEdge({
   const lineIdRef = useRef(line.id);
   const dragStartRef = useRef<BendDragStart | null>(null);
   const gestureClearedSelectionRef = useRef(false);
+  const historyCapturedRef = useRef(false);
 
   useEffect(() => {
     lineIdRef.current = line.id;
@@ -114,6 +116,10 @@ export function LineEdge({
         },
       );
       const nextBend = dragStart.bend + delta;
+      if (!historyCapturedRef.current) {
+        historyCapturedRef.current = true;
+        captureHistory();
+      }
       onBendChange(
         isSelfConnection(line)
           ? Math.max(MIN_SELF_LOOP_BEND, nextBend)
@@ -132,7 +138,7 @@ export function LineEdge({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [bendDragging, onBendChange, screenToWorld, clickGuard.noticeDrag, setSelection, line]);
+  }, [bendDragging, onBendChange, screenToWorld, clickGuard.noticeDrag, setSelection, line, captureHistory]);
 
   const beginBendDrag = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true;
@@ -143,6 +149,7 @@ export function LineEdge({
     const { start, end } = getLineAnchors(line, diagram);
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
+    historyCapturedRef.current = false;
     dragStartRef.current = {
       bend: resolveLineBend(line),
       world,

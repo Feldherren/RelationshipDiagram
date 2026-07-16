@@ -43,11 +43,13 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
 
   const scale = useDiagramStore((s) => s.viewport.scale);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const updateBookmarkFrame = useDiagramStore((s) => s.updateBookmarkFrame);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const nameLabel = useDiagramStore(
     (s) => s.diagramAppearance.characterNameLabel,
   );
+  const historyCapturedRef = useRef(false);
   const inv = 1 / Math.max(0.01, scale);
   const color = rgbToCss(bookmark.color);
 
@@ -79,10 +81,14 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
       ) {
         clickGuard.noticeDrag();
       }
+      if (!historyCapturedRef.current) {
+        historyCapturedRef.current = true;
+        captureHistory();
+      }
       updateBookmarkFrame(bookmark.id, {
         anchor: { x: start.anchor.x + dx, y: start.anchor.y + dy },
         viewport: translateViewport(start.viewport, dx, dy),
-      });
+      }, { recordHistory: false });
     };
 
     const onUp = () => {
@@ -106,6 +112,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     scale,
     screenToWorld,
     updateBookmarkFrame,
+    captureHistory,
     clickGuard.noticeDrag,
   ]);
 
@@ -116,6 +123,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     const pointer = stage?.getPointerPosition();
     if (!stage || !pointer) return;
     stageRef.current = stage;
+    historyCapturedRef.current = false;
     const world = screenToWorld(pointer);
     dragStartRef.current = {
       pointer: world,

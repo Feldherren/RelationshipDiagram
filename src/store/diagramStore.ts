@@ -57,7 +57,11 @@ import {
   loadAutosave,
   saveAutosave,
 } from "../utils/autosaveStorage";
-import { EMPTY_DIAGRAM } from "./autosaveState";
+import {
+  EMPTY_DIAGRAM,
+  type PersistedDiagramState,
+  pickPersistedState,
+} from "./autosaveState";
 import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
@@ -82,6 +86,10 @@ import {
 import { computeDiagramBounds } from "../utils/diagramBounds";
 import { computeViewportForBounds } from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
+
+interface HistoryOptions {
+  recordHistory?: boolean;
+}
 
 interface DiagramState {
   characters: Character[];
@@ -108,10 +116,15 @@ interface DiagramState {
   diagramBackgroundColor: RGB | null;
   diagramAppearance: DiagramAppearance;
   autosaveEnabled: boolean;
+  undoStack: PersistedDiagramState[];
+  redoStack: PersistedDiagramState[];
 
   setStageSize: (width: number, height: number) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
   fitViewportToContent: () => void;
+  captureHistory: () => void;
+  undo: () => void;
+  redo: () => void;
   setToolMode: (mode: ToolMode) => void;
   setSelection: (selection: Selection) => void;
   setShowGrid: (show: boolean) => void;
@@ -136,6 +149,7 @@ interface DiagramState {
   updateBookmarkFrame: (
     id: string,
     patch: { anchor?: ViewBookmark["anchor"]; viewport?: Viewport },
+    options?: HistoryOptions,
   ) => void;
   deleteBookmark: (id: string) => void;
   goToBookmark: (id: string) => void;
@@ -146,12 +160,20 @@ interface DiagramState {
   newDiagram: () => Promise<void>;
 
   addCharacterAt: (position: { x: number; y: number }) => void;
-  updateCharacter: (id: string, patch: Partial<Character>) => void;
+  updateCharacter: (
+    id: string,
+    patch: Partial<Character>,
+    options?: HistoryOptions,
+  ) => void;
   deleteCharacter: (id: string) => void;
-  moveCharacter: (id: string, position: { x: number; y: number }) => void;
+  moveCharacter: (
+    id: string,
+    position: { x: number; y: number },
+    options?: HistoryOptions,
+  ) => void;
 
   addLine: (from: NodeRef, to: NodeRef) => void;
-  updateLine: (id: string, patch: Partial<Line>) => void;
+  updateLine: (id: string, patch: Partial<Line>, options?: HistoryOptions) => void;
   deleteLine: (id: string) => void;
 
   addGroup: (name?: string) => void;
@@ -167,19 +189,28 @@ interface DiagramState {
   toggleCharacterInGroup: (characterId: string, groupId: string) => void;
 
   addBoxAt: (position: { x: number; y: number }) => void;
-  updateBox: (id: string, patch: Partial<Box>) => void;
+  updateBox: (id: string, patch: Partial<Box>, options?: HistoryOptions) => void;
   deleteBox: (id: string) => void;
   toggleBoxCollapse: (id: string) => void;
   moveBox: (
     id: string,
     delta: { dx: number; dy: number },
     contents: { characterIds: string[]; floatingTextIds: string[] },
+    options?: HistoryOptions,
   ) => void;
 
   addFloatingTextAt: (position: { x: number; y: number }) => void;
-  updateFloatingText: (id: string, patch: Partial<FloatingText>) => void;
+  updateFloatingText: (
+    id: string,
+    patch: Partial<FloatingText>,
+    options?: HistoryOptions,
+  ) => void;
   deleteFloatingText: (id: string) => void;
-  moveFloatingText: (id: string, position: { x: number; y: number }) => void;
+  moveFloatingText: (
+    id: string,
+    position: { x: number; y: number },
+    options?: HistoryOptions,
+  ) => void;
 
   handleNodeClick: (ref: NodeRef) => void;
   startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
@@ -255,6 +286,23 @@ function normalizeBookmarks(raw: unknown): ViewBookmark[] {
   return result;
 }
 
+const HISTORY_LIMIT = 100;
+
+function restoreHistorySnapshot(
+  snapshot: PersistedDiagramState,
+  viewport: Viewport,
+) {
+  return {
+    ...snapshot,
+    viewport,
+    selection: null,
+    connectFrom: null,
+    connectDrag: null,
+    toolMode: "select" as const,
+    exportBounds: null,
+  };
+}
+
 export const useDiagramStore = create<DiagramState>()(
   subscribeWithSelector((set, get) => ({
   characters: [],
@@ -281,6 +329,8 @@ export const useDiagramStore = create<DiagramState>()(
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   autosaveEnabled: false,
+  undoStack: [],
+  redoStack: [],
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
@@ -290,6 +340,36 @@ export const useDiagramStore = create<DiagramState>()(
     const bounds = computeDiagramBounds(get().getDiagram(), 32, viewport.scale);
     if (!bounds) return;
     set({ viewport: computeViewportForBounds(bounds, stageSize) });
+  },
+  captureHistory: () =>
+    set((s) => ({
+      undoStack: [
+        ...s.undoStack.slice(-(HISTORY_LIMIT - 1)),
+        pickPersistedState(s),
+      ],
+      redoStack: [],
+    })),
+  undo: () => {
+    const { undoStack } = get();
+    const previous = undoStack.at(-1);
+    if (!previous) return;
+    const current = pickPersistedState(get());
+    set((s) => ({
+      ...restoreHistorySnapshot(previous, s.viewport),
+      undoStack: s.undoStack.slice(0, -1),
+      redoStack: [...s.redoStack, current],
+    }));
+  },
+  redo: () => {
+    const { redoStack } = get();
+    const next = redoStack.at(-1);
+    if (!next) return;
+    const current = pickPersistedState(get());
+    set((s) => ({
+      ...restoreHistorySnapshot(next, s.viewport),
+      undoStack: [...s.undoStack, current],
+      redoStack: s.redoStack.slice(0, -1),
+    }));
   },
   setToolMode: (mode) => {
     if (mode === "editGroupMembers" && get().selection?.type !== "group") {
@@ -320,18 +400,22 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
   setShowGrid: (show) =>
-    set((s) => ({
-      showGrid: show,
-      diagramAppearance: {
-        ...s.diagramAppearance,
-        backgroundMode: getDiagramBackgroundMode(
-          show,
-          s.gridStyle,
-          s.diagramBackgroundColor,
-        ),
-      },
-    })),
-  setGridStyle: (style) =>
+    {
+      get().captureHistory();
+      set((s) => ({
+        showGrid: show,
+        diagramAppearance: {
+          ...s.diagramAppearance,
+          backgroundMode: getDiagramBackgroundMode(
+            show,
+            s.gridStyle,
+            s.diagramBackgroundColor,
+          ),
+        },
+      }));
+    },
+  setGridStyle: (style) => {
+    get().captureHistory();
     set((s) => ({
       gridStyle: style,
       diagramAppearance: {
@@ -342,24 +426,35 @@ export const useDiagramStore = create<DiagramState>()(
           s.diagramBackgroundColor,
         ),
       },
-    })),
+    }));
+  },
   setDiagramBackgroundMode: (mode) => {
     get().setDiagramAppearance({ backgroundMode: mode });
   },
   setAutosaveEnabled: (enabled) => set({ autosaveEnabled: enabled }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
-  setDiagramTitle: (title) => set({ diagramTitle: title }),
+  setDiagramTitle: (title) => {
+    get().captureHistory();
+    set({ diagramTitle: title });
+  },
 
-  setDiagramSubtitle: (subtitle) => set({ diagramSubtitle: subtitle }),
+  setDiagramSubtitle: (subtitle) => {
+    get().captureHistory();
+    set({ diagramSubtitle: subtitle });
+  },
 
-  setShowDiagramHeader: (show) => set({ showDiagramHeader: show }),
+  setShowDiagramHeader: (show) => {
+    get().captureHistory();
+    set({ showDiagramHeader: show });
+  },
 
   setDiagramBackgroundColor: (color) => {
     get().setDiagramAppearance({ backgroundColor: color });
   },
 
   setDiagramFontFamily: async (fontFamily) => {
+    get().captureHistory();
     if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
       set({
         diagramFontFamily: DEFAULT_DIAGRAM_FONT,
@@ -375,7 +470,8 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
 
-  setDiagramAppearance: (patch) =>
+  setDiagramAppearance: (patch) => {
+    get().captureHistory();
     set((s) => {
       const diagramAppearance = patchDiagramAppearance(
         s.diagramAppearance,
@@ -405,9 +501,11 @@ export const useDiagramStore = create<DiagramState>()(
         gridStyle: background.gridStyle,
         diagramBackgroundColor: background.backgroundColor,
       };
-    }),
+    });
+  },
 
   replaceDiagramAppearance: (appearance) => {
+    get().captureHistory();
     const diagramAppearance = cloneDiagramAppearance(appearance);
     const background = applyDiagramBackgroundMode(
       diagramAppearance.backgroundMode,
@@ -513,6 +611,7 @@ export const useDiagramStore = create<DiagramState>()(
       }),
     };
     await get().loadDiagram(diagram);
+    set({ undoStack: [], redoStack: [] });
     set({ autosaveEnabled: prefs.autosaveEnabled });
     if (prefs.autosaveEnabled) {
       await get().flushAutosave();
@@ -536,6 +635,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   addCharacterAt: (position) => {
+    get().captureHistory();
     const character = createDefaultCharacter(
       position,
       get().diagramAppearance.defaultCharacterBorderColor,
@@ -546,14 +646,17 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateCharacter: (id, patch) =>
+  updateCharacter: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       characters: s.characters.map((c) =>
         c.id === id ? { ...c, ...patch } : c,
       ),
-    })),
+    }));
+  },
 
-  deleteCharacter: (id) =>
+  deleteCharacter: (id) => {
+    get().captureHistory();
     set((s) => ({
       characters: s.characters.filter((c) => c.id !== id),
       lines: s.lines.filter(
@@ -569,16 +672,20 @@ export const useDiagramStore = create<DiagramState>()(
         s.selection?.type === "character" && s.selection.id === id
           ? null
           : s.selection,
-    })),
+    }));
+  },
 
-  moveCharacter: (id, position) =>
+  moveCharacter: (id, position, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       characters: s.characters.map((c) =>
         c.id === id ? { ...c, position } : c,
       ),
-    })),
+    }));
+  },
 
   addLine: (from, to) => {
+    get().captureHistory();
     const existingLines = get().lines;
     const routeIndex = nextRouteIndex(from, to, existingLines);
     const self = isSelfConnection({ from, to });
@@ -603,21 +710,26 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateLine: (id, patch) =>
+  updateLine: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       lines: s.lines.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-    })),
+    }));
+  },
 
-  deleteLine: (id) =>
+  deleteLine: (id) => {
+    get().captureHistory();
     set((s) => ({
       lines: s.lines.filter((l) => l.id !== id),
       selection:
         s.selection?.type === "line" && s.selection.id === id
           ? null
           : s.selection,
-    })),
+    }));
+  },
 
   addGroup: (name) => {
+    get().captureHistory();
     const { groups } = get();
     const group: Group = {
       id: uuidv4(),
@@ -631,7 +743,8 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateGroup: (id, patch) =>
+  updateGroup: (id, patch) => {
+    get().captureHistory();
     set((s) => ({
       groups: s.groups.map((g) => {
         if (g.id !== id) return g;
@@ -644,9 +757,11 @@ export const useDiagramStore = create<DiagramState>()(
             : g.appearance,
         };
       }),
-    })),
+    }));
+  },
 
-  deleteGroup: (id) =>
+  deleteGroup: (id) => {
+    get().captureHistory();
     set((s) => {
       const deletingEditedGroup =
         s.toolMode === "editGroupMembers" &&
@@ -660,9 +775,11 @@ export const useDiagramStore = create<DiagramState>()(
             : s.selection,
         ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
       };
-    }),
+    });
+  },
 
-  addCharacterToGroup: (characterId, groupId) =>
+  addCharacterToGroup: (characterId, groupId) => {
+    get().captureHistory();
     set((s) => ({
       groups: s.groups.map((g) => {
         if (g.id !== groupId) return g;
@@ -672,9 +789,11 @@ export const useDiagramStore = create<DiagramState>()(
           memberCharacterIds: [...g.memberCharacterIds, characterId],
         };
       }),
-    })),
+    }));
+  },
 
-  removeCharacterFromGroup: (characterId, groupId) =>
+  removeCharacterFromGroup: (characterId, groupId) => {
+    get().captureHistory();
     set((s) => ({
       groups: s.groups.map((g) =>
         g.id === groupId
@@ -686,7 +805,8 @@ export const useDiagramStore = create<DiagramState>()(
             }
           : g,
       ),
-    })),
+    }));
+  },
 
   toggleCharacterInGroup: (characterId, groupId) => {
     const group = get().groups.find((g) => g.id === groupId);
@@ -699,6 +819,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   addBoxAt: (position) => {
+    get().captureHistory();
     const { boxes, diagramAppearance } = get();
     const bounds = getEmptyBoxBounds(position);
     const box: Box = {
@@ -717,12 +838,15 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateBox: (id, patch) =>
+  updateBox: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       boxes: s.boxes.map((b) => (b.id === id ? { ...b, ...patch } : b)),
-    })),
+    }));
+  },
 
-  deleteBox: (id) =>
+  deleteBox: (id) => {
+    get().captureHistory();
     set((s) => ({
       boxes: s.boxes.filter((b) => b.id !== id),
       lines: s.lines.filter(
@@ -734,9 +858,11 @@ export const useDiagramStore = create<DiagramState>()(
         s.selection?.type === "box" && s.selection.id === id
           ? null
           : s.selection,
-    })),
+    }));
+  },
 
   toggleBoxCollapse: (id) => {
+    get().captureHistory();
     const state = get();
     const box = state.boxes.find((b) => b.id === id);
     if (!box) return;
@@ -759,7 +885,8 @@ export const useDiagramStore = create<DiagramState>()(
     }
   },
 
-  moveBox: (id, delta, contents) =>
+  moveBox: (id, delta, contents, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => {
       const box = s.boxes.find((b) => b.id === id);
       if (!box) return {};
@@ -813,9 +940,11 @@ export const useDiagramStore = create<DiagramState>()(
           return next;
         }),
       };
-    }),
+    });
+  },
 
   addFloatingTextAt: (position) => {
+    get().captureHistory();
     const floatingText: FloatingText = {
       id: uuidv4(),
       position,
@@ -829,28 +958,34 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateFloatingText: (id, patch) =>
+  updateFloatingText: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.map((t) =>
         t.id === id ? { ...t, ...patch } : t,
       ),
-    })),
+    }));
+  },
 
-  deleteFloatingText: (id) =>
+  deleteFloatingText: (id) => {
+    get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.filter((t) => t.id !== id),
       selection:
         s.selection?.type === "floatingText" && s.selection.id === id
           ? null
           : s.selection,
-    })),
+    }));
+  },
 
-  moveFloatingText: (id, position) =>
+  moveFloatingText: (id, position, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.map((t) =>
         t.id === id ? { ...t, position } : t,
       ),
-    })),
+    }));
+  },
 
   handleNodeClick: (ref) => {
     const { connectFrom, toolMode, selection } = get();
@@ -940,6 +1075,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   addBookmark: (name, color) => {
+    get().captureHistory();
     const { viewport, bookmarks } = get();
     const anchor = get().getViewportCenter();
     const defaultName = i18n.t("bookmarks.defaultName", {
@@ -955,7 +1091,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({ bookmarks: [...s.bookmarks, bookmark] }));
   },
 
-  updateBookmark: (id, patch) =>
+  updateBookmark: (id, patch) => {
+    get().captureHistory();
     set((s) => ({
       bookmarks: s.bookmarks.map((b) => {
         if (b.id !== id) return b;
@@ -967,9 +1104,11 @@ export const useDiagramStore = create<DiagramState>()(
           ...(patch.color !== undefined ? { color: { ...patch.color } } : {}),
         };
       }),
-    })),
+    }));
+  },
 
   updateBookmarkView: (id) => {
+    get().captureHistory();
     const { viewport } = get();
     const anchor = get().getViewportCenter();
     set((s) => ({
@@ -981,7 +1120,8 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateBookmarkFrame: (id, patch) =>
+  updateBookmarkFrame: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       bookmarks: s.bookmarks.map((b) => {
         if (b.id !== id) return b;
@@ -995,15 +1135,18 @@ export const useDiagramStore = create<DiagramState>()(
             : {}),
         };
       }),
-    })),
+    }));
+  },
 
-  deleteBookmark: (id) =>
+  deleteBookmark: (id) => {
+    get().captureHistory();
     set((s) => ({
       bookmarks: s.bookmarks.filter((b) => b.id !== id),
       ...(s.selection?.type === "bookmark" && s.selection.id === id
         ? { selection: null }
         : {}),
-    })),
+    }));
+  },
 
   goToBookmark: (id) => {
     const bookmark = get().bookmarks.find((b) => b.id === id);
@@ -1074,6 +1217,8 @@ export const useDiagramStore = create<DiagramState>()(
       connectDrag: null,
       toolMode: "select",
       exportBounds: null,
+      undoStack: [],
+      redoStack: [],
     });
 
     if (get().autosaveEnabled) {

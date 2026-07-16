@@ -37,6 +37,7 @@ export function FloatingTextNode({
   const { t } = useTranslation();
   const allowDragRef = useRef(true);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
   const fontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const hasText = Boolean(floatingText.text.trim());
   const displayText = hasText
@@ -78,6 +79,7 @@ export function FloatingTextNode({
           return;
         }
         // Dragging is layout, not inspect — close any open float.
+        captureHistory();
         setSelection(null);
       }}
       onDragMove={(e) => {

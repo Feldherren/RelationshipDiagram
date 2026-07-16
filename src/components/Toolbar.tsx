@@ -44,6 +44,40 @@ function FitToContentIcon() {
   );
 }
 
+function UndoIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M12 5c-3.2 0-5.9 1.9-7.1 4.6L2 7v7h7l-2.7-2.7C7 9 9.2 7.5 12 7.5c3.1 0 5.6 2.2 6.3 5.1.1.6.7.9 1.3.8.6-.1.9-.7.8-1.3C19.5 8 16 5 12 5z"
+      />
+    </svg>
+  );
+}
+
+function RedoIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M12 5c3.2 0 5.9 1.9 7.1 4.6L22 7v7h-7l2.7-2.7C17 9 14.8 7.5 12 7.5c-3.1 0-5.6 2.2-6.3 5.1-.1.6-.7.9-1.3.8-.6-.1-.9-.7-.8-1.3C4.5 8 8 5 12 5z"
+      />
+    </svg>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
@@ -54,6 +88,10 @@ export function Toolbar({
 }: ToolbarProps) {
   const { t } = useTranslation();
   const fitViewportToContent = useDiagramStore((s) => s.fitViewportToContent);
+  const undo = useDiagramStore((s) => s.undo);
+  const redo = useDiagramStore((s) => s.redo);
+  const canUndo = useDiagramStore((s) => s.undoStack.length > 0);
+  const canRedo = useDiagramStore((s) => s.redoStack.length > 0);
 
   return (
     <header className="toolbar">
@@ -69,6 +107,33 @@ export function Toolbar({
         </button>
         <button type="button" onClick={onExport}>
           {t("toolbar.export")}
+        </button>
+      </div>
+
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("toolbar.history")}
+      >
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={() => undo()}
+          disabled={!canUndo}
+          aria-label={t("toolbar.undo")}
+          title={t("toolbar.undoTitle")}
+        >
+          <UndoIcon />
+        </button>
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={() => redo()}
+          disabled={!canRedo}
+          aria-label={t("toolbar.redo")}
+          title={t("toolbar.redoTitle")}
+        >
+          <RedoIcon />
         </button>
       </div>
 

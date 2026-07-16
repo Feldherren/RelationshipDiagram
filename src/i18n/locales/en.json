@@ -175,6 +175,7 @@
     "defaultExportResolution": "Zoom",
     "defaultExportBounds": "Bounds",
     "dataSection": "Data",
+    "clearRecoveryHint": "Clears the locally saved recovery copy used for restoring work after reopening the app. It does not delete the diagram currently open on screen or any files you have saved manually.",
     "clearRecoveryData": "Clear recovery data",
     "clearRecoveryConfirm": "Delete the locally saved recovery copy? Your current diagram on screen is not affected.",
     "clearRecoveryDone": "Recovery data cleared.",

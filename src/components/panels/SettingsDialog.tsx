@@ -438,13 +438,16 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       break;
     case "data":
       content = (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => void handleClearRecovery()}
-        >
-          {t("appSettings.clearRecoveryData")}
-        </button>
+        <>
+          <p className="hint">{t("appSettings.clearRecoveryHint")}</p>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void handleClearRecovery()}
+          >
+            {t("appSettings.clearRecoveryData")}
+          </button>
+        </>
       );
       break;
     case "about":

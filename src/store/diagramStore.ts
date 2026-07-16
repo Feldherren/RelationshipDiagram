@@ -61,6 +61,7 @@ import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
   applyDiagramBackgroundMode,
+  getDiagramBackgroundMode,
   type DiagramBackgroundMode,
   resolveDiagramBackground,
   serializeDiagramBackground,
@@ -252,16 +253,32 @@ export const useDiagramStore = create<DiagramState>()(
         : {}),
     });
   },
-  setShowGrid: (show) => set({ showGrid: show }),
-  setGridStyle: (style) => set({ gridStyle: style }),
+  setShowGrid: (show) =>
+    set((s) => ({
+      showGrid: show,
+      diagramAppearance: {
+        ...s.diagramAppearance,
+        backgroundMode: getDiagramBackgroundMode(
+          show,
+          s.gridStyle,
+          s.diagramBackgroundColor,
+        ),
+      },
+    })),
+  setGridStyle: (style) =>
+    set((s) => ({
+      gridStyle: style,
+      diagramAppearance: {
+        ...s.diagramAppearance,
+        backgroundMode: getDiagramBackgroundMode(
+          s.showGrid,
+          style,
+          s.diagramBackgroundColor,
+        ),
+      },
+    })),
   setDiagramBackgroundMode: (mode) => {
-    const { diagramBackgroundColor } = get();
-    const next = applyDiagramBackgroundMode(mode, diagramBackgroundColor);
-    set({
-      showGrid: next.showGrid,
-      gridStyle: next.gridStyle,
-      diagramBackgroundColor: next.backgroundColor,
-    });
+    get().setDiagramAppearance({ backgroundMode: mode });
   },
   setAutosaveEnabled: (enabled) => set({ autosaveEnabled: enabled }),
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
@@ -277,7 +294,9 @@ export const useDiagramStore = create<DiagramState>()(
 
   setShowDiagramHeader: (show) => set({ showDiagramHeader: show }),
 
-  setDiagramBackgroundColor: (color) => set({ diagramBackgroundColor: color }),
+  setDiagramBackgroundColor: (color) => {
+    get().setDiagramAppearance({ backgroundColor: color });
+  },
 
   setDiagramFontFamily: async (fontFamily) => {
     if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
@@ -296,12 +315,58 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   setDiagramAppearance: (patch) =>
-    set((s) => ({
-      diagramAppearance: patchDiagramAppearance(s.diagramAppearance, patch),
-    })),
+    set((s) => {
+      const diagramAppearance = patchDiagramAppearance(
+        s.diagramAppearance,
+        patch,
+      );
+      if (
+        patch.backgroundMode === undefined &&
+        patch.backgroundColor === undefined
+      ) {
+        return { diagramAppearance };
+      }
+      const background = applyDiagramBackgroundMode(
+        diagramAppearance.backgroundMode,
+        diagramAppearance.backgroundColor,
+      );
+      return {
+        diagramAppearance: {
+          ...diagramAppearance,
+          backgroundMode: getDiagramBackgroundMode(
+            background.showGrid,
+            background.gridStyle,
+            background.backgroundColor,
+          ),
+          backgroundColor: background.backgroundColor,
+        },
+        showGrid: background.showGrid,
+        gridStyle: background.gridStyle,
+        diagramBackgroundColor: background.backgroundColor,
+      };
+    }),
 
-  replaceDiagramAppearance: (appearance) =>
-    set({ diagramAppearance: cloneDiagramAppearance(appearance) }),
+  replaceDiagramAppearance: (appearance) => {
+    const diagramAppearance = cloneDiagramAppearance(appearance);
+    const background = applyDiagramBackgroundMode(
+      diagramAppearance.backgroundMode,
+      diagramAppearance.backgroundColor,
+    );
+    set({
+      diagramAppearance: {
+        ...diagramAppearance,
+        backgroundMode: getDiagramBackgroundMode(
+          background.showGrid,
+          background.gridStyle,
+          background.backgroundColor,
+        ),
+        backgroundColor: background.backgroundColor,
+      },
+      showGrid: background.showGrid,
+      gridStyle: background.gridStyle,
+      diagramBackgroundColor: background.backgroundColor,
+    });
+  },
 
   initializeFonts: async () => {
     await cleanupDeprecatedFonts();
@@ -358,10 +423,10 @@ export const useDiagramStore = create<DiagramState>()(
     cancelScheduledAutosave();
     set({ autosaveEnabled: false });
 
-    const { defaultBackgroundMode, defaultBackgroundColor } = prefs;
+    const appearance = prefs.diagramAppearance;
     const background = applyDiagramBackgroundMode(
-      defaultBackgroundMode,
-      defaultBackgroundColor,
+      appearance.backgroundMode,
+      appearance.backgroundColor,
     );
 
     const diagram: Diagram = {
@@ -373,7 +438,15 @@ export const useDiagramStore = create<DiagramState>()(
       fontFamily: isDefaultDiagramFont(prefs.defaultDiagramFont)
         ? undefined
         : prefs.defaultDiagramFont,
-      appearance: serializeDiagramAppearance(prefs.diagramAppearance),
+      appearance: serializeDiagramAppearance({
+        ...appearance,
+        backgroundMode: getDiagramBackgroundMode(
+          background.showGrid,
+          background.gridStyle,
+          background.backgroundColor,
+        ),
+        backgroundColor: background.backgroundColor,
+      }),
     };
     await get().loadDiagram(diagram);
     set({ autosaveEnabled: prefs.autosaveEnabled });
@@ -812,6 +885,12 @@ export const useDiagramStore = create<DiagramState>()(
     }
 
     const resolvedFamily = await ensureFontLoaded(fontFamily);
+    const diagramBackgroundColor = resolveDiagramBackground(
+      diagram.backgroundColor,
+    );
+    const showGrid = diagram.showGrid ?? true;
+    const gridStyle = diagram.gridStyle === "dots" ? "dots" : "lines";
+    const resolvedAppearance = resolveDiagramAppearance(diagram.appearance);
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -826,10 +905,19 @@ export const useDiagramStore = create<DiagramState>()(
       showDiagramHeader: diagram.showHeader ?? true,
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
-      diagramBackgroundColor: resolveDiagramBackground(diagram.backgroundColor),
-      diagramAppearance: resolveDiagramAppearance(diagram.appearance),
-      showGrid: diagram.showGrid ?? true,
-      gridStyle: diagram.gridStyle === "dots" ? "dots" : "lines",
+      diagramBackgroundColor,
+      diagramAppearance: {
+        ...resolvedAppearance,
+        // Keep open-diagram background as source of truth for the live canvas.
+        backgroundMode: getDiagramBackgroundMode(
+          showGrid,
+          gridStyle,
+          diagramBackgroundColor,
+        ),
+        backgroundColor: diagramBackgroundColor,
+      },
+      showGrid,
+      gridStyle,
       selection: null,
       connectFrom: null,
       connectDrag: null,

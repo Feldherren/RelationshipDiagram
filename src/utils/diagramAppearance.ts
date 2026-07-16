@@ -4,6 +4,11 @@ import {
   DEFAULT_FLOATING_TEXT_COLOR,
   defaultRgb,
 } from "../models/types";
+import {
+  DEFAULT_DIAGRAM_BACKGROUND,
+  type DiagramBackgroundMode,
+  type DiagramBackgroundColor,
+} from "./diagramBackground";
 
 export type { DiagramAppearance, LabelChrome };
 
@@ -17,6 +22,12 @@ const DEFAULT_BOX_BORDER: RGB = { r: 100, g: 140, b: 100 };
 
 function cloneRgb(color: RGB): RGB {
   return { r: color.r, g: color.g, b: color.b };
+}
+
+function cloneBackgroundColor(
+  color: DiagramBackgroundColor,
+): DiagramBackgroundColor {
+  return color === null ? null : cloneRgb(color);
 }
 
 function cloneChrome(chrome: LabelChrome): LabelChrome {
@@ -44,6 +55,8 @@ function defaultSubtitleChrome(): LabelChrome {
 }
 
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
+  backgroundMode: "grid",
+  backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
   defaultBoxBorderColor: cloneRgb(DEFAULT_BOX_BORDER),
@@ -84,10 +97,39 @@ function resolveChrome(value: unknown, fallback: LabelChrome): LabelChrome {
   };
 }
 
+function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
+  return (
+    value === "plain" ||
+    value === "blank" ||
+    value === "grid" ||
+    value === "dots"
+  );
+}
+
+function resolveBackgroundColor(
+  value: unknown,
+  fallback: DiagramBackgroundColor,
+): DiagramBackgroundColor {
+  if (value === null) return null;
+  if (isRgb(value)) return cloneRgb(value);
+  return cloneBackgroundColor(fallback);
+}
+
+function backgroundColorsEqual(
+  a: DiagramBackgroundColor,
+  b: DiagramBackgroundColor,
+): boolean {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  return colorsEqual(a, b);
+}
+
 export function cloneDiagramAppearance(
   appearance: DiagramAppearance,
 ): DiagramAppearance {
   return {
+    backgroundMode: appearance.backgroundMode,
+    backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
     defaultLineColor: cloneRgb(appearance.defaultLineColor),
     defaultCharacterBorderColor: cloneRgb(
       appearance.defaultCharacterBorderColor,
@@ -111,6 +153,13 @@ export function resolveDiagramAppearance(
   }
   const partial = value as Partial<DiagramAppearance>;
   return {
+    backgroundMode: isBackgroundMode(partial.backgroundMode)
+      ? partial.backgroundMode
+      : defaults.backgroundMode,
+    backgroundColor: resolveBackgroundColor(
+      partial.backgroundColor,
+      defaults.backgroundColor,
+    ),
     defaultLineColor: resolveRgb(
       partial.defaultLineColor,
       defaults.defaultLineColor,
@@ -174,6 +223,18 @@ export function serializeDiagramAppearance(
 ): Partial<DiagramAppearance> | undefined {
   const defaults = DEFAULT_DIAGRAM_APPEARANCE;
   const out: Partial<DiagramAppearance> = {};
+
+  if (appearance.backgroundMode !== defaults.backgroundMode) {
+    out.backgroundMode = appearance.backgroundMode;
+  }
+  if (
+    !backgroundColorsEqual(
+      appearance.backgroundColor,
+      defaults.backgroundColor,
+    )
+  ) {
+    out.backgroundColor = cloneBackgroundColor(appearance.backgroundColor);
+  }
 
   if (!colorsEqual(appearance.defaultLineColor, defaults.defaultLineColor)) {
     out.defaultLineColor = cloneRgb(appearance.defaultLineColor);
@@ -257,6 +318,12 @@ export function patchDiagramAppearance(
   patch: Partial<DiagramAppearance>,
 ): DiagramAppearance {
   const next = cloneDiagramAppearance(current);
+  if (patch.backgroundMode !== undefined) {
+    next.backgroundMode = patch.backgroundMode;
+  }
+  if (patch.backgroundColor !== undefined) {
+    next.backgroundColor = cloneBackgroundColor(patch.backgroundColor);
+  }
   if (patch.defaultLineColor) {
     next.defaultLineColor = cloneRgb(patch.defaultLineColor);
   }

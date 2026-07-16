@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
-import { getDiagramBackgroundMode } from "../../utils/diagramBackground";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { TwoPaneDialog } from "./TwoPaneDialog";
@@ -27,9 +26,6 @@ export function DiagramPropertiesDialog({
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
-  const showGrid = useDiagramStore((s) => s.showGrid);
-  const gridStyle = useDiagramStore((s) => s.gridStyle);
-  const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
@@ -38,22 +34,10 @@ export function DiagramPropertiesDialog({
     (s) => s.setDiagramSubtitleColor,
   );
   const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
-  const setDiagramBackgroundMode = useDiagramStore(
-    (s) => s.setDiagramBackgroundMode,
-  );
-  const setDiagramBackgroundColor = useDiagramStore(
-    (s) => s.setDiagramBackgroundColor,
-  );
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
   const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
-  );
-
-  const backgroundMode = getDiagramBackgroundMode(
-    showGrid,
-    gridStyle,
-    diagramBackgroundColor,
   );
 
   useEffect(() => {
@@ -123,11 +107,7 @@ export function DiagramPropertiesDialog({
               onSubtitleColorChange: setDiagramSubtitleColor,
             }}
             canvasSetup={{
-              backgroundMode,
-              backgroundColor: diagramBackgroundColor,
               diagramFont: diagramFontFamily,
-              onBackgroundModeChange: setDiagramBackgroundMode,
-              onBackgroundColorChange: setDiagramBackgroundColor,
               onDiagramFontChange: (fontFamily) =>
                 void setDiagramFontFamily(fontFamily),
               fontMissing,

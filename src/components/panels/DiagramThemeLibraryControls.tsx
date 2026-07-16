@@ -117,7 +117,15 @@ export function DiagramThemeLibraryControls({
   }, [status]);
 
   const commitPrefs = (patch: Partial<AppPreferences>) => {
-    const next = setAppPreferences(patch);
+    const next = setAppPreferences({
+      ...patch,
+      ...(patch.diagramAppearance
+        ? {
+            defaultBackgroundMode: patch.diagramAppearance.backgroundMode,
+            defaultBackgroundColor: patch.diagramAppearance.backgroundColor,
+          }
+        : {}),
+    });
     onPrefsChange?.(next);
     return next;
   };

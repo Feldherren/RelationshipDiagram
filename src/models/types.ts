@@ -195,9 +195,13 @@ export interface LabelChrome {
 
 /**
  * Diagram canvas appearance: creation defaults for new entities, plus
- * shared label chrome applied live to all matching pills.
+ * shared label chrome applied live to all matching pills, plus canvas background.
  */
 export interface DiagramAppearance {
+  /** Canvas background mode (plain / blank / grid / dots). */
+  backgroundMode: "plain" | "blank" | "grid" | "dots";
+  /** Canvas fill; null means transparent (blank). */
+  backgroundColor: RGB | null;
   defaultLineColor: RGB;
   defaultCharacterBorderColor: RGB;
   defaultBoxBorderColor: RGB;

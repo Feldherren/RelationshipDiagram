@@ -161,12 +161,15 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   };
 
   const selectDiagramTheme = (preference: DiagramThemePreference) => {
+    const diagramAppearance = resolveDiagramThemeAppearance(
+      preference,
+      prefs.customDiagramThemes,
+    );
     updatePrefs({
       diagramThemePreference: preference,
-      diagramAppearance: resolveDiagramThemeAppearance(
-        preference,
-        prefs.customDiagramThemes,
-      ),
+      diagramAppearance,
+      defaultBackgroundMode: diagramAppearance.backgroundMode,
+      defaultBackgroundColor: diagramAppearance.backgroundColor,
     });
   };
 
@@ -301,25 +304,27 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
           <DiagramAppearancePanel
             value={prefs.diagramAppearance}
-            onChange={(patch) =>
+            onChange={(patch) => {
+              const diagramAppearance = patchDiagramAppearance(
+                prefs.diagramAppearance,
+                patch,
+              );
               updatePrefs({
-                diagramAppearance: patchDiagramAppearance(
-                  prefs.diagramAppearance,
-                  patch,
-                ),
-              })
-            }
+                diagramAppearance,
+                ...(patch.backgroundMode !== undefined ||
+                patch.backgroundColor !== undefined
+                  ? {
+                      defaultBackgroundMode: diagramAppearance.backgroundMode,
+                      defaultBackgroundColor: diagramAppearance.backgroundColor,
+                    }
+                  : {}),
+              });
+            }}
             showAppearanceColours={prefs.diagramThemePreference !== "default"}
             canvasSetup={{
-              backgroundMode: prefs.defaultBackgroundMode,
-              backgroundColor: prefs.defaultBackgroundColor,
               diagramFont: prefs.defaultDiagramFont,
               showHeader: prefs.defaultShowHeader,
               settingsLabels: true,
-              onBackgroundModeChange: (mode) =>
-                updatePrefs({ defaultBackgroundMode: mode }),
-              onBackgroundColorChange: (color) =>
-                updatePrefs({ defaultBackgroundColor: color }),
               onShowHeaderChange: (show) =>
                 updatePrefs({ defaultShowHeader: show }),
               onDiagramFontChange: (fontFamily) =>

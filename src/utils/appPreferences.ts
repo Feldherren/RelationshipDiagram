@@ -179,6 +179,25 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     diagramThemePreference = defaults.diagramThemePreference;
   }
 
+  const storedAppearance =
+    stored.diagramAppearance && typeof stored.diagramAppearance === "object"
+      ? (stored.diagramAppearance as Record<string, unknown>)
+      : null;
+  const appearanceMissingBackground =
+    !storedAppearance ||
+    (!("backgroundMode" in storedAppearance) &&
+      !("backgroundColor" in storedAppearance));
+
+  let diagramAppearance = resolveDiagramAppearance(stored.diagramAppearance);
+  if (appearanceMissingBackground) {
+    // Prefer legacy new-diagram background prefs when themes predate background fields.
+    diagramAppearance = {
+      ...diagramAppearance,
+      backgroundMode: defaultBackgroundMode,
+      backgroundColor: defaultBackgroundColor,
+    };
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -188,18 +207,18 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.confirmBeforeNewDiagram === "boolean"
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
-    defaultBackgroundMode,
+    defaultBackgroundMode: diagramAppearance.backgroundMode,
     defaultShowHeader:
       typeof stored.defaultShowHeader === "boolean"
         ? stored.defaultShowHeader
         : defaults.defaultShowHeader,
-    defaultBackgroundColor,
+    defaultBackgroundColor: diagramAppearance.backgroundColor,
     defaultDiagramFont:
       typeof stored.defaultDiagramFont === "string" &&
       stored.defaultDiagramFont.trim()
         ? stored.defaultDiagramFont
         : defaults.defaultDiagramFont,
-    diagramAppearance: resolveDiagramAppearance(stored.diagramAppearance),
+    diagramAppearance,
     diagramThemePreference,
     customDiagramThemes,
     defaultExportPadding:

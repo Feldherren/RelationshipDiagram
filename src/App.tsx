@@ -8,6 +8,7 @@ import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
 import { Toolbar } from "./components/Toolbar";
+import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useDiagramStore } from "./store/diagramStore";
@@ -97,6 +98,7 @@ function App() {
           <DiagramCanvas stageRef={stageRef} />
           <SelectionFloat />
           <GroupsListPopup />
+          <ZoomIndicator />
         </div>
       </main>
       <ExportDialog

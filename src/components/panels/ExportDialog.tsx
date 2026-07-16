@@ -7,6 +7,7 @@ import { downloadDataUrl, getDefaultExportFilename } from "../../utils/persisten
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getAppPreferences } from "../../utils/appPreferences";
 import type { Bounds } from "../../models/types";
+import { formatZoomPercent } from "./ZoomIndicator";
 
 interface ExportDialogProps {
   open: boolean;
@@ -190,6 +191,11 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
             <option value={2}>{t("export.res2x")}</option>
           </select>
         </label>
+        <p className="hint">
+          {t("export.currentZoom", {
+            percent: formatZoomPercent(viewportScale),
+          })}
+        </p>
 
         {activeBounds ? (
           <div className="export-preview">

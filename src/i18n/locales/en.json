@@ -22,7 +22,10 @@
   },
   "canvas": {
     "connectHint": "Click a character or box to connect, or the same one for a self-loop (Esc to cancel)",
-    "editMembersHint": "Click characters to toggle membership (Esc when done)"
+    "editMembersHint": "Click characters to toggle membership (Esc when done)",
+    "zoom": "{{percent}}%",
+    "zoomAria": "Zoom level {{percent}} percent",
+    "zoomTitle": "Current diagram zoom"
   },
   "groups": {
     "title": "Groups",
@@ -43,6 +46,7 @@
     "resolution": "Resolution",
     "res1x": "100% (1x)",
     "res2x": "200% (2x)",
+    "currentZoom": "Current view zoom: {{percent}}%",
     "dimensions": "Dimensions:",
     "empty": "Add content to the diagram before exporting.",
     "cancel": "Cancel",

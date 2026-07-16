@@ -1,4 +1,4 @@
-import type { Bounds, Diagram, LabelChrome, RGB } from "../models/types";
+import type { Bounds, Diagram, LabelChrome } from "../models/types";
 import { rgbToCss } from "../models/types";
 import {
   DIAGRAM_HEADER_PILL_GAP,

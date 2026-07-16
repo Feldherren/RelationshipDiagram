@@ -460,6 +460,20 @@ body,
   color: var(--ui-text-muted);
 }
 
+.default-folder-field {
+  margin-bottom: 0.875rem;
+}
+
+.default-folder-field .field {
+  margin-bottom: 0.5rem;
+}
+
+.default-folder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .field input[type="text"],
 .field input[type="number"],
 .field select,

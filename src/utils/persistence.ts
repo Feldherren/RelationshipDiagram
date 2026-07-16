@@ -1,5 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import i18n from "../i18n";
+import { getAppPreferences } from "./appPreferences";
+import { buildDefaultDialogPath } from "./fileDialogPaths";
+import { isTauriApp } from "./tauri";
 import type {
   Bounds,
   Box,
@@ -225,20 +228,17 @@ export function getDefaultExportFilename(title?: string): string {
   );
 }
 
-function isTauriApp(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
-
 async function saveBytesWithTauriDialog(
   bytes: Uint8Array,
   suggestedName: string,
   filter: { name: string; extensions: string[] },
+  directory?: string | null,
 ): Promise<boolean> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeFile } = await import("@tauri-apps/plugin-fs");
 
   const path = await save({
-    defaultPath: suggestedName,
+    defaultPath: buildDefaultDialogPath(directory, suggestedName),
     filters: [filter],
   });
   if (path === null) return false;
@@ -251,12 +251,13 @@ async function saveTextWithTauriDialog(
   content: string,
   suggestedName: string,
   filter: { name: string; extensions: string[] },
+  directory?: string | null,
 ): Promise<boolean> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
 
   const path = await save({
-    defaultPath: suggestedName,
+    defaultPath: buildDefaultDialogPath(directory, suggestedName),
     filters: [filter],
   });
   if (path === null) return false;
@@ -274,7 +275,13 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
   };
 
   if (isTauriApp()) {
-    await saveTextWithTauriDialog(content, suggestedName, diagramFilter);
+    const { defaultDiagramDirectory } = getAppPreferences();
+    await saveTextWithTauriDialog(
+      content,
+      suggestedName,
+      diagramFilter,
+      defaultDiagramDirectory,
+    );
     return;
   }
 
@@ -306,6 +313,32 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
 }
 
 export async function loadDiagramFromFile(): Promise<Diagram> {
+  const diagramFilter = {
+    name: i18n.t("fileFilter.diagram"),
+    extensions: ["rdiagram", "json"],
+  };
+
+  if (isTauriApp()) {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const { readTextFile } = await import("@tauri-apps/plugin-fs");
+    const { defaultDiagramDirectory } = getAppPreferences();
+
+    const path = await open({
+      multiple: false,
+      defaultPath: defaultDiagramDirectory?.trim() || undefined,
+      filters: [diagramFilter],
+    });
+    if (path === null) {
+      throw new Error("cancelled");
+    }
+    if (Array.isArray(path)) {
+      throw new Error("Invalid diagram file selection");
+    }
+
+    const text = await readTextFile(path);
+    return parseDiagram(text);
+  }
+
   if ("showOpenFilePicker" in window) {
     try {
       const [handle] = await window.showOpenFilePicker!({
@@ -387,7 +420,13 @@ export async function downloadDataUrl(
   if (isTauriApp()) {
     const blob = dataUrlToBlob(dataUrl);
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    return saveBytesWithTauriDialog(bytes, filename, pngFilter);
+    const { defaultExportDirectory } = getAppPreferences();
+    return saveBytesWithTauriDialog(
+      bytes,
+      filename,
+      pngFilter,
+      defaultExportDirectory,
+    );
   }
 
   if ("showSaveFilePicker" in window) {

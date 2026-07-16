@@ -37,6 +37,7 @@ import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { ExportZoomControls } from "./ExportZoomControls";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
+import { DefaultFolderField } from "./DefaultFolderField";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
 type SettingsSectionId =
@@ -433,12 +434,32 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               <option value="custom">{t("export.boundsCustom")}</option>
             </select>
           </label>
+
+          <DefaultFolderField
+            label={t("appSettings.defaultExportDirectory")}
+            hint={t("appSettings.defaultExportDirectoryHint")}
+            value={prefs.defaultExportDirectory}
+            onChange={(defaultExportDirectory) =>
+              updatePrefs({ defaultExportDirectory })
+            }
+          />
         </>
       );
       break;
     case "data":
       content = (
         <>
+          <DefaultFolderField
+            label={t("appSettings.defaultDiagramDirectory")}
+            hint={t("appSettings.defaultDiagramDirectoryHint")}
+            value={prefs.defaultDiagramDirectory}
+            onChange={(defaultDiagramDirectory) =>
+              updatePrefs({ defaultDiagramDirectory })
+            }
+          />
+
+          <hr className="theme-editor-divider" />
+
           <p className="hint">{t("appSettings.clearAutosaveHint")}</p>
           <button
             type="button"

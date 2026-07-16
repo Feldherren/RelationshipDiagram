@@ -39,6 +39,10 @@ export interface AppPreferences {
   /** Export scale multiplier (1 = 100%, 2 = 200%). */
   defaultExportPixelRatio: number;
   defaultExportBoundsMode: ExportBoundsMode;
+  /** Folder for save/open dialogs; unset uses the OS default. */
+  defaultDiagramDirectory: string | null;
+  /** Folder for PNG export dialogs; unset uses the OS default. */
+  defaultExportDirectory: string | null;
   themePreference: ThemePreference;
   uiScale: UiScale;
   customThemes: ThemeDocument[];
@@ -57,6 +61,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   defaultExportPadding: 32,
   defaultExportPixelRatio: 1,
   defaultExportBoundsMode: "auto",
+  defaultDiagramDirectory: null,
+  defaultExportDirectory: null,
   themePreference: "system",
   uiScale: 1,
   customThemes: [],
@@ -119,6 +125,12 @@ function isDiagramThemePreference(
   value: unknown,
 ): value is DiagramThemePreference {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function parseOptionalDirectory(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function migrateLegacyBackgroundMode(
@@ -234,6 +246,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     defaultExportBoundsMode: isExportBoundsMode(stored.defaultExportBoundsMode)
       ? stored.defaultExportBoundsMode
       : defaults.defaultExportBoundsMode,
+    defaultDiagramDirectory: parseOptionalDirectory(
+      stored.defaultDiagramDirectory,
+    ),
+    defaultExportDirectory: parseOptionalDirectory(stored.defaultExportDirectory),
     themePreference,
     uiScale: isUiScale(stored.uiScale) ? stored.uiScale : defaults.uiScale,
     customThemes,

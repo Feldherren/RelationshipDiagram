@@ -16,6 +16,7 @@ import {
   type ThemePreference,
   type UiScale,
 } from "./uiTheme";
+import { exportZoomRatioFromPercent } from "./exportZoom";
 
 const STORAGE_KEY = "appPreferences";
 
@@ -30,7 +31,8 @@ export interface AppPreferences {
   defaultDiagramFont: string;
   diagramAppearance: DiagramAppearance;
   defaultExportPadding: number;
-  defaultExportPixelRatio: 1 | 2;
+  /** Export scale multiplier (1 = 100%, 2 = 200%). */
+  defaultExportPixelRatio: number;
   defaultExportBoundsMode: ExportBoundsMode;
   themePreference: ThemePreference;
   uiScale: UiScale;
@@ -163,7 +165,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
         ? Math.max(0, Math.min(200, Math.round(stored.defaultExportPadding)))
         : defaults.defaultExportPadding,
     defaultExportPixelRatio:
-      stored.defaultExportPixelRatio === 2 ? 2 : defaults.defaultExportPixelRatio,
+      typeof stored.defaultExportPixelRatio === "number" &&
+      Number.isFinite(stored.defaultExportPixelRatio)
+        ? exportZoomRatioFromPercent(stored.defaultExportPixelRatio * 100)
+        : defaults.defaultExportPixelRatio,
     defaultExportBoundsMode: isExportBoundsMode(stored.defaultExportBoundsMode)
       ? stored.defaultExportBoundsMode
       : defaults.defaultExportBoundsMode,
@@ -201,6 +206,10 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
     diagramAppearance: patch.diagramAppearance
       ? cloneDiagramAppearance(patch.diagramAppearance)
       : current.diagramAppearance,
+    defaultExportPixelRatio:
+      patch.defaultExportPixelRatio !== undefined
+        ? exportZoomRatioFromPercent(patch.defaultExportPixelRatio * 100)
+        : current.defaultExportPixelRatio,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));

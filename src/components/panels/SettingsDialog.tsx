@@ -25,7 +25,12 @@ import {
   type UiScale,
 } from "../../utils/uiTheme";
 import { patchDiagramAppearance } from "../../utils/diagramAppearance";
+import {
+  exportZoomPercentFromRatio,
+  exportZoomRatioFromPercent,
+} from "../../utils/exportZoom";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
+import { ExportZoomControls } from "./ExportZoomControls";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
@@ -378,20 +383,15 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
           </label>
 
-          <label className="field">
-            <span>{t("appSettings.defaultExportResolution")}</span>
-            <select
-              value={prefs.defaultExportPixelRatio}
-              onChange={(e) =>
-                updatePrefs({
-                  defaultExportPixelRatio: Number(e.target.value) as 1 | 2,
-                })
-              }
-            >
-              <option value={1}>{t("export.res1x")}</option>
-              <option value={2}>{t("export.res2x")}</option>
-            </select>
-          </label>
+          <ExportZoomControls
+            label={t("appSettings.defaultExportResolution")}
+            value={exportZoomPercentFromRatio(prefs.defaultExportPixelRatio)}
+            onChange={(percent) =>
+              updatePrefs({
+                defaultExportPixelRatio: exportZoomRatioFromPercent(percent),
+              })
+            }
+          />
 
           <label className="field">
             <span>{t("appSettings.defaultExportBounds")}</span>

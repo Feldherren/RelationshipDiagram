@@ -25,7 +25,27 @@
     "editMembersHint": "Click characters to toggle membership (Esc when done)",
     "zoom": "{{percent}}%",
     "zoomAria": "Zoom level {{percent}} percent",
-    "zoomTitle": "Current diagram zoom"
+    "zoomTitle": "Current diagram zoom",
+    "fitToContent": "Zoom to extents",
+    "fitToContentTitle": "Zoom to extents"
+  },
+  "bookmarks": {
+    "title": "Bookmarks",
+    "add": "Add bookmark",
+    "empty": "No bookmarks yet.",
+    "defaultName": "View {{n}}",
+    "nameLabel": "Name",
+    "colourLabel": "Colour",
+    "save": "Save",
+    "cancel": "Cancel",
+    "go": "Go to view",
+    "goAria": "Go to bookmark {{name}}",
+    "edit": "Edit",
+    "delete": "Delete",
+    "updateView": "Update to current view",
+    "showFlags": "Show bookmark flags",
+    "hideFlags": "Hide bookmark flags",
+    "editTitle": "Edit bookmark"
   },
   "groups": {
     "title": "Groups",

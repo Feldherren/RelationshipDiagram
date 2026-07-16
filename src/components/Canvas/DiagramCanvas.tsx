@@ -10,6 +10,7 @@ import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
+import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
 import {
   CanvasContextMenu,
   type CanvasContextMenuState,
@@ -26,6 +27,7 @@ import { getGroupsForCharacter } from "../../utils/geometry";
 import { toChipItems } from "./MembershipChips";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
+import { consumeSuppressStageClick } from "../../utils/suppressStageClick";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -362,6 +364,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       suppressClick.current = false;
       return;
     }
+    if (consumeSuppressStageClick()) return;
     if (shouldPan(e.evt.button)) return;
     if (toolMode === "exportBounds") return;
     if (e.target === e.target.getStage()) {
@@ -711,6 +714,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             />
           )}
         </Layer>
+        <BookmarkFlagsLayer />
       </ViewportStage>
     </div>
   );

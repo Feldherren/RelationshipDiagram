@@ -184,6 +184,17 @@ export interface Viewport {
   scale: number;
 }
 
+/** Named camera bookmark stored with the diagram. */
+export interface ViewBookmark {
+  id: string;
+  name: string;
+  color: RGB;
+  /** Saved pan/zoom to restore. */
+  viewport: Viewport;
+  /** World position for the flag marker (viewport centre at save time). */
+  anchor: Point;
+}
+
 export type GridStyle = "lines" | "dots";
 
 /** Pill label chrome shared across matching canvas labels. */
@@ -243,6 +254,8 @@ export interface Diagram {
   boxes: Box[];
   floatingTexts?: FloatingText[];
   viewport?: Viewport;
+  /** Named camera bookmarks; omit or empty when none. */
+  bookmarks?: ViewBookmark[];
 }
 
 export type Selection =
@@ -251,6 +264,7 @@ export type Selection =
   | { type: "group"; id: string; anchorCharacterId?: string }
   | { type: "box"; id: string }
   | { type: "floatingText"; id: string }
+  | { type: "bookmark"; id: string }
   | null;
 
 export interface Bounds {

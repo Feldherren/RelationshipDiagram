@@ -135,6 +135,11 @@ export function SelectionFloat() {
     return null;
   }
 
+  // Canvas bookmark selection shows a viewport outline only (no float panel).
+  if (selection.type === "bookmark") {
+    return null;
+  }
+
   const diagram = getDiagram();
   const anchorWorld = getSelectionAnchorWorld(selection, diagram);
   const anchorScreen = anchorWorld

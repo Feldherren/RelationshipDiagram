@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useDiagramStore } from "../store/diagramStore";
 
 interface ToolbarProps {
   onNew: () => void;
@@ -26,6 +27,23 @@ function SettingsGearIcon() {
   );
 }
 
+function FitToContentIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M3 5v4h2V7h2V5H3zm14 0v2h2v2h2V5h-4zM5 15H3v4h4v-2H5v-2zm16 0h-2v2h-2v2h4v-4zM7 9h10v6H7V9z"
+      />
+    </svg>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
@@ -35,6 +53,7 @@ export function Toolbar({
   onSettings,
 }: ToolbarProps) {
   const { t } = useTranslation();
+  const fitViewportToContent = useDiagramStore((s) => s.fitViewportToContent);
 
   return (
     <header className="toolbar">
@@ -50,6 +69,22 @@ export function Toolbar({
         </button>
         <button type="button" onClick={onExport}>
           {t("toolbar.export")}
+        </button>
+      </div>
+
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("canvas.fitToContent")}
+      >
+        <button
+          type="button"
+          className="toolbar-icon-button fit-to-content-button"
+          onClick={() => fitViewportToContent()}
+          aria-label={t("canvas.fitToContent")}
+          title={t("canvas.fitToContentTitle")}
+        >
+          <FitToContentIcon />
         </button>
       </div>
 

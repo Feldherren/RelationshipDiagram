@@ -136,6 +136,12 @@ export function getSelectionAnchorWorld(
     };
   }
 
+  if (selection.type === "bookmark") {
+    const bookmark = diagram.bookmarks?.find((b) => b.id === selection.id);
+    if (!bookmark) return null;
+    return { ...bookmark.anchor };
+  }
+
   return null;
 }
 

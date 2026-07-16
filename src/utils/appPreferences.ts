@@ -46,6 +46,8 @@ export interface AppPreferences {
   themePreference: ThemePreference;
   uiScale: UiScale;
   customThemes: ThemeDocument[];
+  /** Whether bookmark flags are shown on the canvas. */
+  bookmarksVisible: boolean;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -66,6 +68,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   themePreference: "system",
   uiScale: 1,
   customThemes: [],
+  bookmarksVisible: true,
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -253,6 +256,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     themePreference,
     uiScale: isUiScale(stored.uiScale) ? stored.uiScale : defaults.uiScale,
     customThemes,
+    bookmarksVisible:
+      typeof stored.bookmarksVisible === "boolean"
+        ? stored.bookmarksVisible
+        : defaults.bookmarksVisible,
   };
 }
 

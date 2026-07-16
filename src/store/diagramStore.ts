@@ -17,6 +17,7 @@ import type {
   RGB,
   Selection,
   ToolMode,
+  ViewBookmark,
   Viewport,
 } from "../models/types";
 import {
@@ -74,7 +75,13 @@ import {
   resolveDiagramAppearance,
   serializeDiagramAppearance,
 } from "../utils/diagramAppearance";
-import { getAppPreferences } from "../utils/appPreferences";
+import {
+  getAppPreferences,
+  setAppPreferences,
+} from "../utils/appPreferences";
+import { computeDiagramBounds } from "../utils/diagramBounds";
+import { computeViewportForBounds } from "../utils/viewportFit";
+import { randomPastelColor } from "../utils/pastelPalette";
 
 interface DiagramState {
   characters: Character[];
@@ -83,6 +90,8 @@ interface DiagramState {
   boxes: Box[];
   floatingTexts: FloatingText[];
   viewport: Viewport;
+  bookmarks: ViewBookmark[];
+  bookmarksVisible: boolean;
   selection: Selection;
   toolMode: ToolMode;
   connectFrom: NodeRef | null;
@@ -102,6 +111,7 @@ interface DiagramState {
 
   setStageSize: (width: number, height: number) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
+  fitViewportToContent: () => void;
   setToolMode: (mode: ToolMode) => void;
   setSelection: (selection: Selection) => void;
   setShowGrid: (show: boolean) => void;
@@ -116,6 +126,19 @@ interface DiagramState {
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
   setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
+  setBookmarksVisible: (visible: boolean) => void;
+  addBookmark: (name?: string, color?: RGB) => void;
+  updateBookmark: (
+    id: string,
+    patch: Partial<Pick<ViewBookmark, "name" | "color">>,
+  ) => void;
+  updateBookmarkView: (id: string) => void;
+  updateBookmarkFrame: (
+    id: string,
+    patch: { anchor?: ViewBookmark["anchor"]; viewport?: Viewport },
+  ) => void;
+  deleteBookmark: (id: string) => void;
+  goToBookmark: (id: string) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -184,6 +207,54 @@ function createDefaultCharacter(
   };
 }
 
+function isRgbValue(value: unknown): value is RGB {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.r === "number" &&
+    typeof v.g === "number" &&
+    typeof v.b === "number"
+  );
+}
+
+function normalizeBookmarks(raw: unknown): ViewBookmark[] {
+  if (!Array.isArray(raw)) return [];
+  const result: ViewBookmark[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const b = entry as Record<string, unknown>;
+    if (typeof b.id !== "string" || typeof b.name !== "string") continue;
+    if (!isRgbValue(b.color)) continue;
+    const vp = b.viewport;
+    const anchor = b.anchor;
+    if (typeof vp !== "object" || vp === null) continue;
+    if (typeof anchor !== "object" || anchor === null) continue;
+    const viewport = vp as Record<string, unknown>;
+    const point = anchor as Record<string, unknown>;
+    if (
+      typeof viewport.x !== "number" ||
+      typeof viewport.y !== "number" ||
+      typeof viewport.scale !== "number" ||
+      typeof point.x !== "number" ||
+      typeof point.y !== "number"
+    ) {
+      continue;
+    }
+    result.push({
+      id: b.id,
+      name: b.name.slice(0, 80),
+      color: { r: b.color.r, g: b.color.g, b: b.color.b },
+      viewport: {
+        x: viewport.x,
+        y: viewport.y,
+        scale: viewport.scale,
+      },
+      anchor: { x: point.x, y: point.y },
+    });
+  }
+  return result;
+}
+
 export const useDiagramStore = create<DiagramState>()(
   subscribeWithSelector((set, get) => ({
   characters: [],
@@ -192,6 +263,8 @@ export const useDiagramStore = create<DiagramState>()(
   boxes: [],
   floatingTexts: [],
   viewport: { x: 0, y: 0, scale: 1 },
+  bookmarks: [],
+  bookmarksVisible: true,
   selection: null,
   toolMode: "select",
   connectFrom: null,
@@ -212,6 +285,12 @@ export const useDiagramStore = create<DiagramState>()(
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
   setViewport: (patch) =>
     set((s) => ({ viewport: { ...s.viewport, ...patch } })),
+  fitViewportToContent: () => {
+    const { stageSize, viewport } = get();
+    const bounds = computeDiagramBounds(get().getDiagram(), 32, viewport.scale);
+    if (!bounds) return;
+    set({ viewport: computeViewportForBounds(bounds, stageSize) });
+  },
   setToolMode: (mode) => {
     if (mode === "editGroupMembers" && get().selection?.type !== "group") {
       return;
@@ -383,7 +462,10 @@ export const useDiagramStore = create<DiagramState>()(
       await get().initializeFonts();
     }
 
-    set({ autosaveEnabled: prefs.autosaveEnabled });
+    set({
+      autosaveEnabled: prefs.autosaveEnabled,
+      bookmarksVisible: prefs.bookmarksVisible,
+    });
   },
 
   getAutosaveSnapshot: () => createAutosaveSnapshot(get().getDiagram()),
@@ -846,6 +928,89 @@ export const useDiagramStore = create<DiagramState>()(
 
   cancelConnect: () => set({ connectFrom: null, connectDrag: null }),
 
+  setBookmarksVisible: (visible) => {
+    const { selection } = get();
+    set({
+      bookmarksVisible: visible,
+      ...(visible === false && selection?.type === "bookmark"
+        ? { selection: null }
+        : {}),
+    });
+    setAppPreferences({ bookmarksVisible: visible });
+  },
+
+  addBookmark: (name, color) => {
+    const { viewport, bookmarks } = get();
+    const anchor = get().getViewportCenter();
+    const defaultName = i18n.t("bookmarks.defaultName", {
+      n: bookmarks.length + 1,
+    });
+    const bookmark: ViewBookmark = {
+      id: uuidv4(),
+      name: (name?.trim() || defaultName).slice(0, 80),
+      color: color ? { ...color } : randomPastelColor(),
+      viewport: { ...viewport },
+      anchor: { ...anchor },
+    };
+    set((s) => ({ bookmarks: [...s.bookmarks, bookmark] }));
+  },
+
+  updateBookmark: (id, patch) =>
+    set((s) => ({
+      bookmarks: s.bookmarks.map((b) => {
+        if (b.id !== id) return b;
+        return {
+          ...b,
+          ...(patch.name !== undefined
+            ? { name: patch.name.trim().slice(0, 80) || b.name }
+            : {}),
+          ...(patch.color !== undefined ? { color: { ...patch.color } } : {}),
+        };
+      }),
+    })),
+
+  updateBookmarkView: (id) => {
+    const { viewport } = get();
+    const anchor = get().getViewportCenter();
+    set((s) => ({
+      bookmarks: s.bookmarks.map((b) =>
+        b.id === id
+          ? { ...b, viewport: { ...viewport }, anchor: { ...anchor } }
+          : b,
+      ),
+    }));
+  },
+
+  updateBookmarkFrame: (id, patch) =>
+    set((s) => ({
+      bookmarks: s.bookmarks.map((b) => {
+        if (b.id !== id) return b;
+        return {
+          ...b,
+          ...(patch.anchor !== undefined
+            ? { anchor: { ...patch.anchor } }
+            : {}),
+          ...(patch.viewport !== undefined
+            ? { viewport: { ...patch.viewport } }
+            : {}),
+        };
+      }),
+    })),
+
+  deleteBookmark: (id) =>
+    set((s) => ({
+      bookmarks: s.bookmarks.filter((b) => b.id !== id),
+      ...(s.selection?.type === "bookmark" && s.selection.id === id
+        ? { selection: null }
+        : {}),
+    })),
+
+  goToBookmark: (id) => {
+    const bookmark = get().bookmarks.find((b) => b.id === id);
+    if (!bookmark) return;
+    set({ viewport: { ...bookmark.viewport } });
+  },
+
   deleteSelected: () => {
     const { selection } = get();
     if (!selection) return;
@@ -855,6 +1020,7 @@ export const useDiagramStore = create<DiagramState>()(
     if (selection.type === "box") get().deleteBox(selection.id);
     if (selection.type === "floatingText")
       get().deleteFloatingText(selection.id);
+    if (selection.type === "bookmark") get().deleteBookmark(selection.id);
   },
 
   loadDiagram: async (diagram) => {
@@ -884,6 +1050,7 @@ export const useDiagramStore = create<DiagramState>()(
       boxes: diagram.boxes,
       floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
+      bookmarks: normalizeBookmarks(diagram.bookmarks),
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: diagram.showHeader ?? true,
@@ -922,6 +1089,7 @@ export const useDiagramStore = create<DiagramState>()(
       boxes,
       floatingTexts,
       viewport,
+      bookmarks,
       diagramTitle,
       diagramSubtitle,
       showDiagramHeader,
@@ -950,6 +1118,7 @@ export const useDiagramStore = create<DiagramState>()(
       boxes,
       floatingTexts: floatingTexts.length > 0 ? floatingTexts : undefined,
       viewport,
+      bookmarks: bookmarks.length > 0 ? bookmarks : undefined,
     };
   },
   })),

@@ -99,10 +99,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     }
   };
 
-  const handleClearRecovery = async () => {
-    if (!window.confirm(t("appSettings.clearRecoveryConfirm"))) return;
+  const handleClearAutosave = async () => {
+    if (!window.confirm(t("appSettings.clearAutosaveConfirm"))) return;
     await clearAutosave();
-    alert(t("appSettings.clearRecoveryDone"));
+    alert(t("appSettings.clearAutosaveDone"));
   };
 
   const handleImportTheme = async (file: File) => {
@@ -439,13 +439,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     case "data":
       content = (
         <>
-          <p className="hint">{t("appSettings.clearRecoveryHint")}</p>
+          <p className="hint">{t("appSettings.clearAutosaveHint")}</p>
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => void handleClearRecovery()}
+            onClick={() => void handleClearAutosave()}
           >
-            {t("appSettings.clearRecoveryData")}
+            {t("appSettings.clearAutosaveData")}
           </button>
         </>
       );

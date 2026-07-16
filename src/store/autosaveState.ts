@@ -9,6 +9,8 @@ export interface PersistedDiagramState {
   viewport: Diagram["viewport"];
   diagramTitle: string;
   diagramSubtitle: string;
+  diagramTitleColor: RGB;
+  diagramSubtitleColor: RGB;
   showDiagramHeader: boolean;
   diagramFontFamily: string;
   diagramBackgroundColor: RGB | null;
@@ -28,6 +30,8 @@ export function pickPersistedState(
     viewport: state.viewport,
     diagramTitle: state.diagramTitle,
     diagramSubtitle: state.diagramSubtitle,
+    diagramTitleColor: state.diagramTitleColor,
+    diagramSubtitleColor: state.diagramSubtitleColor,
     showDiagramHeader: state.showDiagramHeader,
     diagramFontFamily: state.diagramFontFamily,
     diagramBackgroundColor: state.diagramBackgroundColor,
@@ -51,6 +55,8 @@ export function persistedStatesEqual(
     a.floatingTexts === b.floatingTexts &&
     a.diagramTitle === b.diagramTitle &&
     a.diagramSubtitle === b.diagramSubtitle &&
+    a.diagramTitleColor === b.diagramTitleColor &&
+    a.diagramSubtitleColor === b.diagramSubtitleColor &&
     a.showDiagramHeader === b.showDiagramHeader &&
     a.diagramFontFamily === b.diagramFontFamily &&
     a.showGrid === b.showGrid &&

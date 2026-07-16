@@ -66,6 +66,14 @@ import {
   resolveDiagramBackground,
   serializeDiagramBackground,
 } from "../utils/diagramBackground";
+import {
+  DEFAULT_DIAGRAM_SUBTITLE_COLOR,
+  DEFAULT_DIAGRAM_TITLE_COLOR,
+  resolveDiagramSubtitleColor,
+  resolveDiagramTitleColor,
+  serializeDiagramSubtitleColor,
+  serializeDiagramTitleColor,
+} from "../utils/diagramHeaderPill";
 import { getAppPreferences } from "../utils/appPreferences";
 
 interface DiagramState {
@@ -85,6 +93,8 @@ interface DiagramState {
   stageSize: { width: number; height: number };
   diagramTitle: string;
   diagramSubtitle: string;
+  diagramTitleColor: RGB;
+  diagramSubtitleColor: RGB;
   showDiagramHeader: boolean;
   diagramFontFamily: string;
   fontMissing: boolean;
@@ -102,6 +112,8 @@ interface DiagramState {
   setExportBounds: (bounds: Bounds | null) => void;
   setDiagramTitle: (title: string) => void;
   setDiagramSubtitle: (subtitle: string) => void;
+  setDiagramTitleColor: (color: RGB) => void;
+  setDiagramSubtitleColor: (color: RGB) => void;
   setShowDiagramHeader: (show: boolean) => void;
   setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
@@ -188,6 +200,8 @@ export const useDiagramStore = create<DiagramState>()(
   stageSize: { width: 800, height: 600 },
   diagramTitle: "",
   diagramSubtitle: "",
+  diagramTitleColor: { ...DEFAULT_DIAGRAM_TITLE_COLOR },
+  diagramSubtitleColor: { ...DEFAULT_DIAGRAM_SUBTITLE_COLOR },
   showDiagramHeader: true,
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
@@ -242,6 +256,11 @@ export const useDiagramStore = create<DiagramState>()(
   setDiagramTitle: (title) => set({ diagramTitle: title }),
 
   setDiagramSubtitle: (subtitle) => set({ diagramSubtitle: subtitle }),
+
+  setDiagramTitleColor: (color) => set({ diagramTitleColor: { ...color } }),
+
+  setDiagramSubtitleColor: (color) =>
+    set({ diagramSubtitleColor: { ...color } }),
 
   setShowDiagramHeader: (show) => set({ showDiagramHeader: show }),
 
@@ -777,6 +796,8 @@ export const useDiagramStore = create<DiagramState>()(
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
+      diagramTitleColor: resolveDiagramTitleColor(diagram.titleColor),
+      diagramSubtitleColor: resolveDiagramSubtitleColor(diagram.subtitleColor),
       showDiagramHeader: diagram.showHeader ?? true,
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
@@ -805,6 +826,8 @@ export const useDiagramStore = create<DiagramState>()(
       viewport,
       diagramTitle,
       diagramSubtitle,
+      diagramTitleColor,
+      diagramSubtitleColor,
       showDiagramHeader,
       diagramFontFamily,
       diagramBackgroundColor,
@@ -815,6 +838,8 @@ export const useDiagramStore = create<DiagramState>()(
       schemaVersion: 2 as const,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
+      titleColor: serializeDiagramTitleColor(diagramTitleColor),
+      subtitleColor: serializeDiagramSubtitleColor(diagramSubtitleColor),
       showHeader: showDiagramHeader ? undefined : false,
       showGrid: showGrid ? undefined : false,
       gridStyle: gridStyle === "lines" ? undefined : gridStyle,

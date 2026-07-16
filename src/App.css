@@ -231,24 +231,17 @@ body,
   justify-content: center;
   line-height: 1;
   padding: 0.375rem 1rem;
-  background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  /* Fixed export-matching chrome — not UI theme tokens. */
+  background: #ffffff;
+  border: 1px solid #c8c8c8;
   border-radius: 999px;
-  box-shadow: 0 1px 4px var(--ui-shadow);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   max-width: calc(100% - 2rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: normal;
   font-synthesis: none;
-}
-
-.diagram-title-pill {
-  color: var(--ui-text);
-}
-
-.diagram-subtitle-pill {
-  color: var(--ui-text-subtle);
 }
 
 .selection-float {

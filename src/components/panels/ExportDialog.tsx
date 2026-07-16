@@ -23,6 +23,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
+  const diagramTitleColor = useDiagramStore((s) => s.diagramTitleColor);
+  const diagramSubtitleColor = useDiagramStore((s) => s.diagramSubtitleColor);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagram = {
@@ -94,6 +96,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     subtitle: diagramSubtitle,
     showHeader: showDiagramHeader,
     fontFamily: diagramFontFamily,
+    titleColor: diagramTitleColor,
+    subtitleColor: diagramSubtitleColor,
     diagram,
   };
 

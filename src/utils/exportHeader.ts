@@ -1,6 +1,9 @@
-import type { Bounds, Diagram } from "../models/types";
+import type { Bounds, Diagram, RGB } from "../models/types";
 import {
+  DIAGRAM_HEADER_PILL_FILL,
   DIAGRAM_HEADER_PILL_GAP,
+  DIAGRAM_HEADER_PILL_SHADOW,
+  DIAGRAM_HEADER_PILL_STROKE,
   formatDiagramHeaderCanvasFont,
   getDiagramHeaderPillFontSize,
   getDiagramHeaderPillTextFill,
@@ -22,6 +25,8 @@ export interface ExportHeaderConfig {
   subtitle: string;
   showHeader: boolean;
   fontFamily: string;
+  titleColor: RGB;
+  subtitleColor: RGB;
   diagram: Diagram;
 }
 
@@ -36,6 +41,8 @@ interface ExportHeaderPillLayout {
 export interface ExportHeaderLayout {
   centerX: number;
   pills: ExportHeaderPillLayout[];
+  titleColor: RGB;
+  subtitleColor: RGB;
 }
 
 function measureHeaderBlock(
@@ -236,7 +243,12 @@ export function layoutExportHeader(
     });
   }
 
-  return { centerX, pills };
+  return {
+    centerX,
+    pills,
+    titleColor: config.titleColor,
+    subtitleColor: config.subtitleColor,
+  };
 }
 
 export function drawExportHeaderPills(
@@ -257,22 +269,24 @@ export function drawExportHeaderPills(
     const fontSize = getDiagramHeaderPillFontSize(pill.variant) * pixelRatio;
 
     ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.06)";
+    ctx.shadowColor = DIAGRAM_HEADER_PILL_SHADOW;
     ctx.shadowBlur = 4 * pixelRatio;
     ctx.shadowOffsetY = 1 * pixelRatio;
 
     ctx.beginPath();
     ctx.roundRect(x, y, pillWidth, pillHeight, radius);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = DIAGRAM_HEADER_PILL_FILL;
     ctx.fill();
 
     ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "#c8c8c8";
+    ctx.strokeStyle = DIAGRAM_HEADER_PILL_STROKE;
     ctx.lineWidth = Math.max(1, pixelRatio);
     ctx.stroke();
 
     ctx.font = formatDiagramHeaderCanvasFont(fontSize, fontFamily);
-    ctx.fillStyle = getDiagramHeaderPillTextFill(pill.variant);
+    ctx.fillStyle = getDiagramHeaderPillTextFill(
+      pill.variant === "title" ? layout.titleColor : layout.subtitleColor,
+    );
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     const metrics = ctx.measureText(pill.text);

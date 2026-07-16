@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getDiagramBackgroundMode } from "../../utils/diagramBackground";
+import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import { FontPicker } from "./FontPicker";
 import { TwoPaneDialog } from "./TwoPaneDialog";
@@ -23,6 +24,8 @@ export function DiagramPropertiesDialog({
     useState<PropertiesSectionId>("header");
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
+  const diagramTitleColor = useDiagramStore((s) => s.diagramTitleColor);
+  const diagramSubtitleColor = useDiagramStore((s) => s.diagramSubtitleColor);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
@@ -31,6 +34,10 @@ export function DiagramPropertiesDialog({
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
+  const setDiagramTitleColor = useDiagramStore((s) => s.setDiagramTitleColor);
+  const setDiagramSubtitleColor = useDiagramStore(
+    (s) => s.setDiagramSubtitleColor,
+  );
   const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
   const setDiagramBackgroundMode = useDiagramStore(
     (s) => s.setDiagramBackgroundMode,
@@ -72,6 +79,12 @@ export function DiagramPropertiesDialog({
             />
           </label>
 
+          <RgbPicker
+            label={t("diagramProperties.titleColour")}
+            value={diagramTitleColor}
+            onChange={setDiagramTitleColor}
+          />
+
           <label className="field">
             <span>{t("diagramProperties.diagramSubtitle")}</span>
             <input
@@ -81,6 +94,12 @@ export function DiagramPropertiesDialog({
               onChange={(e) => setDiagramSubtitle(e.target.value)}
             />
           </label>
+
+          <RgbPicker
+            label={t("diagramProperties.subtitleColour")}
+            value={diagramSubtitleColor}
+            onChange={setDiagramSubtitleColor}
+          />
 
           <label className="field checkbox">
             <input

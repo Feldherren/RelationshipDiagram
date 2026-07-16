@@ -3,12 +3,60 @@ import {
   DIAGRAM_TITLE_FONT_SIZE,
 } from "./diagramFont";
 import { formatUiFontFamily } from "./systemFonts";
+import type { RGB } from "../models/types";
+import { colorsEqual, rgbToCss } from "../models/types";
 
 export const DIAGRAM_HEADER_PILL_PADDING_X = 16;
 export const DIAGRAM_HEADER_PILL_PADDING_Y = 6;
 export const DIAGRAM_HEADER_PILL_GAP = 6;
 
+/** Matches export header text colours (#1f1f1f / #5c5c5c). */
+export const DEFAULT_DIAGRAM_TITLE_COLOR: RGB = { r: 31, g: 31, b: 31 };
+export const DEFAULT_DIAGRAM_SUBTITLE_COLOR: RGB = { r: 92, g: 92, b: 92 };
+
+/** Fixed pill chrome — same as export, independent of UI theme. */
+export const DIAGRAM_HEADER_PILL_FILL = "#ffffff";
+export const DIAGRAM_HEADER_PILL_STROKE = "#c8c8c8";
+export const DIAGRAM_HEADER_PILL_SHADOW = "rgba(0, 0, 0, 0.06)";
+
 export type DiagramHeaderPillVariant = "title" | "subtitle";
+
+function isRgb(value: unknown): value is RGB {
+  if (!value || typeof value !== "object") return false;
+  const color = value as RGB;
+  return (
+    typeof color.r === "number" &&
+    typeof color.g === "number" &&
+    typeof color.b === "number" &&
+    [color.r, color.g, color.b].every(
+      (channel) => Number.isFinite(channel) && channel >= 0 && channel <= 255,
+    )
+  );
+}
+
+export function resolveDiagramTitleColor(color: unknown): RGB {
+  return isRgb(color)
+    ? { r: color.r, g: color.g, b: color.b }
+    : { ...DEFAULT_DIAGRAM_TITLE_COLOR };
+}
+
+export function resolveDiagramSubtitleColor(color: unknown): RGB {
+  return isRgb(color)
+    ? { r: color.r, g: color.g, b: color.b }
+    : { ...DEFAULT_DIAGRAM_SUBTITLE_COLOR };
+}
+
+export function serializeDiagramTitleColor(color: RGB): RGB | undefined {
+  return colorsEqual(color, DEFAULT_DIAGRAM_TITLE_COLOR)
+    ? undefined
+    : { ...color };
+}
+
+export function serializeDiagramSubtitleColor(color: RGB): RGB | undefined {
+  return colorsEqual(color, DEFAULT_DIAGRAM_SUBTITLE_COLOR)
+    ? undefined
+    : { ...color };
+}
 
 export function getDiagramHeaderPillFontSize(
   variant: DiagramHeaderPillVariant,
@@ -24,10 +72,8 @@ export function getDiagramHeaderPillClassName(
   return variant === "title" ? "diagram-title-pill" : "diagram-subtitle-pill";
 }
 
-export function getDiagramHeaderPillTextFill(
-  variant: DiagramHeaderPillVariant,
-): string {
-  return variant === "title" ? "#1f1f1f" : "#5c5c5c";
+export function getDiagramHeaderPillTextFill(color: RGB): string {
+  return rgbToCss(color);
 }
 
 export function formatDiagramHeaderCanvasFont(

@@ -190,6 +190,10 @@ export interface Diagram {
   schemaVersion: 2;
   title?: string;
   subtitle?: string;
+  /** Title text colour; omit for default export-matching dark grey. */
+  titleColor?: RGB;
+  /** Subtitle text colour; omit for default export-matching mid grey. */
+  subtitleColor?: RGB;
   showHeader?: boolean;
   showGrid?: boolean;
   gridStyle?: GridStyle;

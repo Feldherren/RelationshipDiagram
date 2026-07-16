@@ -955,6 +955,17 @@ body,
   margin: 1.25rem 0;
 }
 
+.diagram-appearance-subgroup {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ui-section-heading);
+}
+
+.diagram-appearance-subgroup:first-of-type {
+  margin-top: 0.25rem;
+}
+
 .theme-editor-create-row .field {
   margin-bottom: 0;
   flex: 1 1 8rem;

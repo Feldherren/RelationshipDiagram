@@ -1,9 +1,14 @@
-import type { RGB } from "../models/types";
+import type { DiagramAppearance, RGB } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
   type DiagramBackgroundMode,
 } from "./diagramBackground";
+import {
+  cloneDiagramAppearance,
+  DEFAULT_DIAGRAM_APPEARANCE,
+  resolveDiagramAppearance,
+} from "./diagramAppearance";
 import {
   isUiScale,
   validateThemeDocument,
@@ -23,6 +28,7 @@ export interface AppPreferences {
   defaultShowHeader: boolean;
   defaultBackgroundColor: RGB | null;
   defaultDiagramFont: string;
+  diagramAppearance: DiagramAppearance;
   defaultExportPadding: number;
   defaultExportPixelRatio: 1 | 2;
   defaultExportBoundsMode: ExportBoundsMode;
@@ -38,6 +44,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   defaultShowHeader: true,
   defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   defaultDiagramFont: DEFAULT_DIAGRAM_FONT,
+  diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   defaultExportPadding: 32,
   defaultExportPixelRatio: 1,
   defaultExportBoundsMode: "auto",
@@ -149,6 +156,7 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       stored.defaultDiagramFont.trim()
         ? stored.defaultDiagramFont
         : defaults.defaultDiagramFont,
+    diagramAppearance: resolveDiagramAppearance(stored.diagramAppearance),
     defaultExportPadding:
       typeof stored.defaultExportPadding === "number" &&
       Number.isFinite(stored.defaultExportPadding)
@@ -168,15 +176,32 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
 export function getAppPreferences(): AppPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_APP_PREFERENCES, customThemes: [] };
+    if (!raw) {
+      return {
+        ...DEFAULT_APP_PREFERENCES,
+        customThemes: [],
+        diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
+      };
+    }
     return parseStoredPreferences(JSON.parse(raw));
   } catch {
-    return { ...DEFAULT_APP_PREFERENCES, customThemes: [] };
+    return {
+      ...DEFAULT_APP_PREFERENCES,
+      customThemes: [],
+      diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
+    };
   }
 }
 
 export function setAppPreferences(patch: Partial<AppPreferences>): AppPreferences {
-  const next = { ...getAppPreferences(), ...patch };
+  const current = getAppPreferences();
+  const next: AppPreferences = {
+    ...current,
+    ...patch,
+    diagramAppearance: patch.diagramAppearance
+      ? cloneDiagramAppearance(patch.diagramAppearance)
+      : current.diagramAppearance,
+  };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {

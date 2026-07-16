@@ -7,7 +7,6 @@ import {
   getLanguagePreference,
   setLanguagePreference,
 } from "../../i18n";
-import { applyDiagramBackgroundMode } from "../../utils/diagramBackground";
 import {
   getAppPreferences,
   setAppPreferences,
@@ -25,17 +24,17 @@ import {
   type ThemePreference,
   type UiScale,
 } from "../../utils/uiTheme";
-import { BackgroundModeControls } from "./BackgroundModeControls";
-import { FontPicker } from "./FontPicker";
+import { patchDiagramAppearance } from "../../utils/diagramAppearance";
+import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
 type SettingsSectionId =
   | "appearance"
   | "themeEditor"
+  | "diagramDefaults"
   | "general"
   | "editing"
-  | "newDiagrams"
   | "export"
   | "data"
   | "about";
@@ -154,9 +153,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       label: t("appSettings.themeEditorSection"),
       nested: true,
     },
+    {
+      id: "diagramDefaults",
+      label: t("appSettings.diagramDefaultsSection"),
+      nested: true,
+    },
     { id: "general", label: t("appSettings.generalSection") },
     { id: "editing", label: t("appSettings.editingSection") },
-    { id: "newDiagrams", label: t("appSettings.newDiagramsSection") },
     { id: "export", label: t("appSettings.exportSection") },
     { id: "data", label: t("appSettings.dataSection") },
     { id: "about", label: t("appSettings.aboutSection") },
@@ -271,6 +274,35 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         />
       );
       break;
+    case "diagramDefaults":
+      content = (
+        <DiagramAppearancePanel
+          value={prefs.diagramAppearance}
+          onChange={(patch) =>
+            updatePrefs({
+              diagramAppearance: patchDiagramAppearance(
+                prefs.diagramAppearance,
+                patch,
+              ),
+            })
+          }
+          canvasSetup={{
+            backgroundMode: prefs.defaultBackgroundMode,
+            backgroundColor: prefs.defaultBackgroundColor,
+            showHeader: prefs.defaultShowHeader,
+            diagramFont: prefs.defaultDiagramFont,
+            onBackgroundModeChange: (mode) =>
+              updatePrefs({ defaultBackgroundMode: mode }),
+            onBackgroundColorChange: (color) =>
+              updatePrefs({ defaultBackgroundColor: color }),
+            onShowHeaderChange: (show) =>
+              updatePrefs({ defaultShowHeader: show }),
+            onDiagramFontChange: (fontFamily) =>
+              updatePrefs({ defaultDiagramFont: fontFamily }),
+          }}
+        />
+      );
+      break;
     case "general":
       content = (
         <>
@@ -323,53 +355,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
             <span>{t("appSettings.confirmBeforeNew")}</span>
           </label>
-        </>
-      );
-      break;
-    case "newDiagrams":
-      content = (
-        <>
-          <p className="hint">{t("appSettings.newDiagramsHint")}</p>
-
-          <BackgroundModeControls
-            mode={prefs.defaultBackgroundMode}
-            backgroundColor={prefs.defaultBackgroundColor}
-            onModeChange={(mode) => {
-              const background = applyDiagramBackgroundMode(
-                mode,
-                prefs.defaultBackgroundColor,
-              );
-              updatePrefs({
-                defaultBackgroundMode: mode,
-                defaultBackgroundColor: background.backgroundColor,
-              });
-            }}
-            onBackgroundColorChange={(color) =>
-              updatePrefs({ defaultBackgroundColor: color })
-            }
-            colourLabel={t("appSettings.defaultBackgroundColour")}
-          />
-
-          <label className="field checkbox">
-            <input
-              type="checkbox"
-              checked={prefs.defaultShowHeader}
-              onChange={(e) =>
-                updatePrefs({ defaultShowHeader: e.target.checked })
-              }
-            />
-            <span>{t("appSettings.defaultShowHeader")}</span>
-          </label>
-
-          <div className="field">
-            <span>{t("appSettings.defaultDiagramFont")}</span>
-            <FontPicker
-              value={prefs.defaultDiagramFont}
-              onChange={(fontFamily) =>
-                updatePrefs({ defaultDiagramFont: fontFamily })
-              }
-            />
-          </div>
         </>
       );
       break;

@@ -59,6 +59,7 @@ export function LineEdge({
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const lineLabel = useDiagramStore((s) => s.diagramAppearance.lineLabel);
   const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
   const hovered = hoveredProp ?? localHovered;
@@ -226,7 +227,9 @@ export function LineEdge({
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}
-          textFill={color}
+          textFill={rgbToCss(lineLabel.textColor)}
+          fill={rgbToCss(lineLabel.backgroundColor)}
+          unselectedStroke={rgbToCss(lineLabel.borderColor)}
           selected={selected}
           selectedStroke="#c62828"
           onClick={handleSelectClick}

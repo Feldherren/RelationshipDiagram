@@ -8,6 +8,7 @@ import type {
   Character,
   ConnectDrag,
   Diagram,
+  DiagramAppearance,
   FloatingText,
   GridStyle,
   Group,
@@ -20,10 +21,8 @@ import type {
 } from "../models/types";
 import {
   DEFAULT_CHARACTER_SIZE,
-  DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   defaultMembershipAppearance,
-  defaultRgb,
 } from "../models/types";
 import {
   getBoxCenter,
@@ -74,6 +73,13 @@ import {
   serializeDiagramSubtitleColor,
   serializeDiagramTitleColor,
 } from "../utils/diagramHeaderPill";
+import {
+  cloneDiagramAppearance,
+  DEFAULT_DIAGRAM_APPEARANCE,
+  patchDiagramAppearance,
+  resolveDiagramAppearance,
+  serializeDiagramAppearance,
+} from "../utils/diagramAppearance";
 import { getAppPreferences } from "../utils/appPreferences";
 
 interface DiagramState {
@@ -99,6 +105,7 @@ interface DiagramState {
   diagramFontFamily: string;
   fontMissing: boolean;
   diagramBackgroundColor: RGB | null;
+  diagramAppearance: DiagramAppearance;
   autosaveEnabled: boolean;
 
   setStageSize: (width: number, height: number) => void;
@@ -117,6 +124,7 @@ interface DiagramState {
   setShowDiagramHeader: (show: boolean) => void;
   setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
+  setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -171,13 +179,16 @@ interface DiagramState {
   getViewportCenter: () => { x: number; y: number };
 }
 
-function createDefaultCharacter(position: { x: number; y: number }): Character {
+function createDefaultCharacter(
+  position: { x: number; y: number },
+  borderColor: RGB,
+): Character {
   return {
     id: uuidv4(),
     position,
     name: "",
     borderShape: "circle",
-    borderColor: defaultRgb(),
+    borderColor: { ...borderColor },
     size: DEFAULT_CHARACTER_SIZE,
   };
 }
@@ -206,6 +217,7 @@ export const useDiagramStore = create<DiagramState>()(
   diagramFontFamily: DEFAULT_DIAGRAM_FONT,
   fontMissing: false,
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
+  diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   autosaveEnabled: false,
 
   setStageSize: (width, height) => set({ stageSize: { width, height } }),
@@ -282,6 +294,11 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
 
+  setDiagramAppearance: (patch) =>
+    set((s) => ({
+      diagramAppearance: patchDiagramAppearance(s.diagramAppearance, patch),
+    })),
+
   initializeFonts: async () => {
     await cleanupDeprecatedFonts();
 
@@ -352,6 +369,7 @@ export const useDiagramStore = create<DiagramState>()(
       fontFamily: isDefaultDiagramFont(prefs.defaultDiagramFont)
         ? undefined
         : prefs.defaultDiagramFont,
+      appearance: serializeDiagramAppearance(prefs.diagramAppearance),
     };
     await get().loadDiagram(diagram);
     set({ autosaveEnabled: prefs.autosaveEnabled });
@@ -377,7 +395,10 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   addCharacterAt: (position) => {
-    const character = createDefaultCharacter(position);
+    const character = createDefaultCharacter(
+      position,
+      get().diagramAppearance.defaultCharacterBorderColor,
+    );
     set((s) => ({
       characters: [...s.characters, character],
       selection: { type: "character", id: character.id },
@@ -424,7 +445,7 @@ export const useDiagramStore = create<DiagramState>()(
       id: uuidv4(),
       from,
       to,
-      color: { r: 60, g: 60, b: 60 },
+      color: { ...get().diagramAppearance.defaultLineColor },
       style: "straight",
       startArrow: false,
       endArrow: true,
@@ -537,7 +558,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   addBoxAt: (position) => {
-    const { boxes } = get();
+    const { boxes, diagramAppearance } = get();
     const bounds = getEmptyBoxBounds(position);
     const box: Box = {
       id: uuidv4(),
@@ -546,7 +567,7 @@ export const useDiagramStore = create<DiagramState>()(
       anchorPosition: position,
       collapsedPosition: position,
       bounds,
-      borderColor: { r: 100, g: 140, b: 100 },
+      borderColor: { ...diagramAppearance.defaultBoxBorderColor },
     };
 
     set((s) => ({
@@ -658,7 +679,7 @@ export const useDiagramStore = create<DiagramState>()(
       id: uuidv4(),
       position,
       text: "",
-      color: { ...DEFAULT_FLOATING_TEXT_COLOR },
+      color: { ...get().diagramAppearance.defaultFloatingTextColor },
       fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
     };
     set((s) => ({
@@ -802,6 +823,7 @@ export const useDiagramStore = create<DiagramState>()(
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       diagramBackgroundColor: resolveDiagramBackground(diagram.backgroundColor),
+      diagramAppearance: resolveDiagramAppearance(diagram.appearance),
       showGrid: diagram.showGrid ?? true,
       gridStyle: diagram.gridStyle === "dots" ? "dots" : "lines",
       selection: null,
@@ -831,6 +853,7 @@ export const useDiagramStore = create<DiagramState>()(
       showDiagramHeader,
       diagramFontFamily,
       diagramBackgroundColor,
+      diagramAppearance,
       showGrid,
       gridStyle,
     } = get();
@@ -848,6 +871,7 @@ export const useDiagramStore = create<DiagramState>()(
           ? diagramFontFamily
           : undefined,
       backgroundColor: serializeDiagramBackground(diagramBackgroundColor),
+      appearance: serializeDiagramAppearance(diagramAppearance),
       characters,
       lines,
       groups,

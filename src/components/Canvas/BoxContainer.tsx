@@ -154,6 +154,9 @@ export function BoxContainer({
   const setSelection = useDiagramStore((s) => s.setSelection);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
+  const boxNameLabel = useDiagramStore(
+    (s) => s.diagramAppearance.boxNameLabel,
+  );
   const clickGuard = useClickWithoutDrag();
   const gestureClearedSelectionRef = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -391,6 +394,9 @@ export function BoxContainer({
           text={box.name}
           y={-(size + getPillLabelHeight(12) / 2 + 6)}
           fontSize={12}
+          textFill={rgbToCss(boxNameLabel.textColor)}
+          fill={rgbToCss(boxNameLabel.backgroundColor)}
+          unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
           selected={selected}
         />
         <Text
@@ -523,6 +529,9 @@ export function BoxContainer({
           x={bounds.x + bounds.width / 2}
           y={bounds.y + 14}
           fontSize={12}
+          textFill={rgbToCss(boxNameLabel.textColor)}
+          fill={rgbToCss(boxNameLabel.backgroundColor)}
+          unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
           selected={selected}
         />
       )}

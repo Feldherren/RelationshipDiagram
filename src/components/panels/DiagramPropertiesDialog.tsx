@@ -5,10 +5,11 @@ import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getDiagramBackgroundMode } from "../../utils/diagramBackground";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundModeControls } from "./BackgroundModeControls";
+import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { FontPicker } from "./FontPicker";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
-type PropertiesSectionId = "header" | "background" | "font";
+type PropertiesSectionId = "header" | "background" | "font" | "appearance";
 
 interface DiagramPropertiesDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function DiagramPropertiesDialog({
   const showGrid = useDiagramStore((s) => s.showGrid);
   const gridStyle = useDiagramStore((s) => s.gridStyle);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
+  const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
   const setDiagramTitleColor = useDiagramStore((s) => s.setDiagramTitleColor);
@@ -46,6 +48,7 @@ export function DiagramPropertiesDialog({
     (s) => s.setDiagramBackgroundColor,
   );
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
+  const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
 
   const backgroundMode = getDiagramBackgroundMode(
     showGrid,
@@ -62,6 +65,7 @@ export function DiagramPropertiesDialog({
     { id: "header", label: t("diagramProperties.sectionHeader") },
     { id: "background", label: t("diagramProperties.sectionBackground") },
     { id: "font", label: t("diagramProperties.sectionFont") },
+    { id: "appearance", label: t("diagramProperties.sectionAppearance") },
   ] as const;
 
   let content = null;
@@ -145,6 +149,14 @@ export function DiagramPropertiesDialog({
 
           <p className="hint">{t("diagramProperties.uiFontHint")}</p>
         </>
+      );
+      break;
+    case "appearance":
+      content = (
+        <DiagramAppearancePanel
+          value={diagramAppearance}
+          onChange={setDiagramAppearance}
+        />
       );
       break;
   }

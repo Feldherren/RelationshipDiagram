@@ -129,6 +129,12 @@ export function CharacterNode({
   const labelGap = CHARACTER_LABEL_GAP;
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const nameLabel = useDiagramStore(
+    (s) => s.diagramAppearance.characterNameLabel,
+  );
+  const subtitleLabel = useDiagramStore(
+    (s) => s.diagramAppearance.characterSubtitleLabel,
+  );
   const handleOffset = getConnectHandleOffset(size);
   const showConnectHandle = selected || hovered || isConnectSource;
   const showAura =
@@ -230,6 +236,9 @@ export function CharacterNode({
           paddingY={CHARACTER_LABEL_PADDING_Y}
           strokeWidth={1.5}
           selectedStrokeWidth={2.5}
+          textFill={rgbToCss(nameLabel.textColor)}
+          fill={rgbToCss(nameLabel.backgroundColor)}
+          unselectedStroke={rgbToCss(nameLabel.borderColor)}
           selected={selected}
           onClick={handleLabelSelect}
           onTap={handleLabelSelect}
@@ -248,7 +257,9 @@ export function CharacterNode({
           paddingY={CHARACTER_LABEL_PADDING_Y}
           strokeWidth={1.5}
           selectedStrokeWidth={2.5}
-          textFill="#5c5c5c"
+          textFill={rgbToCss(subtitleLabel.textColor)}
+          fill={rgbToCss(subtitleLabel.backgroundColor)}
+          unselectedStroke={rgbToCss(subtitleLabel.borderColor)}
           selected={selected}
           onClick={handleLabelSelect}
           onTap={handleLabelSelect}

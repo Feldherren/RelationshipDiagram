@@ -19,6 +19,7 @@ interface PillLabelProps {
   fontSize?: number;
   fontStyle?: "normal" | "bold";
   textFill?: string;
+  fill?: string;
   selected?: boolean;
   unselectedStroke?: string;
   selectedStroke?: string;
@@ -41,6 +42,7 @@ export function PillLabel({
   fontSize = 12,
   fontStyle = "normal",
   textFill = "#1f1f1f",
+  fill = "#ffffff",
   selected = false,
   unselectedStroke = "#d0d0d0",
   selectedStroke = "#4a90d9",
@@ -87,7 +89,7 @@ export function PillLabel({
         y={rectY}
         width={width}
         height={height}
-        fill="#ffffff"
+        fill={fill}
         stroke={stroke}
         strokeWidth={activeStrokeWidth}
         cornerRadius={height / 2}

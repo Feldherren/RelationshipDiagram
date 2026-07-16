@@ -186,6 +186,28 @@ export interface Viewport {
 
 export type GridStyle = "lines" | "dots";
 
+/** Pill label chrome shared across matching canvas labels. */
+export interface LabelChrome {
+  textColor: RGB;
+  backgroundColor: RGB;
+  borderColor: RGB;
+}
+
+/**
+ * Diagram canvas appearance: creation defaults for new entities, plus
+ * shared label chrome applied live to all matching pills.
+ */
+export interface DiagramAppearance {
+  defaultLineColor: RGB;
+  defaultCharacterBorderColor: RGB;
+  defaultBoxBorderColor: RGB;
+  defaultFloatingTextColor: RGB;
+  characterNameLabel: LabelChrome;
+  characterSubtitleLabel: LabelChrome;
+  lineLabel: LabelChrome;
+  boxNameLabel: LabelChrome;
+}
+
 export interface Diagram {
   schemaVersion: 2;
   title?: string;
@@ -199,6 +221,8 @@ export interface Diagram {
   gridStyle?: GridStyle;
   fontFamily?: string;
   backgroundColor?: RGB | null;
+  /** Canvas appearance defaults + shared label chrome; omit for built-ins. */
+  appearance?: Partial<DiagramAppearance>;
   characters: Character[];
   lines: Line[];
   groups: Group[];

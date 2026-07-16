@@ -263,6 +263,26 @@ body,
   color: var(--ui-text);
 }
 
+.selection-float-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.selection-float-draggable.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.selection-float-draggable :is(button, input, textarea, select, a, label, summary) {
+  cursor: pointer;
+}
+
+.selection-float-draggable input,
+.selection-float-draggable textarea,
+.selection-float-draggable select {
+  cursor: text;
+}
+
 .selection-float h2 {
   margin: 0 0 0.75rem;
   font-size: 0.9375rem;

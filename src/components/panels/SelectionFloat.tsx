@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Stage, Layer, Group as KonvaGroup } from "react-konva";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
@@ -23,8 +23,12 @@ import { ImageFocusControls } from "./ImageFocusControls";
 import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
 import { MembershipChip } from "../Canvas/MembershipChips";
 import {
+  clampSelectionFloatPosition,
+  defaultFloatAnchorScreen,
+  getGroupChipAnchorWorld,
   getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
+  isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
   SELECTION_FLOAT_WIDTH,
   worldBoundsToScreen,
@@ -94,6 +98,19 @@ export function SelectionFloat() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [panelHeight, setPanelHeight] = useState(ESTIMATED_FLOAT_HEIGHT);
   const [chipAppearanceOpen, setChipAppearanceOpen] = useState(false);
+  const [groupFloatPlacement, setGroupFloatPlacement] = useState<{
+    key: string;
+    left: number;
+    top: number;
+  } | null>(null);
+  const [isDraggingGroupFloat, setIsDraggingGroupFloat] = useState(false);
+  const groupDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originLeft: number;
+    originTop: number;
+  } | null>(null);
 
   const selection = useDiagramStore((s) => s.selection);
   const characters = useDiagramStore((s) => s.characters);
@@ -117,6 +134,10 @@ export function SelectionFloat() {
 
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
+  const groupPlacementKey =
+    selection?.type === "group"
+      ? `${selection.id}:${selection.anchorCharacterId ?? ""}`
+      : null;
 
   useEffect(() => {
     setChipAppearanceOpen(false);
@@ -131,6 +152,47 @@ export function SelectionFloat() {
     }
   }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
 
+  useLayoutEffect(() => {
+    if (selection?.type !== "group" || !groupPlacementKey) {
+      return;
+    }
+    if (groupFloatPlacement?.key === groupPlacementKey) {
+      return;
+    }
+
+    const diagram = getDiagram();
+    const chipAnchor = getGroupChipAnchorWorld(
+      selection.anchorCharacterId,
+      diagram,
+    );
+    const placed = placeSelectionFloat({
+      anchorScreen: chipAnchor
+        ? worldToScreen(chipAnchor, viewport)
+        : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    });
+
+    setGroupFloatPlacement({
+      key: groupPlacementKey,
+      left: placed.left,
+      top: placed.top,
+    });
+    setIsDraggingGroupFloat(false);
+    groupDragRef.current = null;
+  }, [
+    selection,
+    groupPlacementKey,
+    groupFloatPlacement?.key,
+    getDiagram,
+    viewport,
+    stageSize.width,
+    stageSize.height,
+    panelHeight,
+  ]);
+
   if (!selection) {
     return null;
   }
@@ -141,33 +203,114 @@ export function SelectionFloat() {
   }
 
   const diagram = getDiagram();
-  const anchorWorld = getSelectionAnchorWorld(selection, diagram);
-  const anchorScreen = anchorWorld
-    ? worldToScreen(anchorWorld, viewport)
-    : {
-        x: stageSize.width / 2 + SELECTION_FLOAT_WIDTH / 2,
-        y: stageSize.height / 2,
-      };
+  const isGroupSelection = selection.type === "group";
 
-  let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
-  if (selection.type === "line") {
-    const line = lines.find((l) => l.id === selection.id);
-    if (line) {
-      avoidScreen = worldBoundsToScreen(
-        getLineSelectionAvoidBounds(line, diagram),
-        viewport,
+  let left: number;
+  let top: number;
+
+  if (isGroupSelection && groupPlacementKey) {
+    if (groupFloatPlacement?.key === groupPlacementKey) {
+      ({ left, top } = clampSelectionFloatPosition({
+        left: groupFloatPlacement.left,
+        top: groupFloatPlacement.top,
+        stageWidth: stageSize.width,
+        stageHeight: stageSize.height,
+        panelWidth: SELECTION_FLOAT_WIDTH,
+        panelHeight,
+      }));
+    } else {
+      const chipAnchor = getGroupChipAnchorWorld(
+        selection.anchorCharacterId,
+        diagram,
       );
+      ({ left, top } = placeSelectionFloat({
+        anchorScreen: chipAnchor
+          ? worldToScreen(chipAnchor, viewport)
+          : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
+        stageWidth: stageSize.width,
+        stageHeight: stageSize.height,
+        panelWidth: SELECTION_FLOAT_WIDTH,
+        panelHeight,
+      }));
     }
+  } else {
+    const anchorWorld = getSelectionAnchorWorld(selection, diagram);
+    const anchorScreen = anchorWorld
+      ? worldToScreen(anchorWorld, viewport)
+      : defaultFloatAnchorScreen(stageSize.width, stageSize.height);
+
+    let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
+    if (selection.type === "line") {
+      const line = lines.find((l) => l.id === selection.id);
+      if (line) {
+        avoidScreen = worldBoundsToScreen(
+          getLineSelectionAvoidBounds(line, diagram),
+          viewport,
+        );
+      }
+    }
+
+    ({ left, top } = placeSelectionFloat({
+      anchorScreen,
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+      avoidScreen,
+    }));
   }
 
-  const { left, top } = placeSelectionFloat({
-    anchorScreen,
-    stageWidth: stageSize.width,
-    stageHeight: stageSize.height,
-    panelWidth: SELECTION_FLOAT_WIDTH,
-    panelHeight,
-    avoidScreen,
-  });
+  const endGroupFloatDrag = (pointerId: number) => {
+    const drag = groupDragRef.current;
+    if (!drag || drag.pointerId !== pointerId) return;
+    groupDragRef.current = null;
+    setIsDraggingGroupFloat(false);
+    const el = panelRef.current;
+    if (el?.hasPointerCapture(pointerId)) {
+      el.releasePointerCapture(pointerId);
+    }
+  };
+
+  const handleGroupFloatPointerDown = (
+    e: PointerEvent<HTMLElement>,
+  ) => {
+    if (!isGroupSelection || !groupPlacementKey || e.button !== 0) return;
+    if (isSelectionFloatInteractiveTarget(e.target)) return;
+    e.preventDefault();
+    groupDragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originLeft: left,
+      originTop: top,
+    };
+    setIsDraggingGroupFloat(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleGroupFloatPointerMove = (
+    e: PointerEvent<HTMLElement>,
+  ) => {
+    const drag = groupDragRef.current;
+    if (!drag || !groupPlacementKey || drag.pointerId !== e.pointerId) return;
+    const next = clampSelectionFloatPosition({
+      left: drag.originLeft + (e.clientX - drag.startX),
+      top: drag.originTop + (e.clientY - drag.startY),
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    });
+    setGroupFloatPlacement({
+      key: groupPlacementKey,
+      left: next.left,
+      top: next.top,
+    });
+  };
+
+  const handleGroupFloatPointerUp = (e: PointerEvent<HTMLElement>) => {
+    endGroupFloatDrag(e.pointerId);
+  };
 
   let body: ReactNode = null;
   let chipDialog: ReactNode = null;
@@ -630,14 +773,28 @@ export function SelectionFloat() {
 
   if (!body) return null;
 
+  const floatClassName = [
+    "selection-float",
+    isGroupSelection ? "selection-float-draggable" : "",
+    isDraggingGroupFloat ? "is-dragging" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <>
       <aside
         ref={panelRef}
-        className="selection-float"
+        className={floatClassName}
         style={{ left, top, width: SELECTION_FLOAT_WIDTH }}
         onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          handleGroupFloatPointerDown(e);
+        }}
+        onPointerMove={handleGroupFloatPointerMove}
+        onPointerUp={handleGroupFloatPointerUp}
+        onPointerCancel={handleGroupFloatPointerUp}
       >
         {body}
       </aside>

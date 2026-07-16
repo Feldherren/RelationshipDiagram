@@ -16,7 +16,6 @@ import {
   getCollapsedBoxSquareBounds,
   getFloatingTextBounds,
   getFloatingTextById,
-  getGroupById,
   resolveBoxBounds,
 } from "./geometry";
 import { getPillLabelSize } from "./labelMetrics";
@@ -26,6 +25,53 @@ import { routeLine } from "./lineRouting";
 export const SELECTION_FLOAT_WIDTH = 260;
 export const SELECTION_FLOAT_GAP = 12;
 export const SELECTION_FLOAT_MARGIN = 8;
+
+/** Default screen anchor for floating (non–world-anchored) selection panels. */
+export function defaultFloatAnchorScreen(
+  stageWidth: number,
+  stageHeight: number,
+): Point {
+  return {
+    x: stageWidth / 2 + SELECTION_FLOAT_WIDTH / 2,
+    y: stageHeight / 2,
+  };
+}
+
+export function clampSelectionFloatPosition(args: {
+  left: number;
+  top: number;
+  stageWidth: number;
+  stageHeight: number;
+  panelWidth: number;
+  panelHeight: number;
+  margin?: number;
+}): { left: number; top: number } {
+  const {
+    stageWidth,
+    stageHeight,
+    panelWidth,
+    panelHeight,
+    margin = SELECTION_FLOAT_MARGIN,
+  } = args;
+  const maxLeft = Math.max(margin, stageWidth - panelWidth - margin);
+  const maxTop = Math.max(margin, stageHeight - panelHeight - margin);
+  return {
+    left: Math.max(margin, Math.min(args.left, maxLeft)),
+    top: Math.max(margin, Math.min(args.top, maxTop)),
+  };
+}
+
+/** True when a pointer target is a control that should not start panel drag. */
+export function isSelectionFloatInteractiveTarget(
+  target: EventTarget | null,
+): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "button, input, textarea, select, a, label, summary, [role='button'], [contenteditable='true']",
+    ),
+  );
+}
 
 const LINE_LABEL_FONT_SIZE = 12;
 /** Padding around the label midpoint when a line has no visible pill. */
@@ -122,18 +168,10 @@ export function getSelectionAnchorWorld(
     };
   }
 
+  // Groups are not world-anchored while open; chip opens use
+  // getGroupChipAnchorWorld once for the initial screen placement.
   if (selection.type === "group") {
-    const group = getGroupById(diagram, selection.id);
-    if (!group) return null;
-    const anchorCharacterId =
-      selection.anchorCharacterId ?? group.memberCharacterIds[0];
-    if (!anchorCharacterId) return null;
-    const character = getCharacterById(diagram, anchorCharacterId);
-    if (!character) return null;
-    return {
-      x: character.position.x + character.size,
-      y: character.position.y,
-    };
+    return null;
   }
 
   if (selection.type === "bookmark") {
@@ -143,6 +181,20 @@ export function getSelectionAnchorWorld(
   }
 
   return null;
+}
+
+/** World point beside a character when a group is opened from its chip. */
+export function getGroupChipAnchorWorld(
+  anchorCharacterId: string | undefined,
+  diagram: Diagram,
+): Point | null {
+  if (!anchorCharacterId) return null;
+  const character = getCharacterById(diagram, anchorCharacterId);
+  if (!character) return null;
+  return {
+    x: character.position.x + character.size,
+    y: character.position.y,
+  };
 }
 
 export function worldToScreen(world: Point, viewport: Viewport): Point {

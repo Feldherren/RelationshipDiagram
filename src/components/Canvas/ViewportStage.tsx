@@ -13,6 +13,8 @@ interface ViewportStageProps {
   onMouseUp?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onContextMenu?: (e: Konva.KonvaEventObject<PointerEvent>) => void;
+  onDblClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDblTap?: (e: Konva.KonvaEventObject<Event>) => void;
 }
 
 /**
@@ -29,6 +31,8 @@ export function ViewportStage({
   onMouseUp,
   onClick,
   onContextMenu,
+  onDblClick,
+  onDblTap,
 }: ViewportStageProps) {
   const viewport = useDiagramStore((s) => s.viewport);
 
@@ -46,6 +50,8 @@ export function ViewportStage({
       onMouseUp={onMouseUp}
       onClick={onClick}
       onContextMenu={onContextMenu}
+      onDblClick={onDblClick}
+      onDblTap={onDblTap}
     >
       {children}
     </Stage>

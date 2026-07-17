@@ -12,6 +12,10 @@ import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
 import {
+  CanvasAddObjectMenu,
+  type CanvasAddObjectMenuState,
+} from "../panels/CanvasAddObjectMenu";
+import {
   useDiagramStore,
   isCharacterHidden,
   isFloatingTextHidden,
@@ -110,7 +114,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     stageSize,
     setStageSize,
     setSelection,
-    setMultiSelection,
     setExportBounds,
     moveCharacter,
     moveFloatingText,
@@ -141,7 +144,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
-      setMultiSelection: s.setMultiSelection,
       setExportBounds: s.setExportBounds,
       moveCharacter: s.moveCharacter,
       moveFloatingText: s.moveFloatingText,
@@ -180,6 +182,18 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const [isDraggingBox, setIsDraggingBox] = useState(false);
   const isInteractingWithBox = isResizingBox || isDraggingBox;
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
+  const [addObjectMenu, setAddObjectMenu] =
+    useState<CanvasAddObjectMenuState | null>(null);
+
+  const SAME_MENU_SPOT_PX = 8;
+
+  const isSameMenuSpot = (
+    menu: CanvasAddObjectMenuState,
+    screenX: number,
+    screenY: number,
+  ) =>
+    Math.hypot(menu.screenX - screenX, menu.screenY - screenY) <=
+    SAME_MENU_SPOT_PX;
 
   const highlightedGroupId =
     selection?.type === "group" ? selection.id : null;
@@ -451,6 +465,49 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     }
   };
 
+  const openAddObjectMenu = (
+    e: Konva.KonvaEventObject<MouseEvent | PointerEvent>,
+  ) => {
+    if (e.target !== e.target.getStage()) return;
+    if (
+      toolMode === "exportBounds" ||
+      toolMode === "editGroupMembers" ||
+      connectFrom
+    ) {
+      return;
+    }
+    e.evt.preventDefault();
+    const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
+    setAddObjectMenu({
+      screenX: e.evt.clientX,
+      screenY: e.evt.clientY,
+      world,
+    });
+  };
+
+  const handleAddObjectContextMenu = (
+    e: Konva.KonvaEventObject<PointerEvent>,
+  ) => {
+    if (e.target !== e.target.getStage()) return;
+    if (
+      toolMode === "exportBounds" ||
+      toolMode === "editGroupMembers" ||
+      connectFrom
+    ) {
+      return;
+    }
+    e.evt.preventDefault();
+    const screenX = e.evt.clientX;
+    const screenY = e.evt.clientY;
+    setAddObjectMenu((current) => {
+      if (current && isSameMenuSpot(current, screenX, screenY)) {
+        return null;
+      }
+      const world = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
+      return { screenX, screenY, world };
+    });
+  };
+
   const diagram = {
     schemaVersion: 2 as const,
     characters,
@@ -508,6 +565,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onClick={handleStageClick}
+        onContextMenu={handleAddObjectContextMenu}
+        onDblClick={openAddObjectMenu}
       >
         <Layer ref={layerRef}>
           {showGrid && (
@@ -832,6 +891,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         </Layer>
         <BookmarkFlagsLayer />
       </ViewportStage>
+      <CanvasAddObjectMenu
+        menu={addObjectMenu}
+        onClose={() => setAddObjectMenu(null)}
+      />
     </div>
   );
 }

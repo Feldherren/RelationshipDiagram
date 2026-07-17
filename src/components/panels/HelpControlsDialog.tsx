@@ -87,6 +87,20 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
         />
 
         <HelpSection
+          title={t("help.create")}
+          rows={[
+            {
+              keys: t("help.addObjectRmbKeys"),
+              detail: t("help.addObjectRmbDetail"),
+            },
+            {
+              keys: t("help.addObjectDblClickKeys"),
+              detail: t("help.addObjectDblClickDetail"),
+            },
+          ]}
+        />
+
+        <HelpSection
           title={t("help.move")}
           rows={[
             {

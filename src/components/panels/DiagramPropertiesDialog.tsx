@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
+import { getAppPreferences } from "../../utils/appPreferences";
+import {
+  resolveDiagramThemeAppearance,
+  type DiagramThemePreference,
+} from "../../utils/diagramAppearance";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
-import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
 type PropertiesSectionId = "header" | "appearance";
@@ -10,15 +14,19 @@ type PropertiesSectionId = "header" | "appearance";
 interface DiagramPropertiesDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Opens Settings → Diagram Themes (closes this dialog). */
+  onManageThemes?: () => void;
 }
 
 export function DiagramPropertiesDialog({
   open,
   onClose,
+  onManageThemes,
 }: DiagramPropertiesDialogProps) {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] =
     useState<PropertiesSectionId>("header");
+  const [applyThemeValue, setApplyThemeValue] = useState("");
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
@@ -37,7 +45,19 @@ export function DiagramPropertiesDialog({
   useEffect(() => {
     if (!open) return;
     setActiveSection("header");
+    setApplyThemeValue("");
   }, [open]);
+
+  const prefs = getAppPreferences();
+
+  const handleApplyTheme = (preference: DiagramThemePreference) => {
+    const next = resolveDiagramThemeAppearance(
+      preference,
+      prefs.customDiagramThemes,
+    );
+    replaceDiagramAppearance(next);
+    setApplyThemeValue(preference);
+  };
 
   const sections = [
     { id: "header", label: t("diagramProperties.sectionHeader") },
@@ -83,11 +103,41 @@ export function DiagramPropertiesDialog({
     case "appearance":
       content = (
         <>
-          <DiagramThemeLibraryControls
-            appearance={diagramAppearance}
-            onApplyAppearance={replaceDiagramAppearance}
-            hintKey="diagramProperties.appearanceThemesHint"
-          />
+          <p className="hint">{t("diagramProperties.appearanceThemesHint")}</p>
+
+          <label className="field">
+            <span>{t("diagramProperties.applyTheme")}</span>
+            <select
+              value={applyThemeValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (!value) return;
+                handleApplyTheme(value as DiagramThemePreference);
+              }}
+            >
+              <option value="" disabled>
+                {t("diagramProperties.applyThemePlaceholder")}
+              </option>
+              <option value="default">
+                {t("appSettings.diagramThemeDefault")}
+              </option>
+              {prefs.customDiagramThemes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {onManageThemes && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onManageThemes}
+            >
+              {t("diagramProperties.manageThemes")}
+            </button>
+          )}
 
           <hr className="theme-editor-divider" />
 

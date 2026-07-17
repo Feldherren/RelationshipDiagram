@@ -4,6 +4,7 @@ import type {
   FloatingText,
   GridStyle,
   RGB,
+  ViewBookmark,
 } from "../models/types";
 
 export interface PersistedDiagramState {
@@ -13,6 +14,7 @@ export interface PersistedDiagramState {
   boxes: Diagram["boxes"];
   floatingTexts: FloatingText[];
   viewport: Diagram["viewport"];
+  bookmarks: ViewBookmark[];
   diagramTitle: string;
   diagramSubtitle: string;
   showDiagramHeader: boolean;
@@ -33,6 +35,7 @@ export function pickPersistedState(
     boxes: state.boxes,
     floatingTexts: state.floatingTexts,
     viewport: state.viewport,
+    bookmarks: state.bookmarks,
     diagramTitle: state.diagramTitle,
     diagramSubtitle: state.diagramSubtitle,
     showDiagramHeader: state.showDiagramHeader,
@@ -57,6 +60,7 @@ export function persistedStatesEqual(
     a.groups === b.groups &&
     a.boxes === b.boxes &&
     a.floatingTexts === b.floatingTexts &&
+    a.bookmarks === b.bookmarks &&
     a.diagramTitle === b.diagramTitle &&
     a.diagramSubtitle === b.diagramSubtitle &&
     a.showDiagramHeader === b.showDiagramHeader &&

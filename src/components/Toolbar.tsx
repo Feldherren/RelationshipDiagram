@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useDiagramStore } from "../store/diagramStore";
 
 interface ToolbarProps {
   onNew: () => void;
@@ -6,7 +7,32 @@ interface ToolbarProps {
   onOpen: () => void;
   onExport: () => void;
   onDiagramProperties: () => void;
+  onHelp: () => void;
   onSettings: () => void;
+}
+
+function HelpIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <text
+        x="12"
+        y="12"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="18"
+        fontWeight="700"
+        fill="currentColor"
+      >
+        ?
+      </text>
+    </svg>
+  );
 }
 
 function SettingsGearIcon() {
@@ -26,15 +52,72 @@ function SettingsGearIcon() {
   );
 }
 
+function FitToContentIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M3 5v4h2V7h2V5H3zm14 0v2h2v2h2V5h-4zM5 15H3v4h4v-2H5v-2zm16 0h-2v2h-2v2h4v-4zM7 9h10v6H7V9z"
+      />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M12 5c-3.2 0-5.9 1.9-7.1 4.6L2 7v7h7l-2.7-2.7C7 9 9.2 7.5 12 7.5c3.1 0 5.6 2.2 6.3 5.1.1.6.7.9 1.3.8.6-.1.9-.7.8-1.3C19.5 8 16 5 12 5z"
+      />
+    </svg>
+  );
+}
+
+function RedoIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M12 5c3.2 0 5.9 1.9 7.1 4.6L22 7v7h-7l2.7-2.7C17 9 14.8 7.5 12 7.5c-3.1 0-5.6 2.2-6.3 5.1-.1.6-.7.9-1.3.8-.6-.1-.9-.7-.8-1.3C4.5 8 8 5 12 5z"
+      />
+    </svg>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
   onOpen,
   onExport,
   onDiagramProperties,
+  onHelp,
   onSettings,
 }: ToolbarProps) {
   const { t } = useTranslation();
+  const fitViewportToContent = useDiagramStore((s) => s.fitViewportToContent);
+  const undo = useDiagramStore((s) => s.undo);
+  const redo = useDiagramStore((s) => s.redo);
+  const canUndo = useDiagramStore((s) => s.undoStack.length > 0);
+  const canRedo = useDiagramStore((s) => s.redoStack.length > 0);
 
   return (
     <header className="toolbar">
@@ -53,6 +136,49 @@ export function Toolbar({
         </button>
       </div>
 
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("toolbar.history")}
+      >
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={() => undo()}
+          disabled={!canUndo}
+          aria-label={t("toolbar.undo")}
+          title={t("toolbar.undoTitle")}
+        >
+          <UndoIcon />
+        </button>
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={() => redo()}
+          disabled={!canRedo}
+          aria-label={t("toolbar.redo")}
+          title={t("toolbar.redoTitle")}
+        >
+          <RedoIcon />
+        </button>
+      </div>
+
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("canvas.fitToContent")}
+      >
+        <button
+          type="button"
+          className="toolbar-icon-button fit-to-content-button"
+          onClick={() => fitViewportToContent()}
+          aria-label={t("canvas.fitToContent")}
+          title={t("canvas.fitToContentTitle")}
+        >
+          <FitToContentIcon />
+        </button>
+      </div>
+
       <div className="toolbar-group toolbar-right">
         <button type="button" onClick={onDiagramProperties}>
           {t("toolbar.diagramProperties")}
@@ -65,6 +191,15 @@ export function Toolbar({
           title={t("toolbar.settings")}
         >
           <SettingsGearIcon />
+        </button>
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={onHelp}
+          aria-label={t("toolbar.helpAria")}
+          title={t("toolbar.help")}
+        >
+          <HelpIcon />
         </button>
       </div>
     </header>

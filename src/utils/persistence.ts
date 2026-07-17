@@ -161,6 +161,7 @@ function normalizeV2(data: Diagram): Diagram {
     showGrid: data.showGrid ?? true,
     gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
     appearance: data.appearance,
+    bookmarks: data.bookmarks,
   };
 }
 

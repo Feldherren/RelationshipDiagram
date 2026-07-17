@@ -8,17 +8,21 @@ export type DiagramBackgroundColor = RGB | null;
 /** Canvas background appearance: solid, transparent, or grid overlay variants. */
 export type DiagramBackgroundMode = "plain" | "blank" | "grid" | "dots";
 
+/** Canvas fill presets — paler analogues of GRID_COLOR_PALETTE, plus transparent. */
 export const BACKGROUND_PRESETS: {
   id: string;
   color: DiagramBackgroundColor;
 }[] = [
+  { id: "white", color: { r: 255, g: 255, b: 255 } },
   { id: "offWhite", color: DEFAULT_DIAGRAM_BACKGROUND },
+  { id: "paleGrey", color: { r: 239, g: 239, b: 241 } },
   { id: "paleRose", color: { r: 252, g: 239, b: 239 } },
   { id: "palePeach", color: { r: 253, g: 243, b: 232 } },
   { id: "paleCream", color: { r: 252, g: 250, b: 239 } },
   { id: "paleMint", color: { r: 238, g: 248, b: 240 } },
   { id: "paleSky", color: { r: 238, g: 245, b: 252 } },
-  { id: "paleLavender", color: { r: 243, g: 238, b: 252 } },
+  { id: "paleIndigo", color: { r: 244, g: 245, b: 254 } },
+  { id: "paleViolet", color: { r: 249, g: 242, b: 254 } },
   { id: "transparent", color: null },
 ];
 

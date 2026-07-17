@@ -21,12 +21,14 @@ import { ConnectHandle } from "./ConnectHandle";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import {
   RadialAuraCircle,
+  RadialSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
 import {
   MembershipChips,
   type MembershipChipItem,
 } from "./MembershipChips";
+import { isIdInMultiSelection } from "../../utils/selectionMulti";
 
 interface CharacterNodeProps {
   character: Character;
@@ -38,6 +40,7 @@ interface CharacterNodeProps {
   dimmed?: boolean;
   membershipEmphasized?: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onSelectGroup?: (groupId: string) => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
@@ -108,6 +111,7 @@ export function CharacterNode({
   dimmed = false,
   membershipEmphasized = false,
   onSelect,
+  onOpenDetails,
   onSelectGroup,
   onDragMove,
   onDragEnd,
@@ -116,7 +120,13 @@ export function CharacterNode({
   const [hovered, setHovered] = useState(false);
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
-  const setSelection = useDiagramStore((s) => s.setSelection);
+  const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const selection = useDiagramStore((s) => s.selection);
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const moveMultiSelectionByDelta = useDiagramStore(
+    (s) => s.moveMultiSelectionByDelta,
+  );
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -145,11 +155,20 @@ export function CharacterNode({
   const showConnectHandle = selected || hovered || isConnectSource;
   const showAura =
     shouldShowAura(hovered, selected) || membershipEmphasized;
+  const strongStaticSelectionAura = selected && !selectionPulseEnabled;
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
     if ("button" in e.evt && e.evt.button !== 0) return;
     onSelect();
+  };
+
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
   };
 
   return (
@@ -173,19 +192,43 @@ export function CharacterNode({
         e.cancelBubble = true;
         onSelect();
       }}
+      onDblClick={handleOpenDetails}
+      onDblTap={handleOpenDetails}
+      onContextMenu={handleOpenDetails}
       onDragStart={(e) => {
         if (!allowNodeDragRef.current) {
           e.target.stopDrag();
           return;
         }
-        // Dragging is layout, not inspect — close any open float.
-        setSelection(null);
+        // Dragging is layout, not inspect — keep selection, close the float.
+        captureHistory();
+        useDiagramStore.setState({ selectionDetailsOpen: false });
+        multiDragLastPosRef.current = {
+          x: character.position.x,
+          y: character.position.y,
+        };
       }}
       onDragMove={(e) => {
-        onDragMove({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        if (isIdInMultiSelection(selection, "character", character.id)) {
+          const last = multiDragLastPosRef.current ?? pos;
+          const dx = pos.x - last.x;
+          const dy = pos.y - last.y;
+          multiDragLastPosRef.current = pos;
+          if (dx !== 0 || dy !== 0) {
+            moveMultiSelectionByDelta({ dx, dy }, { recordHistory: false });
+          }
+          return;
+        }
+        onDragMove(pos);
       }}
       onDragEnd={(e) => {
-        onDragEnd({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        multiDragLastPosRef.current = null;
+        if (isIdInMultiSelection(selection, "character", character.id)) {
+          return;
+        }
+        onDragEnd(pos);
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -194,6 +237,15 @@ export function CharacterNode({
         <RadialAuraCircle
           innerRadius={size}
           color={character.borderColor}
+          peakOpacity={strongStaticSelectionAura ? 0.55 : undefined}
+          outerPadding={strongStaticSelectionAura ? 32 : undefined}
+        />
+      )}
+      {selected && selectionPulseEnabled && (
+        <RadialSelectionPulse
+          innerRadius={size}
+          color={character.borderColor}
+          active
         />
       )}
       <ShapeOutline

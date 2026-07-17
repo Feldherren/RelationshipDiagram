@@ -25,6 +25,7 @@ import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
 import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
+import { isIdInMultiSelection } from "../../utils/selectionMulti";
 import {
   getCollapsedBoxConnectHandlePosition,
   getBoxConnectHandlePosition,
@@ -32,6 +33,7 @@ import {
 import { ConnectHandle } from "./ConnectHandle";
 import {
   RoundedRectAura,
+  RoundedRectSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
 
@@ -41,6 +43,7 @@ interface BoxContainerProps {
   selected: boolean;
   isConnectSource: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onToggleCollapse: () => void;
   onBoundsChange: (bounds: Bounds) => void;
   onMoveByDelta: (
@@ -139,6 +142,7 @@ export function BoxContainer({
   selected,
   isConnectSource,
   onSelect,
+  onOpenDetails,
   onToggleCollapse,
   onBoundsChange,
   onMoveByDelta,
@@ -152,11 +156,16 @@ export function BoxContainer({
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const moveMultiSelectionByDelta = useDiagramStore(
+    (s) => s.moveMultiSelectionByDelta,
+  );
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const boxNameLabel = useDiagramStore(
     (s) => s.diagramAppearance.boxNameLabel,
   );
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const clickGuard = useClickWithoutDrag();
   const gestureClearedSelectionRef = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -165,6 +174,8 @@ export function BoxContainer({
   const stageRef = useRef<Konva.Stage | null>(null);
   const resizeStartRef = useRef<ResizeDragStart | null>(null);
   const moveStartRef = useRef<MoveDragStart | null>(null);
+  const resizeHistoryCapturedRef = useRef(false);
+  const moveHistoryCapturedRef = useRef(false);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onMoveByDeltaRef = useRef(onMoveByDelta);
   const onResizeEndRef = useRef(onResizeEnd);
@@ -174,6 +185,7 @@ export function BoxContainer({
   onResizeEndRef.current = onResizeEnd;
   onDragEndRef.current = onDragEnd;
   const showAura = shouldShowAura(hovered, selected);
+  const showPulse = selected && selectionPulseEnabled;
   const showConnectHandle = selected || hovered || isConnectSource;
   const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
   const containedCount = getCharactersContainedInBox(
@@ -208,6 +220,10 @@ export function BoxContainer({
         setSelection(null);
       }
 
+      if (!resizeHistoryCapturedRef.current) {
+        resizeHistoryCapturedRef.current = true;
+        captureHistory();
+      }
       const newBounds = resizeBoxBounds(
         dragStart.bounds,
         dragStart.edge,
@@ -230,7 +246,7 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [resizing, screenToWorld, clickGuard.noticeDrag, setSelection]);
+  }, [resizing, screenToWorld, clickGuard.noticeDrag, setSelection, captureHistory]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -255,19 +271,26 @@ export function BoxContainer({
       if (movedFarEnough && !gestureClearedSelectionRef.current) {
         gestureClearedSelectionRef.current = true;
         clickGuard.noticeDrag();
-        setSelection(null);
+        useDiagramStore.setState({ selectionDetailsOpen: false });
       }
 
-      onMoveByDeltaRef.current(
-        {
-          dx: pointer.x - dragStart.pointer.x,
-          dy: pointer.y - dragStart.pointer.y,
-        },
-        {
+      if (!moveHistoryCapturedRef.current) {
+        moveHistoryCapturedRef.current = true;
+        captureHistory();
+      }
+      const delta = {
+        dx: pointer.x - dragStart.pointer.x,
+        dy: pointer.y - dragStart.pointer.y,
+      };
+      const selection = useDiagramStore.getState().selection;
+      if (isIdInMultiSelection(selection, "box", box.id)) {
+        moveMultiSelectionByDelta(delta, { recordHistory: false });
+      } else {
+        onMoveByDeltaRef.current(delta, {
           characterIds: dragStart.characterIds,
           floatingTextIds: dragStart.floatingTextIds,
-        },
-      );
+        });
+      }
       dragStart.pointer = pointer;
     };
 
@@ -284,7 +307,14 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, screenToWorld, clickGuard.noticeDrag, setSelection]);
+  }, [
+    dragging,
+    box.id,
+    screenToWorld,
+    clickGuard.noticeDrag,
+    captureHistory,
+    moveMultiSelectionByDelta,
+  ]);
 
   const beginResize = (
     e: Konva.KonvaEventObject<MouseEvent>,
@@ -298,6 +328,7 @@ export function BoxContainer({
     if (!pointer) return;
 
     gestureClearedSelectionRef.current = false;
+    resizeHistoryCapturedRef.current = false;
     resizeStartRef.current = {
       bounds,
       pointer: screenToWorld(pointer),
@@ -317,6 +348,7 @@ export function BoxContainer({
 
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
+    moveHistoryCapturedRef.current = false;
     moveStartRef.current = {
       pointer: world,
       origin: world,
@@ -345,6 +377,14 @@ export function BoxContainer({
     onSelect();
   };
 
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
+  };
+
   if (box.collapsed) {
     const pos = box.collapsedPosition ?? { x: 0, y: 0 };
     const color = rgbToCss(box.borderColor);
@@ -368,6 +408,7 @@ export function BoxContainer({
           e.cancelBubble = true;
           onToggleCollapse();
         }}
+        onContextMenu={handleOpenDetails}
         onMouseDown={(e) => beginMove(e)}
       >
         {showAura && (
@@ -378,6 +419,17 @@ export function BoxContainer({
             height={size * 2}
             cornerRadius={4}
             color={box.borderColor}
+          />
+        )}
+        {showPulse && (
+          <RoundedRectSelectionPulse
+            x={-size}
+            y={-size}
+            width={size * 2}
+            height={size * 2}
+            cornerRadius={4}
+            color={box.borderColor}
+            active
           />
         )}
         <Rect
@@ -446,6 +498,7 @@ export function BoxContainer({
         e.cancelBubble = true;
         onToggleCollapse();
       }}
+      onContextMenu={handleOpenDetails}
     >
       {showBackground && showAura && (
         <RoundedRectAura
@@ -454,6 +507,16 @@ export function BoxContainer({
           width={bounds.width}
           height={bounds.height}
           color={box.borderColor}
+        />
+      )}
+      {showBackground && showPulse && (
+        <RoundedRectSelectionPulse
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={bounds.height}
+          color={box.borderColor}
+          active
         />
       )}
       {showBackground && (

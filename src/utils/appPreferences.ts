@@ -46,6 +46,15 @@ export interface AppPreferences {
   themePreference: ThemePreference;
   uiScale: UiScale;
   customThemes: ThemeDocument[];
+  /** Whether bookmark flags are shown on the canvas. */
+  bookmarksVisible: boolean;
+  /** Whether selected canvas items show a pulsing highlight. */
+  selectionPulseEnabled: boolean;
+  /**
+   * When true, line label text uses high-contrast ink against the label
+   * background. When false (default), label text matches the line colour.
+   */
+  lineLabelContrastWithBackground: boolean;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -66,6 +75,9 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   themePreference: "system",
   uiScale: 1,
   customThemes: [],
+  bookmarksVisible: true,
+  selectionPulseEnabled: true,
+  lineLabelContrastWithBackground: false,
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -253,6 +265,18 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     themePreference,
     uiScale: isUiScale(stored.uiScale) ? stored.uiScale : defaults.uiScale,
     customThemes,
+    bookmarksVisible:
+      typeof stored.bookmarksVisible === "boolean"
+        ? stored.bookmarksVisible
+        : defaults.bookmarksVisible,
+    selectionPulseEnabled:
+      typeof stored.selectionPulseEnabled === "boolean"
+        ? stored.selectionPulseEnabled
+        : defaults.selectionPulseEnabled,
+    lineLabelContrastWithBackground:
+      typeof stored.lineLabelContrastWithBackground === "boolean"
+        ? stored.lineLabelContrastWithBackground
+        : defaults.lineLabelContrastWithBackground,
   };
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Stage, Layer, Group as KonvaGroup } from "react-konva";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
@@ -23,17 +23,89 @@ import { ImageFocusControls } from "./ImageFocusControls";
 import { MembershipAppearanceDialog } from "./MembershipAppearanceDialog";
 import { MembershipChip } from "../Canvas/MembershipChips";
 import {
+  clampSelectionFloatPosition,
+  connectorEndpoints,
+  defaultFloatAnchorScreen,
+  getGroupChipAnchorWorld,
   getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
+  getSelectionConnectorAnchorWorld,
+  isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
+  screenToWorld,
+  selectionFloatPlacementKey,
   SELECTION_FLOAT_WIDTH,
+  shouldShowFloatConnector,
   worldBoundsToScreen,
   worldToScreen,
 } from "../../utils/selectionAnchor";
+import {
+  isSelfConnection,
+  nextRouteIndex,
+  resolveLineBend,
+} from "../../utils/lineRouting";
 
 const LINE_STYLES: LineStyle[] = ["straight", "wavy", "dotted", "jagged"];
 
 const ESTIMATED_FLOAT_HEIGHT = 280;
+/** Ignore tiny pointer moves so a click does not detach the panel. */
+const FLOAT_DRAG_DETACH_THRESHOLD_PX = 3;
+
+type FloatPlacement = {
+  key: string;
+  left: number;
+  top: number;
+  /** Screen-fixed after user drag (or group open). */
+  detached: boolean;
+};
+
+/** Arrows-repeat glyph: right arrow above, left arrow below. */
+function ReverseLineIcon() {
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m16 10 3-3m0 0-3-3m3 3H5v3m3 4-3 3m0 0 3 3m-3-3h14v-3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ArrowToggleIcon({ direction }: { direction: "left" | "right" }) {
+  const path =
+    direction === "left"
+      ? "M19 12H5m0 0 5-5m-5 5 5 5"
+      : "M5 12h14m0 0-5-5m5 5-5 5";
+
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d={path}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function SelectionFloat() {
   const { t } = useTranslation();
@@ -41,8 +113,21 @@ export function SelectionFloat() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [panelHeight, setPanelHeight] = useState(ESTIMATED_FLOAT_HEIGHT);
   const [chipAppearanceOpen, setChipAppearanceOpen] = useState(false);
+  const [floatPlacement, setFloatPlacement] = useState<FloatPlacement | null>(
+    null,
+  );
+  const [isDraggingFloat, setIsDraggingFloat] = useState(false);
+  const floatDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originLeft: number;
+    originTop: number;
+    moved: boolean;
+  } | null>(null);
 
   const selection = useDiagramStore((s) => s.selection);
+  const selectionDetailsOpen = useDiagramStore((s) => s.selectionDetailsOpen);
   const characters = useDiagramStore((s) => s.characters);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const lines = useDiagramStore((s) => s.lines);
@@ -64,10 +149,20 @@ export function SelectionFloat() {
 
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
+  const placementKey = selection
+    ? selectionFloatPlacementKey(selection)
+    : null;
 
   useEffect(() => {
     setChipAppearanceOpen(false);
   }, [selectedGroupId]);
+
+  useEffect(() => {
+    if (placementKey) return;
+    setFloatPlacement(null);
+    setIsDraggingFloat(false);
+    floatDragRef.current = null;
+  }, [placementKey]);
 
   useLayoutEffect(() => {
     const el = panelRef.current;
@@ -78,18 +173,56 @@ export function SelectionFloat() {
     }
   }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
 
-  if (!selection) {
+  // Groups freeze in screen space as soon as they open (detached).
+  useLayoutEffect(() => {
+    if (selection?.type !== "group" || !placementKey) return;
+    if (floatPlacement?.key === placementKey) return;
+
+    const diagram = getDiagram();
+    const chipAnchor = getGroupChipAnchorWorld(
+      selection.anchorCharacterId,
+      diagram,
+    );
+    const placed = placeSelectionFloat({
+      anchorScreen: chipAnchor
+        ? worldToScreen(chipAnchor, viewport)
+        : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    });
+
+    setFloatPlacement({
+      key: placementKey,
+      left: placed.left,
+      top: placed.top,
+      detached: true,
+    });
+    setIsDraggingFloat(false);
+    floatDragRef.current = null;
+  }, [
+    selection,
+    placementKey,
+    floatPlacement?.key,
+    getDiagram,
+    viewport,
+    stageSize.width,
+    stageSize.height,
+    panelHeight,
+  ]);
+
+  if (!selection || !selectionDetailsOpen) {
+    return null;
+  }
+
+  // Canvas bookmark / multi-select: highlight only (no float panel).
+  if (selection.type === "bookmark" || selection.type === "multi") {
     return null;
   }
 
   const diagram = getDiagram();
-  const anchorWorld = getSelectionAnchorWorld(selection, diagram);
-  const anchorScreen = anchorWorld
-    ? worldToScreen(anchorWorld, viewport)
-    : {
-        x: stageSize.width / 2 + SELECTION_FLOAT_WIDTH / 2,
-        y: stageSize.height / 2,
-      };
+  const isGroupSelection = selection.type === "group";
 
   let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
   if (selection.type === "line") {
@@ -102,14 +235,112 @@ export function SelectionFloat() {
     }
   }
 
-  const { left, top } = placeSelectionFloat({
-    anchorScreen,
-    stageWidth: stageSize.width,
-    stageHeight: stageSize.height,
-    panelWidth: SELECTION_FLOAT_WIDTH,
-    panelHeight,
-    avoidScreen,
-  });
+  const placementMatches =
+    Boolean(placementKey) && floatPlacement?.key === placementKey;
+  const isDetached = Boolean(placementMatches && floatPlacement?.detached);
+
+  let left: number;
+  let top: number;
+
+  if (isDetached && floatPlacement) {
+    ({ left, top } = clampSelectionFloatPosition({
+      left: floatPlacement.left,
+      top: floatPlacement.top,
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    }));
+  } else if (isGroupSelection) {
+    // Provisional group placement before the freeze layout effect commits.
+    const chipAnchor = getGroupChipAnchorWorld(
+      selection.anchorCharacterId,
+      diagram,
+    );
+    ({ left, top } = placeSelectionFloat({
+      anchorScreen: chipAnchor
+        ? worldToScreen(chipAnchor, viewport)
+        : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    }));
+  } else {
+    const anchorWorld = getSelectionAnchorWorld(selection, diagram);
+    const anchorScreen = anchorWorld
+      ? worldToScreen(anchorWorld, viewport)
+      : defaultFloatAnchorScreen(stageSize.width, stageSize.height);
+    ({ left, top } = placeSelectionFloat({
+      anchorScreen,
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+      avoidScreen,
+    }));
+  }
+
+  const endFloatDrag = (pointerId: number) => {
+    const drag = floatDragRef.current;
+    if (!drag || drag.pointerId !== pointerId) return;
+    floatDragRef.current = null;
+    setIsDraggingFloat(false);
+    const el = panelRef.current;
+    if (el?.hasPointerCapture(pointerId)) {
+      el.releasePointerCapture(pointerId);
+    }
+  };
+
+  const handleFloatPointerDown = (e: PointerEvent<HTMLElement>) => {
+    if (!placementKey || e.button !== 0) return;
+    if (isSelectionFloatInteractiveTarget(e.target)) return;
+    e.preventDefault();
+    floatDragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originLeft: left,
+      originTop: top,
+      moved: false,
+    };
+    setIsDraggingFloat(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleFloatPointerMove = (e: PointerEvent<HTMLElement>) => {
+    const drag = floatDragRef.current;
+    if (!drag || !placementKey || drag.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (
+      !drag.moved &&
+      Math.hypot(dx, dy) < FLOAT_DRAG_DETACH_THRESHOLD_PX
+    ) {
+      return;
+    }
+    drag.moved = true;
+
+    const next = clampSelectionFloatPosition({
+      left: drag.originLeft + dx,
+      top: drag.originTop + dy,
+      stageWidth: stageSize.width,
+      stageHeight: stageSize.height,
+      panelWidth: SELECTION_FLOAT_WIDTH,
+      panelHeight,
+    });
+    setFloatPlacement({
+      key: placementKey,
+      left: next.left,
+      top: next.top,
+      detached: true,
+    });
+  };
+
+  const handleFloatPointerUp = (e: PointerEvent<HTMLElement>) => {
+    endFloatDrag(e.pointerId);
+  };
 
   let body: ReactNode = null;
   let chipDialog: ReactNode = null;
@@ -244,9 +475,78 @@ export function SelectionFloat() {
     const line = lines.find((l) => l.id === selection.id);
     if (!line) return null;
 
+    const endpointLabel = (ref: (typeof line)["from"]) => {
+      if (ref.kind === "character") {
+        const character = getCharacterById({ characters }, ref.id);
+        const name = character?.name.trim();
+        return name || t("selection.nameless");
+      }
+      const box = getBoxById({ boxes }, ref.id);
+      const name = box?.name.trim();
+      return name || t("selection.box");
+    };
+
+    const reverseLine = () => {
+      const from = line.to;
+      const to = line.from;
+      const others = lines.filter((l) => l.id !== line.id);
+      const bend = resolveLineBend(line);
+      updateLine(line.id, {
+        from,
+        to,
+        routeIndex: nextRouteIndex(from, to, others),
+        bend: isSelfConnection(line) ? bend : -bend,
+      });
+    };
+
     body = (
       <>
         <h2>{t("selection.line")}</h2>
+        <div className="selection-line-endpoints">
+          <button
+            type="button"
+            className="btn-icon"
+            aria-label={t("selection.reverseLine")}
+            title={t("selection.reverseLine")}
+            onClick={reverseLine}
+          >
+            <ReverseLineIcon />
+          </button>
+          <p className="hint">
+            {t("selection.lineEndpoints", {
+              from: endpointLabel(line.from),
+              to: endpointLabel(line.to),
+            })}
+          </p>
+        </div>
+        <div className="line-arrow-toggles">
+          <button
+            type="button"
+            className={`btn-icon line-arrow-toggle${
+              line.startArrow ? " is-active" : ""
+            }`}
+            aria-label={t("selection.arrowStart")}
+            aria-pressed={line.startArrow}
+            title={t("selection.arrowStart")}
+            onClick={() =>
+              updateLine(line.id, { startArrow: !line.startArrow })
+            }
+          >
+            <ArrowToggleIcon direction="left" />
+          </button>
+          <button
+            type="button"
+            className={`btn-icon line-arrow-toggle${
+              line.endArrow ? " is-active" : ""
+            }`}
+            aria-label={t("selection.arrowEnd")}
+            aria-pressed={line.endArrow}
+            title={t("selection.arrowEnd")}
+            onClick={() => updateLine(line.id, { endArrow: !line.endArrow })}
+          >
+            <ArrowToggleIcon direction="right" />
+          </button>
+        </div>
         <label className="field">
           <span>{t("selection.label")}</span>
           <input
@@ -277,26 +577,6 @@ export function SelectionFloat() {
           value={line.color}
           onChange={(color) => updateLine(line.id, { color })}
         />
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={line.startArrow}
-            onChange={(e) =>
-              updateLine(line.id, { startArrow: e.target.checked })
-            }
-          />
-          <span>{t("selection.arrowStart")}</span>
-        </label>
-        <label className="field checkbox">
-          <input
-            type="checkbox"
-            checked={line.endArrow}
-            onChange={(e) =>
-              updateLine(line.id, { endArrow: e.target.checked })
-            }
-          />
-          <span>{t("selection.arrowEnd")}</span>
-        </label>
         <button
           type="button"
           className="btn-secondary"
@@ -523,14 +803,76 @@ export function SelectionFloat() {
 
   if (!body) return null;
 
+  const floatClassName = [
+    "selection-float",
+    "selection-float-draggable",
+    isDraggingFloat ? "is-dragging" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  let connector: ReactNode = null;
+  if (isDetached) {
+    const panelBounds = {
+      x: left,
+      y: top,
+      width: SELECTION_FLOAT_WIDTH,
+      height: panelHeight,
+    };
+    const panelCenterScreen = {
+      x: left + SELECTION_FLOAT_WIDTH / 2,
+      y: top + panelHeight / 2,
+    };
+    const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
+      selection,
+      diagram,
+      screenToWorld(panelCenterScreen, viewport),
+    );
+    if (connectorAnchorWorld) {
+      const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+      if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
+        const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+        connector = (
+          <svg
+            className="selection-float-connector"
+            width={stageSize.width}
+            height={stageSize.height}
+            aria-hidden
+          >
+            <line
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              className="selection-float-connector-line"
+            />
+            <circle
+              cx={from.x}
+              cy={from.y}
+              r={3}
+              className="selection-float-connector-dot"
+            />
+          </svg>
+        );
+      }
+    }
+  }
+
   return (
     <>
+      {connector}
       <aside
         ref={panelRef}
-        className="selection-float"
+        className={floatClassName}
         style={{ left, top, width: SELECTION_FLOAT_WIDTH }}
         onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          handleFloatPointerDown(e);
+        }}
+        onPointerMove={handleFloatPointerMove}
+        onPointerUp={handleFloatPointerUp}
+        onPointerCancel={handleFloatPointerUp}
       >
         {body}
       </aside>

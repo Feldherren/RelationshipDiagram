@@ -14,12 +14,14 @@ import {
   getFloatingTextSize,
 } from "../../utils/labelMetrics";
 import { SELECTION_PILL_NODE_NAME } from "../../utils/export";
+import { isIdInMultiSelection } from "../../utils/selectionMulti";
 
 interface FloatingTextNodeProps {
   floatingText: FloatingText;
   selected: boolean;
   draggable: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
 }
@@ -31,12 +33,18 @@ export function FloatingTextNode({
   selected,
   draggable,
   onSelect,
+  onOpenDetails,
   onDragMove,
   onDragEnd,
 }: FloatingTextNodeProps) {
   const { t } = useTranslation();
   const allowDragRef = useRef(true);
-  const setSelection = useDiagramStore((s) => s.setSelection);
+  const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const selection = useDiagramStore((s) => s.selection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const moveMultiSelectionByDelta = useDiagramStore(
+    (s) => s.moveMultiSelectionByDelta,
+  );
   const fontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const hasText = Boolean(floatingText.text.trim());
   const displayText = hasText
@@ -72,19 +80,59 @@ export function FloatingTextNode({
         e.cancelBubble = true;
         onSelect();
       }}
+      onDblClick={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
+      }}
+      onDblTap={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
+      }}
+      onContextMenu={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
+      }}
       onDragStart={(e) => {
         if (!allowDragRef.current) {
           e.target.stopDrag();
           return;
         }
-        // Dragging is layout, not inspect — close any open float.
-        setSelection(null);
+        // Dragging is layout, not inspect — keep selection, close the float.
+        captureHistory();
+        useDiagramStore.setState({ selectionDetailsOpen: false });
+        multiDragLastPosRef.current = {
+          x: floatingText.position.x,
+          y: floatingText.position.y,
+        };
       }}
       onDragMove={(e) => {
-        onDragMove({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        if (
+          isIdInMultiSelection(selection, "floatingText", floatingText.id)
+        ) {
+          const last = multiDragLastPosRef.current ?? pos;
+          const dx = pos.x - last.x;
+          const dy = pos.y - last.y;
+          multiDragLastPosRef.current = pos;
+          if (dx !== 0 || dy !== 0) {
+            moveMultiSelectionByDelta({ dx, dy }, { recordHistory: false });
+          }
+          return;
+        }
+        onDragMove(pos);
       }}
       onDragEnd={(e) => {
-        onDragEnd({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        multiDragLastPosRef.current = null;
+        if (
+          isIdInMultiSelection(selection, "floatingText", floatingText.id)
+        ) {
+          return;
+        }
+        onDragEnd(pos);
       }}
     >
       <Rect

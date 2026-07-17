@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
 import type { LabelChrome, RGB } from "../../models/types";
-import { rgbToCss } from "../../models/types";
+import { contrastingInk, rgbToCss } from "../../models/types";
 import { rgbaWithAlpha } from "../../utils/geometry";
 import { DEFAULT_DIAGRAM_FONT, DIAGRAM_SUBTITLE_FONT_SIZE, DIAGRAM_TITLE_FONT_SIZE } from "../../utils/diagramFont";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 import type { DiagramBackgroundColor } from "../../utils/diagramBackground";
+import { useDiagramStore } from "../../store/diagramStore";
 
 function previewSurfaceStyle(canvasBackground: DiagramBackgroundColor) {
   if (canvasBackground === null) {
@@ -24,17 +25,20 @@ function PreviewPill({
   chrome,
   fontFamily,
   fontSize = 12,
+  textColor,
 }: {
   text: string;
   chrome: LabelChrome;
   fontFamily: string;
   fontSize?: number;
+  /** Overrides chrome.textColor when set (e.g. line labels). */
+  textColor?: RGB;
 }) {
   return (
     <span
       className="diagram-appearance-preview-pill"
       style={{
-        color: rgbToCss(chrome.textColor),
+        color: rgbToCss(textColor ?? chrome.textColor),
         backgroundColor: rgbToCss(chrome.backgroundColor),
         borderColor: rgbToCss(chrome.borderColor),
         fontFamily: formatUiFontFamily(fontFamily),
@@ -117,6 +121,12 @@ export function LineAppearancePreview({
   canvasBackground?: DiagramBackgroundColor;
 }) {
   const { t } = useTranslation();
+  const lineLabelContrastWithBackground = useDiagramStore(
+    (s) => s.lineLabelContrastWithBackground,
+  );
+  const labelTextColor = lineLabelContrastWithBackground
+    ? contrastingInk(labelChrome.backgroundColor)
+    : lineColor;
   return (
     <div
       className={`${previewSurfaceClass(canvasBackground)} diagram-appearance-preview-line`}
@@ -130,6 +140,7 @@ export function LineAppearancePreview({
       <PreviewPill
         text={t("diagramAppearance.previewLineLabel")}
         chrome={labelChrome}
+        textColor={labelTextColor}
         fontFamily={fontFamily}
       />
     </div>

@@ -80,18 +80,58 @@ export function usePanZoom(
   }, [containerRef, handleWheel]);
 
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      );
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
+      const isEditable = isEditableTarget(target);
+      const key = e.key.toLowerCase();
+      const hasShortcutModifier = e.ctrlKey || e.metaKey;
+
+      if (hasShortcutModifier && !isEditable) {
+        if (key === "z") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            useDiagramStore.getState().redo();
+          } else {
+            useDiagramStore.getState().undo();
+          }
+          return;
+        }
+        if (key === "y") {
+          e.preventDefault();
+          useDiagramStore.getState().redo();
+          return;
+        }
+      }
+
       if (e.key === "Escape") {
         useDiagramStore.getState().cancelConnect();
         useDiagramStore.setState({ toolMode: "select" });
       }
+      if (e.key === "Enter") {
+        if (isEditable) {
+          return;
+        }
+        if (useDiagramStore.getState().toolMode !== "select") {
+          return;
+        }
+        const { selection } = useDiagramStore.getState();
+        if (!selection || selection.type === "bookmark" || selection.type === "multi") {
+          return;
+        }
+        e.preventDefault();
+        useDiagramStore.getState().openSelectionDetails();
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
-        const target = e.target as HTMLElement;
-        if (
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable
-        ) {
+        if (isEditable) {
           return;
         }
         if (useDiagramStore.getState().toolMode === "editGroupMembers") {

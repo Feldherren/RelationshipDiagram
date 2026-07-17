@@ -33,6 +33,9 @@ interface PillLabelProps {
   onMouseDown?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onTap?: (e: Konva.KonvaEventObject<TouchEvent>) => void;
+  onDblClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDblTap?: (e: Konva.KonvaEventObject<TouchEvent>) => void;
+  onContextMenu?: (e: Konva.KonvaEventObject<PointerEvent>) => void;
 }
 
 export function PillLabel({
@@ -55,6 +58,9 @@ export function PillLabel({
   onMouseDown,
   onClick,
   onTap,
+  onDblClick,
+  onDblTap,
+  onContextMenu,
 }: PillLabelProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontFamily = fontFamilyProp ?? diagramFontFamily;
@@ -70,7 +76,9 @@ export function PillLabel({
   const rectY = anchor === "center" ? -height / 2 : 0;
   const stroke = selected ? selectedStroke : unselectedStroke;
   const activeStrokeWidth = selected ? selectedStrokeWidth : strokeWidth;
-  const interactive = Boolean(onMouseDown || onClick || onTap);
+  const interactive = Boolean(
+    onMouseDown || onClick || onTap || onDblClick || onDblTap || onContextMenu,
+  );
 
   return (
     <Group
@@ -80,6 +88,9 @@ export function PillLabel({
       onMouseDown={onMouseDown}
       onClick={onClick}
       onTap={onTap}
+      onDblClick={onDblClick}
+      onDblTap={onDblTap}
+      onContextMenu={onContextMenu}
     >
       <Rect
         name={selected ? SELECTION_PILL_NODE_NAME : undefined}

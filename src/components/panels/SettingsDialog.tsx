@@ -36,6 +36,7 @@ import {
   exportZoomPercentFromRatio,
   exportZoomRatioFromPercent,
 } from "../../utils/exportZoom";
+import { downloadJson } from "../../utils/downloadJson";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { ForkDiagramThemeDialog } from "./ForkDiagramThemeDialog";
@@ -44,11 +45,12 @@ import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { DefaultFolderField } from "./DefaultFolderField";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
-type SettingsSectionId =
+export type SettingsSectionId =
   | "appearance"
   | "themeEditor"
   | "diagramDefaults"
   | "general"
+  | "accessibility"
   | "editing"
   | "export"
   | "data"
@@ -57,19 +59,15 @@ type SettingsSectionId =
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Section to show when the dialog opens. Defaults to Appearance. */
+  initialSection?: SettingsSectionId;
 }
 
-function downloadJson(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onClose,
+  initialSection = "appearance",
+}: SettingsDialogProps) {
   const { t } = useTranslation();
   const [languagePreference, setLanguagePreferenceState] = useState(
     getLanguagePreference,
@@ -81,6 +79,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [forkPendingAppearance, setForkPendingAppearance] =
     useState<DiagramAppearance | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
+  const setSelectionPulseEnabled = useDiagramStore(
+    (s) => s.setSelectionPulseEnabled,
+  );
+  const setLineLabelContrastWithBackground = useDiagramStore(
+    (s) => s.setLineLabelContrastWithBackground,
+  );
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
   );
@@ -93,8 +97,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     }
     setPrefsState(getAppPreferences());
     setLanguagePreferenceState(getLanguagePreference());
-    setActiveSection("appearance");
-  }, [open]);
+    setActiveSection(initialSection);
+  }, [open, initialSection]);
 
   const updatePrefs = (patch: Partial<AppPreferences>) => {
     const next = setAppPreferences(patch);
@@ -260,6 +264,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       nested: true,
     },
     { id: "general", label: t("appSettings.generalSection") },
+    { id: "accessibility", label: t("appSettings.accessibilitySection") },
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "export", label: t("appSettings.exportSection") },
     { id: "data", label: t("appSettings.dataSection") },
@@ -292,26 +297,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             </select>
           </label>
           <p className="hint">{t("appSettings.themeHint")}</p>
-
-          <label className="field">
-            <span>{t("appSettings.uiScale")}</span>
-            <select
-              value={prefs.uiScale}
-              onChange={(e) =>
-                updatePrefs({
-                  uiScale: Number(e.target.value) as UiScale,
-                })
-              }
-            >
-              {UI_SCALE_OPTIONS.map((scale) => (
-                <option key={scale} value={scale}>
-                  {t("appSettings.uiScaleOption", {
-                    percent: Math.round(scale * 100),
-                  })}
-                </option>
-              ))}
-            </select>
-          </label>
 
           <hr className="theme-editor-divider" />
 
@@ -364,7 +349,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             appearance={prefs.diagramAppearance}
             prefs={prefs}
             onPrefsChange={setPrefsState}
-            editorMode
             onApplyAppearance={replaceDiagramAppearance}
             hintKey="appSettings.diagramThemesLibraryHint"
           />
@@ -411,6 +395,61 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             </select>
           </label>
           <p className="hint">{t("appSettings.languageHint")}</p>
+        </>
+      );
+      break;
+    case "accessibility":
+      content = (
+        <>
+          <label className="field">
+            <span>{t("appSettings.uiScale")}</span>
+            <select
+              value={prefs.uiScale}
+              onChange={(e) =>
+                updatePrefs({
+                  uiScale: Number(e.target.value) as UiScale,
+                })
+              }
+            >
+              {UI_SCALE_OPTIONS.map((scale) => (
+                <option key={scale} value={scale}>
+                  {t("appSettings.uiScaleOption", {
+                    percent: Math.round(scale * 100),
+                  })}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <hr className="theme-editor-divider" />
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.selectionPulseEnabled}
+              onChange={(e) => {
+                setSelectionPulseEnabled(e.target.checked);
+                setPrefsState(getAppPreferences());
+              }}
+            />
+            <span>{t("appSettings.selectionPulseEnabled")}</span>
+          </label>
+          <p className="hint">{t("appSettings.selectionPulseEnabledHint")}</p>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.lineLabelContrastWithBackground}
+              onChange={(e) => {
+                setLineLabelContrastWithBackground(e.target.checked);
+                setPrefsState(getAppPreferences());
+              }}
+            />
+            <span>{t("appSettings.lineLabelContrastWithBackground")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.lineLabelContrastWithBackgroundHint")}
+          </p>
         </>
       );
       break;

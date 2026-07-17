@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Arrow, Circle, Group } from "react-konva";
 import type Konva from "konva";
 import type { Diagram, Line, Point } from "../../models/types";
-import { rgbToCss } from "../../models/types";
+import { contrastingInk, rgbToCss } from "../../models/types";
 import {
   bendDeltaFromDrag,
   getLineAnchors,
@@ -18,13 +18,18 @@ import {
 import { useDiagramStore } from "../../store/diagramStore";
 import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 import { PillLabel } from "./PillLabel";
-import { LineAura, shouldShowAura } from "./HoverAura";
+import {
+  LineAura,
+  LineSelectionPulse,
+  shouldShowAura,
+} from "./HoverAura";
 
 interface LineEdgeProps {
   line: Line;
   diagram: Diagram;
   selected: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onBendChange: (bend: number) => void;
   part?: "full" | "stroke" | "label";
   /** Shared hover when stroke and label are rendered as separate instances. */
@@ -45,6 +50,7 @@ export function LineEdge({
   diagram,
   selected,
   onSelect,
+  onOpenDetails,
   onBendChange,
   part = "full",
   hovered: hoveredProp,
@@ -59,7 +65,15 @@ export function LineEdge({
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
+  const lineLabelContrastWithBackground = useDiagramStore(
+    (s) => s.lineLabelContrastWithBackground,
+  );
   const lineLabel = useDiagramStore((s) => s.diagramAppearance.lineLabel);
+  const labelTextColor = lineLabelContrastWithBackground
+    ? contrastingInk(lineLabel.backgroundColor)
+    : line.color;
   const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
   const hovered = hoveredProp ?? localHovered;
@@ -72,6 +86,7 @@ export function LineEdge({
   const lineIdRef = useRef(line.id);
   const dragStartRef = useRef<BendDragStart | null>(null);
   const gestureClearedSelectionRef = useRef(false);
+  const historyCapturedRef = useRef(false);
 
   useEffect(() => {
     lineIdRef.current = line.id;
@@ -114,6 +129,10 @@ export function LineEdge({
         },
       );
       const nextBend = dragStart.bend + delta;
+      if (!historyCapturedRef.current) {
+        historyCapturedRef.current = true;
+        captureHistory();
+      }
       onBendChange(
         isSelfConnection(line)
           ? Math.max(MIN_SELF_LOOP_BEND, nextBend)
@@ -132,7 +151,7 @@ export function LineEdge({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [bendDragging, onBendChange, screenToWorld, clickGuard.noticeDrag, setSelection, line]);
+  }, [bendDragging, onBendChange, screenToWorld, clickGuard.noticeDrag, setSelection, line, captureHistory]);
 
   const beginBendDrag = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.cancelBubble = true;
@@ -143,6 +162,7 @@ export function LineEdge({
     const { start, end } = getLineAnchors(line, diagram);
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
+    historyCapturedRef.current = false;
     dragStartRef.current = {
       bend: resolveLineBend(line),
       world,
@@ -162,6 +182,14 @@ export function LineEdge({
     onSelect();
   };
 
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
+  };
+
   const showStroke = part === "full" || part === "stroke";
   const showLabel = (part === "full" || part === "label") && displayLabel;
 
@@ -175,6 +203,14 @@ export function LineEdge({
           points={routed.points}
           color={line.color}
           dash={dash}
+        />
+      )}
+      {showStroke && selected && selectionPulseEnabled && (
+        <LineSelectionPulse
+          points={routed.points}
+          color={line.color}
+          dash={dash}
+          active
         />
       )}
       {showStroke && (
@@ -193,6 +229,9 @@ export function LineEdge({
         lineJoin="round"
         onClick={handleSelectClick}
         onTap={handleSelectClick}
+        onDblClick={handleOpenDetails}
+        onDblTap={handleOpenDetails}
+        onContextMenu={handleOpenDetails}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return;
           beginBendDrag(e);
@@ -227,13 +266,16 @@ export function LineEdge({
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}
-          textFill={rgbToCss(lineLabel.textColor)}
+          textFill={rgbToCss(labelTextColor)}
           fill={rgbToCss(lineLabel.backgroundColor)}
           unselectedStroke={rgbToCss(lineLabel.borderColor)}
           selected={selected}
           selectedStroke="#c62828"
           onClick={handleSelectClick}
           onTap={handleSelectClick}
+          onDblClick={handleOpenDetails}
+          onDblTap={handleOpenDetails}
+          onContextMenu={handleOpenDetails}
           onMouseDown={(e) => {
             if (e.evt.button !== 0) return;
             beginBendDrag(e);

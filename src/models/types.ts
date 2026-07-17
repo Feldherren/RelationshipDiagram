@@ -184,6 +184,17 @@ export interface Viewport {
   scale: number;
 }
 
+/** Named camera bookmark stored with the diagram. */
+export interface ViewBookmark {
+  id: string;
+  name: string;
+  color: RGB;
+  /** Saved pan/zoom to restore. */
+  viewport: Viewport;
+  /** World position for the flag marker (viewport centre at save time). */
+  anchor: Point;
+}
+
 export type GridStyle = "lines" | "dots";
 
 /** Pill label chrome shared across matching canvas labels. */
@@ -243,7 +254,15 @@ export interface Diagram {
   boxes: Box[];
   floatingTexts?: FloatingText[];
   viewport?: Viewport;
+  /** Named camera bookmarks; omit or empty when none. */
+  bookmarks?: ViewBookmark[];
 }
+
+/** Items that can appear in a marquee multi-selection. */
+export type MultiSelectableItem =
+  | { type: "character"; id: string }
+  | { type: "box"; id: string }
+  | { type: "floatingText"; id: string };
 
 export type Selection =
   | { type: "character"; id: string }
@@ -251,6 +270,8 @@ export type Selection =
   | { type: "group"; id: string; anchorCharacterId?: string }
   | { type: "box"; id: string }
   | { type: "floatingText"; id: string }
+  | { type: "bookmark"; id: string }
+  | { type: "multi"; items: MultiSelectableItem[] }
   | null;
 
 export interface Bounds {
@@ -274,7 +295,7 @@ export const MIN_BOX_WIDTH = 120;
 export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
 export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
 export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
-export const MEMBERSHIP_CHIP_RADIUS = 9;
+export const MEMBERSHIP_CHIP_RADIUS = 11;
 
 export type BoxResizeEdge =
   | "n"
@@ -315,4 +336,34 @@ export function colorsEqual(a: RGB, b: RGB): boolean {
 
 export function defaultRgb(): RGB {
   return { r: 80, g: 120, b: 200 };
+}
+
+/** WCAG relative luminance (0 = black, 1 = white). */
+export function relativeLuminance(color: RGB): number {
+  const toLinear = (channel: number) => {
+    const s = channel / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return (
+    0.2126 * toLinear(color.r) +
+    0.7152 * toLinear(color.g) +
+    0.0722 * toLinear(color.b)
+  );
+}
+
+/** Prefer dark ink when background luminance is above this (WCAG). */
+export const LIGHT_BACKGROUND_LUMINANCE_THRESHOLD = 0.179;
+
+export function isLightColor(color: RGB): boolean {
+  return relativeLuminance(color) > LIGHT_BACKGROUND_LUMINANCE_THRESHOLD;
+}
+
+const CONTRASTING_INK_DARK: RGB = { r: 31, g: 31, b: 31 };
+const CONTRASTING_INK_LIGHT: RGB = { r: 245, g: 245, b: 245 };
+
+/** Near-black or near-white ink chosen for readable contrast on `background`. */
+export function contrastingInk(background: RGB): RGB {
+  return isLightColor(background)
+    ? { ...CONTRASTING_INK_DARK }
+    : { ...CONTRASTING_INK_LIGHT };
 }

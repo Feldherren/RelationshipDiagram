@@ -104,6 +104,7 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
+  selectionPulseEnabled: boolean;
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
   selectionDetailsOpen: boolean;
@@ -155,6 +156,7 @@ interface DiagramState {
   setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
+  setSelectionPulseEnabled: (enabled: boolean) => void;
   addBookmark: (name?: string, color?: RGB) => void;
   updateBookmark: (
     id: string,
@@ -329,6 +331,7 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
+  selectionPulseEnabled: true,
   selection: null,
   selectionDetailsOpen: false,
   toolMode: "select",
@@ -688,6 +691,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       autosaveEnabled: prefs.autosaveEnabled,
       bookmarksVisible: prefs.bookmarksVisible,
+      selectionPulseEnabled: prefs.selectionPulseEnabled,
     });
   },
 
@@ -1198,6 +1202,11 @@ export const useDiagramStore = create<DiagramState>()(
         : {}),
     });
     setAppPreferences({ bookmarksVisible: visible });
+  },
+
+  setSelectionPulseEnabled: (enabled) => {
+    set({ selectionPulseEnabled: enabled });
+    setAppPreferences({ selectionPulseEnabled: enabled });
   },
 
   addBookmark: (name, color) => {

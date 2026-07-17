@@ -18,7 +18,11 @@ import {
 import { useDiagramStore } from "../../store/diagramStore";
 import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 import { PillLabel } from "./PillLabel";
-import { LineAura, shouldShowAura } from "./HoverAura";
+import {
+  LineAura,
+  LineSelectionPulse,
+  shouldShowAura,
+} from "./HoverAura";
 
 interface LineEdgeProps {
   line: Line;
@@ -62,6 +66,7 @@ export function LineEdge({
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const lineLabel = useDiagramStore((s) => s.diagramAppearance.lineLabel);
   const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
@@ -192,6 +197,14 @@ export function LineEdge({
           points={routed.points}
           color={line.color}
           dash={dash}
+        />
+      )}
+      {showStroke && selected && selectionPulseEnabled && (
+        <LineSelectionPulse
+          points={routed.points}
+          color={line.color}
+          dash={dash}
+          active
         />
       )}
       {showStroke && (

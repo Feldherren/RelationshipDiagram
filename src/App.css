@@ -1449,13 +1449,6 @@ body,
   margin: 1.25rem 0;
 }
 
-.settings-cross-links {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
 .diagram-appearance-subgroup {
   margin: 0.75rem 0 0.35rem;
   font-size: 0.8125rem;

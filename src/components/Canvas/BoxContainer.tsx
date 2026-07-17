@@ -33,6 +33,7 @@ import {
 import { ConnectHandle } from "./ConnectHandle";
 import {
   RoundedRectAura,
+  RoundedRectSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
 
@@ -164,6 +165,7 @@ export function BoxContainer({
   const boxNameLabel = useDiagramStore(
     (s) => s.diagramAppearance.boxNameLabel,
   );
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const clickGuard = useClickWithoutDrag();
   const gestureClearedSelectionRef = useRef(false);
   const [hovered, setHovered] = useState(false);
@@ -183,6 +185,7 @@ export function BoxContainer({
   onResizeEndRef.current = onResizeEnd;
   onDragEndRef.current = onDragEnd;
   const showAura = shouldShowAura(hovered, selected);
+  const showPulse = selected && selectionPulseEnabled;
   const showConnectHandle = selected || hovered || isConnectSource;
   const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
   const containedCount = getCharactersContainedInBox(
@@ -418,6 +421,17 @@ export function BoxContainer({
             color={box.borderColor}
           />
         )}
+        {showPulse && (
+          <RoundedRectSelectionPulse
+            x={-size}
+            y={-size}
+            width={size * 2}
+            height={size * 2}
+            cornerRadius={4}
+            color={box.borderColor}
+            active
+          />
+        )}
         <Rect
           x={-size}
           y={-size}
@@ -493,6 +507,16 @@ export function BoxContainer({
           width={bounds.width}
           height={bounds.height}
           color={box.borderColor}
+        />
+      )}
+      {showBackground && showPulse && (
+        <RoundedRectSelectionPulse
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={bounds.height}
+          color={box.borderColor}
+          active
         />
       )}
       {showBackground && (

@@ -58,7 +58,6 @@ type SettingsSectionId =
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
-  onOpenHelp?: () => void;
 }
 
 function downloadJson(filename: string, contents: string) {
@@ -71,7 +70,7 @@ function downloadJson(filename: string, contents: string) {
   URL.revokeObjectURL(url);
 }
 
-export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation();
   const [languagePreference, setLanguagePreferenceState] = useState(
     getLanguagePreference,
@@ -84,6 +83,9 @@ export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProp
     useState<DiagramAppearance | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
   const setBookmarksVisible = useDiagramStore((s) => s.setBookmarksVisible);
+  const setSelectionPulseEnabled = useDiagramStore(
+    (s) => s.setSelectionPulseEnabled,
+  );
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
   );
@@ -297,26 +299,6 @@ export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProp
           </label>
           <p className="hint">{t("appSettings.themeHint")}</p>
 
-          <label className="field">
-            <span>{t("appSettings.uiScale")}</span>
-            <select
-              value={prefs.uiScale}
-              onChange={(e) =>
-                updatePrefs({
-                  uiScale: Number(e.target.value) as UiScale,
-                })
-              }
-            >
-              {UI_SCALE_OPTIONS.map((scale) => (
-                <option key={scale} value={scale}>
-                  {t("appSettings.uiScaleOption", {
-                    percent: Math.round(scale * 100),
-                  })}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <hr className="theme-editor-divider" />
 
           <label className="field">
@@ -421,6 +403,28 @@ export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProp
     case "accessibility":
       content = (
         <>
+          <label className="field">
+            <span>{t("appSettings.uiScale")}</span>
+            <select
+              value={prefs.uiScale}
+              onChange={(e) =>
+                updatePrefs({
+                  uiScale: Number(e.target.value) as UiScale,
+                })
+              }
+            >
+              {UI_SCALE_OPTIONS.map((scale) => (
+                <option key={scale} value={scale}>
+                  {t("appSettings.uiScaleOption", {
+                    percent: Math.round(scale * 100),
+                  })}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <hr className="theme-editor-divider" />
+
           <label className="field checkbox">
             <input
               type="checkbox"
@@ -434,36 +438,18 @@ export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProp
           </label>
           <p className="hint">{t("appSettings.bookmarksVisibleHint")}</p>
 
-          <hr className="theme-editor-divider" />
-
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={!onOpenHelp}
-            onClick={() => onOpenHelp?.()}
-          >
-            {t("appSettings.openKeyboardShortcuts")}
-          </button>
-
-          <hr className="theme-editor-divider" />
-
-          <p className="hint">{t("appSettings.accessibilityRelatedHint")}</p>
-          <div className="settings-cross-links">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setActiveSection("appearance")}
-            >
-              {t("appSettings.goToAppearance")}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setActiveSection("general")}
-            >
-              {t("appSettings.goToGeneral")}
-            </button>
-          </div>
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.selectionPulseEnabled}
+              onChange={(e) => {
+                setSelectionPulseEnabled(e.target.checked);
+                setPrefsState(getAppPreferences());
+              }}
+            />
+            <span>{t("appSettings.selectionPulseEnabled")}</span>
+          </label>
+          <p className="hint">{t("appSettings.selectionPulseEnabledHint")}</p>
         </>
       );
       break;

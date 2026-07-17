@@ -124,10 +124,6 @@ function App() {
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onOpenHelp={() => {
-          setSettingsOpen(false);
-          setHelpOpen(true);
-        }}
       />
     </div>
   );

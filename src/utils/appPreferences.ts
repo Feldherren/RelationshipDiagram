@@ -48,6 +48,8 @@ export interface AppPreferences {
   customThemes: ThemeDocument[];
   /** Whether bookmark flags are shown on the canvas. */
   bookmarksVisible: boolean;
+  /** Whether selected canvas items show a pulsing highlight. */
+  selectionPulseEnabled: boolean;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -69,6 +71,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiScale: 1,
   customThemes: [],
   bookmarksVisible: true,
+  selectionPulseEnabled: true,
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -260,6 +263,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.bookmarksVisible === "boolean"
         ? stored.bookmarksVisible
         : defaults.bookmarksVisible,
+    selectionPulseEnabled:
+      typeof stored.selectionPulseEnabled === "boolean"
+        ? stored.selectionPulseEnabled
+        : defaults.selectionPulseEnabled,
   };
 }
 

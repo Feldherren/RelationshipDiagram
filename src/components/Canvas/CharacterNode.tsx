@@ -21,6 +21,7 @@ import { ConnectHandle } from "./ConnectHandle";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import {
   RadialAuraCircle,
+  RadialSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
 import {
@@ -121,6 +122,7 @@ export function CharacterNode({
   const allowNodeDragRef = useRef(true);
   const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
   const selection = useDiagramStore((s) => s.selection);
+  const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
   const moveMultiSelectionByDelta = useDiagramStore(
     (s) => s.moveMultiSelectionByDelta,
@@ -153,6 +155,7 @@ export function CharacterNode({
   const showConnectHandle = selected || hovered || isConnectSource;
   const showAura =
     shouldShowAura(hovered, selected) || membershipEmphasized;
+  const strongStaticSelectionAura = selected && !selectionPulseEnabled;
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
@@ -234,6 +237,15 @@ export function CharacterNode({
         <RadialAuraCircle
           innerRadius={size}
           color={character.borderColor}
+          peakOpacity={strongStaticSelectionAura ? 0.55 : undefined}
+          outerPadding={strongStaticSelectionAura ? 32 : undefined}
+        />
+      )}
+      {selected && selectionPulseEnabled && (
+        <RadialSelectionPulse
+          innerRadius={size}
+          color={character.borderColor}
+          active
         />
       )}
       <ShapeOutline

@@ -8,6 +8,7 @@ import {
   backgroundModeUsesColour,
   backgroundModeUsesGridColour,
 } from "../../utils/diagramBackground";
+import { GRID_COLOR_PALETTE } from "../../utils/gridBackground";
 import { BackgroundColorPicker } from "../pickers/BackgroundColorPicker";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundPatternPreview } from "./BackgroundPatternPreview";
@@ -79,6 +80,7 @@ export function BackgroundModeControls({
                   }
                   value={gridColor}
                   onChange={onGridColorChange}
+                  palette={GRID_COLOR_PALETTE}
                 />
               )}
             </div>

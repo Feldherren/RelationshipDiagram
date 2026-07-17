@@ -8,7 +8,9 @@ import {
 } from "../../models/types";
 import { useRafCoalescedCallback } from "../../hooks/useRafCoalescedCallback";
 
-const PASTEL_PALETTE: { id: string; color: RGB }[] = [
+export type ColorPaletteEntry = { id: string; color: RGB };
+
+const PASTEL_PALETTE: ColorPaletteEntry[] = [
   { id: "white", color: { r: 255, g: 255, b: 255 } },
   { id: "black", color: { r: 0, g: 0, b: 0 } },
   { id: "pastelRed", color: { r: 248, g: 155, b: 155 } },
@@ -24,9 +26,16 @@ interface RgbPickerProps {
   label: string;
   value: RGB;
   onChange: (value: RGB) => void;
+  /** Preset swatches; defaults to the standard pastel palette. */
+  palette?: ColorPaletteEntry[];
 }
 
-export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
+export function RgbPicker({
+  label,
+  value,
+  onChange,
+  palette = PASTEL_PALETTE,
+}: RgbPickerProps) {
   const { t } = useTranslation();
   const colorInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(value);
@@ -61,7 +70,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
     commit(color);
   };
 
-  const selectedPreset = PASTEL_PALETTE.find((entry) =>
+  const selectedPreset = palette.find((entry) =>
     colorsEqual(entry.color, draft),
   );
   const isCustom = !selectedPreset;
@@ -81,7 +90,7 @@ export function RgbPicker({ label, value, onChange }: RgbPickerProps) {
     <div className="field color-picker">
       <span>{label}</span>
       <div className="color-picker-row">
-        {PASTEL_PALETTE.map((entry) => {
+        {palette.map((entry) => {
           const selected = selectedPreset?.id === entry.id;
           const swatchLabel = t(`colour.${entry.id}`);
           return (

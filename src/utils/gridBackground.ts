@@ -6,6 +6,20 @@ export const DEFAULT_DIAGRAM_GRID_COLOR: RGB = { r: 224, g: 224, b: 224 };
 export const DIAGRAM_GRID_STROKE = rgbToCss(DEFAULT_DIAGRAM_GRID_COLOR);
 export const DIAGRAM_GRID_DOT_RADIUS = 1.25;
 
+/** Lighter swatches for grid/dot colour — subtler than character/line pastels. */
+export const GRID_COLOR_PALETTE: { id: string; color: RGB }[] = [
+  { id: "white", color: { r: 255, g: 255, b: 255 } },
+  { id: "lightGrey", color: { ...DEFAULT_DIAGRAM_GRID_COLOR } },
+  { id: "softGrey", color: { r: 192, g: 192, b: 192 } },
+  { id: "lightRed", color: { r: 252, g: 210, b: 210 } },
+  { id: "lightOrange", color: { r: 253, g: 229, b: 207 } },
+  { id: "lightYellow", color: { r: 251, g: 242, b: 205 } },
+  { id: "lightGreen", color: { r: 215, g: 241, b: 219 } },
+  { id: "lightBlue", color: { r: 208, g: 230, b: 251 } },
+  { id: "lightIndigo", color: { r: 217, g: 220, b: 251 } },
+  { id: "lightViolet", color: { r: 234, g: 210, b: 251 } },
+];
+
 export function computeGridLineBounds(
   region: Bounds,
   gridSize = DIAGRAM_GRID_SIZE,

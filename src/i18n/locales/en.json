@@ -459,6 +459,8 @@
   "colour": {
     "white": "White",
     "black": "Black",
+    "lightGrey": "Light grey",
+    "softGrey": "Soft grey",
     "pastelRed": "Pastel red",
     "pastelOrange": "Pastel orange",
     "pastelYellow": "Pastel yellow",
@@ -466,6 +468,13 @@
     "pastelBlue": "Pastel blue",
     "pastelIndigo": "Pastel indigo",
     "pastelViolet": "Pastel violet",
+    "lightRed": "Light red",
+    "lightOrange": "Light orange",
+    "lightYellow": "Light yellow",
+    "lightGreen": "Light green",
+    "lightBlue": "Light blue",
+    "lightIndigo": "Light indigo",
+    "lightViolet": "Light violet",
     "custom": "Custom colour",
     "hexAria": "{{label}} hex code"
   },

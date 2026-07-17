@@ -499,6 +499,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     e.evt.preventDefault();
     const screenX = e.evt.clientX;
     const screenY = e.evt.clientY;
+    setSelection(null);
     setAddObjectMenu((current) => {
       if (current && isSameMenuSpot(current, screenX, screenY)) {
         return null;

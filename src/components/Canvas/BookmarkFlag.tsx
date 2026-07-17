@@ -51,6 +51,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     (s) => s.diagramAppearance.characterNameLabel,
   );
   const historyCapturedRef = useRef(false);
+  const didDragRef = useRef(false);
   const inv = 1 / Math.max(0.01, scale);
   const color = rgbToCss(bookmark.color);
 
@@ -80,6 +81,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
         Math.abs(dx) > DRAG_THRESHOLD / scale ||
         Math.abs(dy) > DRAG_THRESHOLD / scale
       ) {
+        didDragRef.current = true;
         clickGuard.noticeDrag();
       }
       if (!historyCapturedRef.current) {
@@ -93,8 +95,11 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     };
 
     const onUp = () => {
-      // Capture-phase: must run before Konva synthesises stage click on mouseup.
-      requestSuppressStageClick();
+      // Only suppress a trailing stage click after a real drag; a plain
+      // click-to-select must not eat the next empty-space deselect.
+      if (didDragRef.current) {
+        requestSuppressStageClick();
+      }
       dragStartRef.current = null;
       stageRef.current = null;
       setDragging(false);
@@ -125,6 +130,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     if (!stage || !pointer) return;
     stageRef.current = stage;
     historyCapturedRef.current = false;
+    didDragRef.current = false;
     const world = screenToWorld(pointer);
     dragStartRef.current = {
       pointer: world,

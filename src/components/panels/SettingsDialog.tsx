@@ -49,6 +49,7 @@ type SettingsSectionId =
   | "themeEditor"
   | "diagramDefaults"
   | "general"
+  | "accessibility"
   | "editing"
   | "export"
   | "data"
@@ -57,6 +58,7 @@ type SettingsSectionId =
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
+  onOpenHelp?: () => void;
 }
 
 function downloadJson(filename: string, contents: string) {
@@ -69,7 +71,7 @@ function downloadJson(filename: string, contents: string) {
   URL.revokeObjectURL(url);
 }
 
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose, onOpenHelp }: SettingsDialogProps) {
   const { t } = useTranslation();
   const [languagePreference, setLanguagePreferenceState] = useState(
     getLanguagePreference,
@@ -81,6 +83,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [forkPendingAppearance, setForkPendingAppearance] =
     useState<DiagramAppearance | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
+  const setBookmarksVisible = useDiagramStore((s) => s.setBookmarksVisible);
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
   );
@@ -260,6 +263,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
       nested: true,
     },
     { id: "general", label: t("appSettings.generalSection") },
+    { id: "accessibility", label: t("appSettings.accessibilitySection") },
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "export", label: t("appSettings.exportSection") },
     { id: "data", label: t("appSettings.dataSection") },
@@ -411,6 +415,55 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             </select>
           </label>
           <p className="hint">{t("appSettings.languageHint")}</p>
+        </>
+      );
+      break;
+    case "accessibility":
+      content = (
+        <>
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.bookmarksVisible}
+              onChange={(e) => {
+                setBookmarksVisible(e.target.checked);
+                setPrefsState(getAppPreferences());
+              }}
+            />
+            <span>{t("appSettings.bookmarksVisible")}</span>
+          </label>
+          <p className="hint">{t("appSettings.bookmarksVisibleHint")}</p>
+
+          <hr className="theme-editor-divider" />
+
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!onOpenHelp}
+            onClick={() => onOpenHelp?.()}
+          >
+            {t("appSettings.openKeyboardShortcuts")}
+          </button>
+
+          <hr className="theme-editor-divider" />
+
+          <p className="hint">{t("appSettings.accessibilityRelatedHint")}</p>
+          <div className="settings-cross-links">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setActiveSection("appearance")}
+            >
+              {t("appSettings.goToAppearance")}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setActiveSection("general")}
+            >
+              {t("appSettings.goToGeneral")}
+            </button>
+          </div>
         </>
       );
       break;

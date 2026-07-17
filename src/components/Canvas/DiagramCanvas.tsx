@@ -434,6 +434,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onOpenDetails={() =>
+                  handleNodeClick(
+                    { id: box.id, kind: "box" },
+                    { openDetails: true },
+                  )
+                }
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
@@ -464,7 +470,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   selection?.type === "line" && selection.id === line.id
                 }
                 onSelect={() =>
-                  setSelection({ type: "line", id: line.id })
+                  setSelection({ type: "line", id: line.id }, { openDetails: false })
+                }
+                onOpenDetails={() =>
+                  setSelection({ type: "line", id: line.id }, { openDetails: true })
                 }
                 onBendChange={(bend) =>
                   updateLine(line.id, { bend }, { recordHistory: false })
@@ -490,7 +499,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   selection?.type === "line" && selection.id === line.id
                 }
                 onSelect={() =>
-                  setSelection({ type: "line", id: line.id })
+                  setSelection({ type: "line", id: line.id }, { openDetails: false })
+                }
+                onOpenDetails={() =>
+                  setSelection({ type: "line", id: line.id }, { openDetails: true })
                 }
                 onBendChange={(bend) =>
                   updateLine(line.id, { bend }, { recordHistory: false })
@@ -551,6 +563,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   onSelect={() =>
                     handleNodeClick({ id: character.id, kind: "character" })
                   }
+                  onOpenDetails={() =>
+                    handleNodeClick(
+                      { id: character.id, kind: "character" },
+                      { openDetails: true },
+                    )
+                  }
                   onSelectGroup={
                     toolMode === "editGroupMembers"
                       ? () =>
@@ -594,6 +612,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onOpenDetails={() =>
+                  handleNodeClick(
+                    { id: box.id, kind: "box" },
+                    { openDetails: true },
+                  )
+                }
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
@@ -628,6 +652,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+                onOpenDetails={() =>
+                  handleNodeClick(
+                    { id: box.id, kind: "box" },
+                    { openDetails: true },
+                  )
+                }
                 onToggleCollapse={() => toggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
@@ -670,7 +700,16 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 !connectDrag
               }
               onSelect={() =>
-                setSelection({ type: "floatingText", id: floatingText.id })
+                setSelection(
+                  { type: "floatingText", id: floatingText.id },
+                  { openDetails: false },
+                )
+              }
+              onOpenDetails={() =>
+                setSelection(
+                  { type: "floatingText", id: floatingText.id },
+                  { openDetails: true },
+                )
               }
               onDragMove={(pos) =>
                 moveFloatingText(floatingText.id, pos, {

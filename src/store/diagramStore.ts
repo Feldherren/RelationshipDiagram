@@ -132,6 +132,7 @@ interface DiagramState {
     selection: Selection,
     options?: { openDetails?: boolean },
   ) => void;
+  openSelectionDetails: () => void;
   setShowGrid: (show: boolean) => void;
   setGridStyle: (style: GridStyle) => void;
   setDiagramBackgroundMode: (mode: DiagramBackgroundMode) => void;
@@ -217,7 +218,7 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
 
-  handleNodeClick: (ref: NodeRef) => void;
+  handleNodeClick: (ref: NodeRef, options?: { openDetails?: boolean }) => void;
   startConnectDrag: (from: NodeRef, point: { x: number; y: number }) => void;
   updateConnectDrag: (point: { x: number; y: number }) => void;
   endConnectDrag: (point: { x: number; y: number }) => void;
@@ -409,6 +410,11 @@ export const useDiagramStore = create<DiagramState>()(
         ? { toolMode: "select" as const }
         : {}),
     });
+  },
+  openSelectionDetails: () => {
+    const { selection } = get();
+    if (!selection || selection.type === "bookmark") return;
+    set({ selectionDetailsOpen: true });
   },
   setShowGrid: (show) =>
     {
@@ -1003,13 +1009,18 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  handleNodeClick: (ref) => {
+  handleNodeClick: (ref, options) => {
     const { connectFrom, toolMode, selection } = get();
+    const openDetails = options?.openDetails ?? false;
     if (connectFrom) {
+      // A right-click / double-click "open details" gesture must not draw a line.
+      if (openDetails) return;
       get().addLine(connectFrom, ref);
       return;
     }
     if (toolMode === "editGroupMembers" && selection?.type === "group") {
+      // Ignore open-details gestures while editing membership.
+      if (openDetails) return;
       if (ref.kind === "character") {
         get().toggleCharacterInGroup(ref.id, selection.id);
         return;
@@ -1018,9 +1029,9 @@ export const useDiagramStore = create<DiagramState>()(
       return;
     }
     if (ref.kind === "character") {
-      get().setSelection({ type: "character", id: ref.id });
+      get().setSelection({ type: "character", id: ref.id }, { openDetails });
     } else {
-      get().setSelection({ type: "box", id: ref.id });
+      get().setSelection({ type: "box", id: ref.id }, { openDetails });
     }
   },
 

@@ -85,7 +85,8 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
-| Edit properties | Select an item; use the floating panel near it |
+| Select an item | Single-click it (highlights without opening the panel) |
+| Edit properties | Double-click or right-click an item to open its floating panel (boxes: right-click, since double-click collapses); or select it and press **Enter** |
 | Browse groups | **Groups** in the lower left |
 | Assign group membership | **Groups** (lower left) → **Edit members**, or select a group → **Edit members on canvas** |
 | Highlight / edit group | Click a membership chip, or pick a group from **Groups** — members stay prominent; edit in the floating panel |

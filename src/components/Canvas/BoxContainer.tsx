@@ -41,6 +41,7 @@ interface BoxContainerProps {
   selected: boolean;
   isConnectSource: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onToggleCollapse: () => void;
   onBoundsChange: (bounds: Bounds) => void;
   onMoveByDelta: (
@@ -139,6 +140,7 @@ export function BoxContainer({
   selected,
   isConnectSource,
   onSelect,
+  onOpenDetails,
   onToggleCollapse,
   onBoundsChange,
   onMoveByDelta,
@@ -358,6 +360,14 @@ export function BoxContainer({
     onSelect();
   };
 
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
+  };
+
   if (box.collapsed) {
     const pos = box.collapsedPosition ?? { x: 0, y: 0 };
     const color = rgbToCss(box.borderColor);
@@ -381,6 +391,7 @@ export function BoxContainer({
           e.cancelBubble = true;
           onToggleCollapse();
         }}
+        onContextMenu={handleOpenDetails}
         onMouseDown={(e) => beginMove(e)}
       >
         {showAura && (
@@ -459,6 +470,7 @@ export function BoxContainer({
         e.cancelBubble = true;
         onToggleCollapse();
       }}
+      onContextMenu={handleOpenDetails}
     >
       {showBackground && showAura && (
         <RoundedRectAura

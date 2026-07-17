@@ -20,6 +20,7 @@ interface FloatingTextNodeProps {
   selected: boolean;
   draggable: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
 }
@@ -31,6 +32,7 @@ export function FloatingTextNode({
   selected,
   draggable,
   onSelect,
+  onOpenDetails,
   onDragMove,
   onDragEnd,
 }: FloatingTextNodeProps) {
@@ -72,6 +74,21 @@ export function FloatingTextNode({
       onTap={(e) => {
         e.cancelBubble = true;
         onSelect();
+      }}
+      onDblClick={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
+      }}
+      onDblTap={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
+      }}
+      onContextMenu={(e) => {
+        e.cancelBubble = true;
+        e.evt.preventDefault();
+        onOpenDetails();
       }}
       onDragStart={(e) => {
         if (!allowDragRef.current) {

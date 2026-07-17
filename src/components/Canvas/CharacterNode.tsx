@@ -38,6 +38,7 @@ interface CharacterNodeProps {
   dimmed?: boolean;
   membershipEmphasized?: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onSelectGroup?: (groupId: string) => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
@@ -108,6 +109,7 @@ export function CharacterNode({
   dimmed = false,
   membershipEmphasized = false,
   onSelect,
+  onOpenDetails,
   onSelectGroup,
   onDragMove,
   onDragEnd,
@@ -153,6 +155,14 @@ export function CharacterNode({
     onSelect();
   };
 
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
+  };
+
   return (
     <Group
       x={character.position.x}
@@ -174,6 +184,9 @@ export function CharacterNode({
         e.cancelBubble = true;
         onSelect();
       }}
+      onDblClick={handleOpenDetails}
+      onDblTap={handleOpenDetails}
+      onContextMenu={handleOpenDetails}
       onDragStart={(e) => {
         if (!allowNodeDragRef.current) {
           e.target.stopDrag();

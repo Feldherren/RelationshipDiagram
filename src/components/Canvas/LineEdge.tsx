@@ -25,6 +25,7 @@ interface LineEdgeProps {
   diagram: Diagram;
   selected: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
   onBendChange: (bend: number) => void;
   part?: "full" | "stroke" | "label";
   /** Shared hover when stroke and label are rendered as separate instances. */
@@ -45,6 +46,7 @@ export function LineEdge({
   diagram,
   selected,
   onSelect,
+  onOpenDetails,
   onBendChange,
   part = "full",
   hovered: hoveredProp,
@@ -169,6 +171,14 @@ export function LineEdge({
     onSelect();
   };
 
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onOpenDetails();
+  };
+
   const showStroke = part === "full" || part === "stroke";
   const showLabel = (part === "full" || part === "label") && displayLabel;
 
@@ -200,6 +210,9 @@ export function LineEdge({
         lineJoin="round"
         onClick={handleSelectClick}
         onTap={handleSelectClick}
+        onDblClick={handleOpenDetails}
+        onDblTap={handleOpenDetails}
+        onContextMenu={handleOpenDetails}
         onMouseDown={(e) => {
           if (e.evt.button !== 0) return;
           beginBendDrag(e);
@@ -241,6 +254,9 @@ export function LineEdge({
           selectedStroke="#c62828"
           onClick={handleSelectClick}
           onTap={handleSelectClick}
+          onDblClick={handleOpenDetails}
+          onDblTap={handleOpenDetails}
+          onContextMenu={handleOpenDetails}
           onMouseDown={(e) => {
             if (e.evt.button !== 0) return;
             beginBendDrag(e);

@@ -116,6 +116,20 @@ export function usePanZoom(
         useDiagramStore.getState().cancelConnect();
         useDiagramStore.setState({ toolMode: "select" });
       }
+      if (e.key === "Enter") {
+        if (isEditable) {
+          return;
+        }
+        if (useDiagramStore.getState().toolMode !== "select") {
+          return;
+        }
+        const { selection } = useDiagramStore.getState();
+        if (!selection || selection.type === "bookmark") {
+          return;
+        }
+        e.preventDefault();
+        useDiagramStore.getState().openSelectionDetails();
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (isEditable) {
           return;

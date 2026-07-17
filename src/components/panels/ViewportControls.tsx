@@ -6,12 +6,11 @@ import {
   type CSSProperties,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { rgbToCss, type RGB } from "../../models/types";
+import { rgbToCss } from "../../models/types";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BookmarkIcon, BookmarkAddIcon } from "../icons/BookmarkIcon";
 import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
-import { randomPastelColor } from "../../utils/pastelPalette";
 import {
   resolveSymbolSwatchStyle,
   subscribeUiChrome,
@@ -36,10 +35,8 @@ function getSymbolSwatchStyleSnapshot(): SymbolSwatchStyle {
 export function ViewportControls() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [draftName, setDraftName] = useState("");
-  const [draftColor, setDraftColor] = useState<RGB>(() => randomPastelColor());
   const rootRef = useRef<HTMLDivElement>(null);
-  const draftBookmarkIdRef = useRef<string | null>(null);
+  const editPopupRef = useRef<HTMLDivElement>(null);
 
   const bookmarks = useDiagramStore((s) => s.bookmarks);
   const bookmarksVisible = useDiagramStore((s) => s.bookmarksVisible);
@@ -64,30 +61,19 @@ export function ViewportControls() {
     () => SYMBOL_SWATCH_ON_LIGHT,
   );
 
-  // Seed draft fields when a different bookmark is opened for edit.
-  useEffect(() => {
-    if (!editing) {
-      draftBookmarkIdRef.current = null;
-      return;
-    }
-    if (draftBookmarkIdRef.current === editing.id) return;
-    draftBookmarkIdRef.current = editing.id;
-    setDraftName(editing.name);
-    setDraftColor({ ...editing.color });
-  }, [editing]);
-
-  const closeAll = () => {
-    setOpen(false);
-    closeBookmarkEdit();
-  };
-
-  // Strip / edit form: keep open while interacting with the canvas.
+  // Close edit on outside click; keep the strip open during canvas interaction.
   useEffect(() => {
     if (!open && !editing) return;
 
     const handlePointerDown = (e: MouseEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
+
+      if (editing && !editPopupRef.current?.contains(target)) {
+        closeBookmarkEdit();
+      }
+
+      if (!open) return;
       if (rootRef.current?.contains(target)) return;
       if (
         target instanceof Element &&
@@ -97,7 +83,7 @@ export function ViewportControls() {
       ) {
         return;
       }
-      closeAll();
+      setOpen(false);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -119,16 +105,6 @@ export function ViewportControls() {
 
   const handleAdd = () => {
     addBookmark();
-    closeBookmarkEdit();
-  };
-
-  const submitEdit = () => {
-    if (!editing) return;
-    const name = draftName.trim();
-    updateBookmark(editing.id, {
-      name: name || editing.name,
-      color: draftColor,
-    });
     closeBookmarkEdit();
   };
 
@@ -223,6 +199,7 @@ export function ViewportControls() {
 
       {editing && (
         <div
+          ref={editPopupRef}
           className="bookmarks-popup bookmarks-edit-popup"
           role="dialog"
           aria-label={t("bookmarks.editTitle")}
@@ -233,22 +210,18 @@ export function ViewportControls() {
               <span>{t("bookmarks.nameLabel")}</span>
               <input
                 type="text"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
+                value={editing.name}
+                onChange={(e) =>
+                  updateBookmark(editing.id, { name: e.target.value })
+                }
                 maxLength={80}
                 autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitEdit();
-                  }
-                }}
               />
             </label>
             <RgbPicker
               label={t("bookmarks.colourLabel")}
-              value={draftColor}
-              onChange={setDraftColor}
+              value={editing.color}
+              onChange={(color) => updateBookmark(editing.id, { color })}
             />
             <button
               type="button"
@@ -257,22 +230,6 @@ export function ViewportControls() {
             >
               {t("bookmarks.updateView")}
             </button>
-            <div className="bookmarks-form-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => closeBookmarkEdit()}
-              >
-                {t("bookmarks.cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={submitEdit}
-              >
-                {t("bookmarks.save")}
-              </button>
-            </div>
             <button
               type="button"
               className="btn-danger"

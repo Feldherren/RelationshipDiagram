@@ -604,21 +604,8 @@ body,
   gap: 0.75rem;
 }
 
-.bookmarks-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
 .bookmarks-form > .btn-secondary,
 .bookmarks-form > .btn-danger {
-  margin-top: 0;
-}
-
-.bookmarks-form-actions .btn-primary,
-.bookmarks-form-actions .btn-secondary {
-  width: auto;
-  flex: 1;
   margin-top: 0;
 }
 

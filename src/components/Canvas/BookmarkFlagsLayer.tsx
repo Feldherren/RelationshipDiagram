@@ -8,7 +8,7 @@ export function BookmarkFlagsLayer() {
   const bookmarksVisible = useDiagramStore((s) => s.bookmarksVisible);
   const selection = useDiagramStore((s) => s.selection);
 
-  if (!bookmarksVisible || bookmarks.length === 0) return null;
+  if (bookmarks.length === 0) return null;
 
   const selectedId =
     selection?.type === "bookmark" ? selection.id : null;
@@ -16,12 +16,22 @@ export function BookmarkFlagsLayer() {
     ? bookmarks.find((b) => b.id === selectedId)
     : undefined;
 
+  // When flags are hidden, still show the selected bookmark and its extents
+  // (e.g. while editing from the list).
+  if (!bookmarksVisible && !selectedBookmark) return null;
+
+  const visibleBookmarks = bookmarksVisible
+    ? bookmarks
+    : selectedBookmark
+      ? [selectedBookmark]
+      : [];
+
   return (
     <Layer listening>
       {selectedBookmark ? (
         <BookmarkViewportFrame bookmark={selectedBookmark} />
       ) : null}
-      {bookmarks.map((bookmark) => (
+      {visibleBookmarks.map((bookmark) => (
         <BookmarkFlag
           key={bookmark.id}
           bookmark={bookmark}

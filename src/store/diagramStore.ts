@@ -1208,12 +1208,16 @@ export const useDiagramStore = create<DiagramState>()(
   cancelConnect: () => set({ connectFrom: null, connectDrag: null }),
 
   setBookmarksVisible: (visible) => {
-    const { selection } = get();
+    const { selection, editingBookmarkId } = get();
+    // Keep selection while editing so the flag and extents stay visible
+    // even when other bookmark markers are hidden.
+    const clearBookmarkSelection =
+      visible === false &&
+      selection?.type === "bookmark" &&
+      editingBookmarkId !== selection.id;
     set({
       bookmarksVisible: visible,
-      ...(visible === false && selection?.type === "bookmark"
-        ? { selection: null }
-        : {}),
+      ...(clearBookmarkSelection ? { selection: null } : {}),
     });
     setAppPreferences({ bookmarksVisible: visible });
   },
@@ -1237,7 +1241,16 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
 
-  closeBookmarkEdit: () => set({ editingBookmarkId: null }),
+  closeBookmarkEdit: () => {
+    const { selection, editingBookmarkId } = get();
+    set({
+      editingBookmarkId: null,
+      ...(selection?.type === "bookmark" &&
+      selection.id === editingBookmarkId
+        ? { selection: null }
+        : {}),
+    });
+  },
 
   addBookmark: (name, color) => {
     get().captureHistory();
@@ -1264,7 +1277,7 @@ export const useDiagramStore = create<DiagramState>()(
         return {
           ...b,
           ...(patch.name !== undefined
-            ? { name: patch.name.trim().slice(0, 80) || b.name }
+            ? { name: patch.name.slice(0, 80) }
             : {}),
           ...(patch.color !== undefined ? { color: { ...patch.color } } : {}),
         };

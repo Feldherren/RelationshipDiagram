@@ -43,8 +43,6 @@
     "defaultName": "View {{n}}",
     "nameLabel": "Name",
     "colourLabel": "Colour",
-    "save": "Save",
-    "cancel": "Cancel",
     "go": "Go to view",
     "goAria": "Go to bookmark {{name}}",
     "edit": "Edit",

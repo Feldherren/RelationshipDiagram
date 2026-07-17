@@ -82,6 +82,9 @@ export function SettingsDialog({
   const setSelectionPulseEnabled = useDiagramStore(
     (s) => s.setSelectionPulseEnabled,
   );
+  const setLineLabelContrastWithBackground = useDiagramStore(
+    (s) => s.setLineLabelContrastWithBackground,
+  );
   const replaceDiagramAppearance = useDiagramStore(
     (s) => s.replaceDiagramAppearance,
   );
@@ -432,6 +435,21 @@ export function SettingsDialog({
             <span>{t("appSettings.selectionPulseEnabled")}</span>
           </label>
           <p className="hint">{t("appSettings.selectionPulseEnabledHint")}</p>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.lineLabelContrastWithBackground}
+              onChange={(e) => {
+                setLineLabelContrastWithBackground(e.target.checked);
+                setPrefsState(getAppPreferences());
+              }}
+            />
+            <span>{t("appSettings.lineLabelContrastWithBackground")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.lineLabelContrastWithBackgroundHint")}
+          </p>
         </>
       );
       break;

@@ -40,19 +40,24 @@ function LabelChromeEditors({
   labelPrefix,
   chrome,
   onChange,
+  includeTextColor = true,
 }: {
   labelPrefix: string;
   chrome: LabelChrome;
   onChange: (patch: Partial<LabelChrome>) => void;
+  /** When false, only background and border are editable (e.g. line labels). */
+  includeTextColor?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <>
-      <RgbPicker
-        label={t(`${labelPrefix}Text`)}
-        value={chrome.textColor}
-        onChange={(textColor) => onChange({ textColor })}
-      />
+      {includeTextColor && (
+        <RgbPicker
+          label={t(`${labelPrefix}Text`)}
+          value={chrome.textColor}
+          onChange={(textColor) => onChange({ textColor })}
+        />
+      )}
       <RgbPicker
         label={t(`${labelPrefix}Background`)}
         value={chrome.backgroundColor}
@@ -310,9 +315,11 @@ export function DiagramAppearancePanel({
               <p className="diagram-appearance-subgroup">
                 {t("diagramAppearance.lineLabel")}
               </p>
+              <p className="hint">{t("diagramAppearance.lineLabelTextHint")}</p>
               <LabelChromeEditors
                 labelPrefix="diagramAppearance.label"
                 chrome={value.lineLabel}
+                includeTextColor={false}
                 onChange={(patch) =>
                   onChange({
                     lineLabel: { ...value.lineLabel, ...patch },

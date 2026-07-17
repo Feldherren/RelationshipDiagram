@@ -357,3 +357,13 @@ export const LIGHT_BACKGROUND_LUMINANCE_THRESHOLD = 0.179;
 export function isLightColor(color: RGB): boolean {
   return relativeLuminance(color) > LIGHT_BACKGROUND_LUMINANCE_THRESHOLD;
 }
+
+const CONTRASTING_INK_DARK: RGB = { r: 31, g: 31, b: 31 };
+const CONTRASTING_INK_LIGHT: RGB = { r: 245, g: 245, b: 245 };
+
+/** Near-black or near-white ink chosen for readable contrast on `background`. */
+export function contrastingInk(background: RGB): RGB {
+  return isLightColor(background)
+    ? { ...CONTRASTING_INK_DARK }
+    : { ...CONTRASTING_INK_LIGHT };
+}

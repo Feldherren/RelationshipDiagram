@@ -107,6 +107,8 @@ interface DiagramState {
   /** When set, the bookmark edit dialog is open for this id. */
   editingBookmarkId: string | null;
   selectionPulseEnabled: boolean;
+  /** When true, line label text contrasts with the label background. */
+  lineLabelContrastWithBackground: boolean;
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
   selectionDetailsOpen: boolean;
@@ -159,6 +161,7 @@ interface DiagramState {
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
+  setLineLabelContrastWithBackground: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
   closeBookmarkEdit: () => void;
   addBookmark: (name?: string, color?: RGB) => void;
@@ -338,6 +341,7 @@ export const useDiagramStore = create<DiagramState>()(
   bookmarksVisible: true,
   editingBookmarkId: null,
   selectionPulseEnabled: true,
+  lineLabelContrastWithBackground: false,
   selection: null,
   selectionDetailsOpen: false,
   toolMode: "select",
@@ -698,6 +702,7 @@ export const useDiagramStore = create<DiagramState>()(
       autosaveEnabled: prefs.autosaveEnabled,
       bookmarksVisible: prefs.bookmarksVisible,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
+      lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
     });
   },
 
@@ -1213,6 +1218,11 @@ export const useDiagramStore = create<DiagramState>()(
   setSelectionPulseEnabled: (enabled) => {
     set({ selectionPulseEnabled: enabled });
     setAppPreferences({ selectionPulseEnabled: enabled });
+  },
+
+  setLineLabelContrastWithBackground: (enabled) => {
+    set({ lineLabelContrastWithBackground: enabled });
+    setAppPreferences({ lineLabelContrastWithBackground: enabled });
   },
 
   openBookmarkEdit: (id) => {

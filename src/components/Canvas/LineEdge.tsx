@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Arrow, Circle, Group } from "react-konva";
 import type Konva from "konva";
 import type { Diagram, Line, Point } from "../../models/types";
-import { rgbToCss } from "../../models/types";
+import { contrastingInk, rgbToCss } from "../../models/types";
 import {
   bendDeltaFromDrag,
   getLineAnchors,
@@ -67,7 +67,13 @@ export function LineEdge({
   const setSelection = useDiagramStore((s) => s.setSelection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
   const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
+  const lineLabelContrastWithBackground = useDiagramStore(
+    (s) => s.lineLabelContrastWithBackground,
+  );
   const lineLabel = useDiagramStore((s) => s.diagramAppearance.lineLabel);
+  const labelTextColor = lineLabelContrastWithBackground
+    ? contrastingInk(lineLabel.backgroundColor)
+    : line.color;
   const clickGuard = useClickWithoutDrag();
   const [localHovered, setLocalHovered] = useState(false);
   const hovered = hoveredProp ?? localHovered;
@@ -260,7 +266,7 @@ export function LineEdge({
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
           fontSize={12}
-          textFill={rgbToCss(lineLabel.textColor)}
+          textFill={rgbToCss(labelTextColor)}
           fill={rgbToCss(lineLabel.backgroundColor)}
           unselectedStroke={rgbToCss(lineLabel.borderColor)}
           selected={selected}

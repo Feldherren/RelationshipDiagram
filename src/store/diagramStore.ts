@@ -879,7 +879,10 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       groups: [...s.groups, group],
       selection: { type: "group", id: group.id },
-      selectionDetailsOpen: false,
+      selectionDetailsOpen: true,
+      toolMode: "editGroupMembers",
+      connectFrom: null,
+      connectDrag: null,
     }));
   },
 

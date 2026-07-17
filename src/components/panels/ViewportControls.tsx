@@ -6,7 +6,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { rgbToCss, type RGB, type ViewBookmark } from "../../models/types";
+import { rgbToCss, type RGB } from "../../models/types";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BookmarkIcon, BookmarkAddIcon } from "../icons/BookmarkIcon";
@@ -18,12 +18,6 @@ import {
   SYMBOL_SWATCH_ON_LIGHT,
   type SymbolSwatchStyle,
 } from "../../utils/symbolSwatchStyle";
-
-interface ContextMenuState {
-  bookmarkId: string;
-  x: number;
-  y: number;
-}
 
 let cachedSwatchStyle: SymbolSwatchStyle = SYMBOL_SWATCH_ON_LIGHT;
 
@@ -42,20 +36,27 @@ function getSymbolSwatchStyleSnapshot(): SymbolSwatchStyle {
 export function ViewportControls() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [menu, setMenu] = useState<ContextMenuState | null>(null);
-  const [editing, setEditing] = useState<ViewBookmark | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftColor, setDraftColor] = useState<RGB>(() => randomPastelColor());
   const rootRef = useRef<HTMLDivElement>(null);
+  const draftBookmarkIdRef = useRef<string | null>(null);
 
   const bookmarks = useDiagramStore((s) => s.bookmarks);
   const bookmarksVisible = useDiagramStore((s) => s.bookmarksVisible);
+  const editingBookmarkId = useDiagramStore((s) => s.editingBookmarkId);
   const setBookmarksVisible = useDiagramStore((s) => s.setBookmarksVisible);
+  const openBookmarkEdit = useDiagramStore((s) => s.openBookmarkEdit);
+  const closeBookmarkEdit = useDiagramStore((s) => s.closeBookmarkEdit);
   const addBookmark = useDiagramStore((s) => s.addBookmark);
   const updateBookmark = useDiagramStore((s) => s.updateBookmark);
   const updateBookmarkView = useDiagramStore((s) => s.updateBookmarkView);
   const deleteBookmark = useDiagramStore((s) => s.deleteBookmark);
   const goToBookmark = useDiagramStore((s) => s.goToBookmark);
+
+  const editing =
+    editingBookmarkId != null
+      ? (bookmarks.find((b) => b.id === editingBookmarkId) ?? null)
+      : null;
 
   const swatchStyle = useSyncExternalStore(
     subscribeUiChrome,
@@ -63,44 +64,26 @@ export function ViewportControls() {
     () => SYMBOL_SWATCH_ON_LIGHT,
   );
 
+  // Seed draft fields when a different bookmark is opened for edit.
+  useEffect(() => {
+    if (!editing) {
+      draftBookmarkIdRef.current = null;
+      return;
+    }
+    if (draftBookmarkIdRef.current === editing.id) return;
+    draftBookmarkIdRef.current = editing.id;
+    setDraftName(editing.name);
+    setDraftColor({ ...editing.color });
+  }, [editing]);
+
   const closeAll = () => {
     setOpen(false);
-    setMenu(null);
-    setEditing(null);
+    closeBookmarkEdit();
   };
-
-  // Context menu: dismiss on any click outside the menu itself (including canvas).
-  useEffect(() => {
-    if (!menu) return;
-
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (
-        target instanceof Element &&
-        target.closest(".bookmark-context-menu")
-      ) {
-        return;
-      }
-      setMenu(null);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenu(null);
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menu]);
 
   // Strip / edit form: keep open while interacting with the canvas.
   useEffect(() => {
     if (!open && !editing) return;
-    if (menu) return;
 
     const handlePointerDown = (e: MouseEvent) => {
       const target = e.target as Node | null;
@@ -120,7 +103,7 @@ export function ViewportControls() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (editing) {
-        setEditing(null);
+        closeBookmarkEdit();
         return;
       }
       setOpen(false);
@@ -132,19 +115,11 @@ export function ViewportControls() {
       window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, menu, editing]);
+  }, [open, editing, closeBookmarkEdit]);
 
   const handleAdd = () => {
     addBookmark();
-    setMenu(null);
-    setEditing(null);
-  };
-
-  const openEditForm = (bookmark: ViewBookmark) => {
-    setDraftName(bookmark.name);
-    setDraftColor({ ...bookmark.color });
-    setEditing(bookmark);
-    setMenu(null);
+    closeBookmarkEdit();
   };
 
   const submitEdit = () => {
@@ -154,17 +129,13 @@ export function ViewportControls() {
       name: name || editing.name,
       color: draftColor,
     });
-    setEditing(null);
+    closeBookmarkEdit();
   };
 
   const swatchVars = {
     "--symbol-swatch-bg": swatchStyle.background,
     "--symbol-swatch-fg": swatchStyle.foreground,
   } as CSSProperties;
-
-  const menuBookmark = menu
-    ? bookmarks.find((b) => b.id === menu.bookmarkId) ?? null
-    : null;
 
   return (
     <div className="viewport-controls-anchor" ref={rootRef}>
@@ -183,8 +154,7 @@ export function ViewportControls() {
           aria-expanded={open}
           onClick={() => {
             setOpen((value) => !value);
-            setMenu(null);
-            setEditing(null);
+            closeBookmarkEdit();
           }}
         >
           <BookmarkIcon className="viewport-control-icon" size={22} />
@@ -229,12 +199,7 @@ export function ViewportControls() {
                 onClick={() => goToBookmark(bookmark.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setEditing(null);
-                  setMenu({
-                    bookmarkId: bookmark.id,
-                    x: e.clientX,
-                    y: e.clientY,
-                  });
+                  openBookmarkEdit(bookmark.id);
                 }}
               >
                 <BookmarkIcon className="bookmark-strip-icon" size={20} />
@@ -252,43 +217,6 @@ export function ViewportControls() {
             onClick={handleAdd}
           >
             <BookmarkAddIcon className="viewport-control-icon" size={20} />
-          </button>
-        </div>
-      )}
-
-      {menu && menuBookmark && (
-        <div
-          className="bookmark-context-menu"
-          role="menu"
-          style={{ left: menu.x, top: menu.y }}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => openEditForm(menuBookmark)}
-          >
-            {t("bookmarks.edit")}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              updateBookmarkView(menuBookmark.id);
-              setMenu(null);
-            }}
-          >
-            {t("bookmarks.updateView")}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="bookmark-context-menu-delete"
-            onClick={() => {
-              deleteBookmark(menuBookmark.id);
-              setMenu(null);
-            }}
-          >
-            {t("bookmarks.delete")}
           </button>
         </div>
       )}
@@ -322,11 +250,18 @@ export function ViewportControls() {
               value={draftColor}
               onChange={setDraftColor}
             />
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => updateBookmarkView(editing.id)}
+            >
+              {t("bookmarks.updateView")}
+            </button>
             <div className="bookmarks-form-actions">
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => setEditing(null)}
+                onClick={() => closeBookmarkEdit()}
               >
                 {t("bookmarks.cancel")}
               </button>
@@ -338,6 +273,13 @@ export function ViewportControls() {
                 {t("bookmarks.save")}
               </button>
             </div>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => deleteBookmark(editing.id)}
+            >
+              {t("bookmarks.delete")}
+            </button>
           </div>
         </div>
       )}

@@ -43,6 +43,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
 
   const scale = useDiagramStore((s) => s.viewport.scale);
   const setSelection = useDiagramStore((s) => s.setSelection);
+  const openBookmarkEdit = useDiagramStore((s) => s.openBookmarkEdit);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
   const updateBookmarkFrame = useDiagramStore((s) => s.updateBookmarkFrame);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
@@ -142,6 +143,12 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     setSelection({ type: "bookmark", id: bookmark.id });
   };
 
+  const handleOpenEdit = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    openBookmarkEdit(bookmark.id);
+  };
+
   return (
     <Group
       x={bookmark.anchor.x}
@@ -149,6 +156,7 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
       onMouseDown={beginDrag}
       onClick={select}
       onTap={select}
+      onContextMenu={handleOpenEdit}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

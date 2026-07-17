@@ -104,6 +104,8 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
+  /** When set, the bookmark edit dialog is open for this id. */
+  editingBookmarkId: string | null;
   selectionPulseEnabled: boolean;
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
@@ -157,6 +159,8 @@ interface DiagramState {
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
+  openBookmarkEdit: (id: string) => void;
+  closeBookmarkEdit: () => void;
   addBookmark: (name?: string, color?: RGB) => void;
   updateBookmark: (
     id: string,
@@ -314,6 +318,7 @@ function restoreHistorySnapshot(
     viewport,
     selection: null,
     selectionDetailsOpen: false,
+    editingBookmarkId: null,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -331,6 +336,7 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
+  editingBookmarkId: null,
   selectionPulseEnabled: true,
   selection: null,
   selectionDetailsOpen: false,
@@ -1209,6 +1215,17 @@ export const useDiagramStore = create<DiagramState>()(
     setAppPreferences({ selectionPulseEnabled: enabled });
   },
 
+  openBookmarkEdit: (id) => {
+    if (!get().bookmarks.some((b) => b.id === id)) return;
+    set({
+      editingBookmarkId: id,
+      selection: { type: "bookmark", id },
+      selectionDetailsOpen: false,
+    });
+  },
+
+  closeBookmarkEdit: () => set({ editingBookmarkId: null }),
+
   addBookmark: (name, color) => {
     get().captureHistory();
     const { viewport, bookmarks } = get();
@@ -1280,6 +1297,7 @@ export const useDiagramStore = create<DiagramState>()(
       ...(s.selection?.type === "bookmark" && s.selection.id === id
         ? { selection: null }
         : {}),
+      ...(s.editingBookmarkId === id ? { editingBookmarkId: null } : {}),
     }));
   },
 

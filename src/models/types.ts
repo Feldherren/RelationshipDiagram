@@ -258,6 +258,12 @@ export interface Diagram {
   bookmarks?: ViewBookmark[];
 }
 
+/** Items that can appear in a marquee multi-selection. */
+export type MultiSelectableItem =
+  | { type: "character"; id: string }
+  | { type: "box"; id: string }
+  | { type: "floatingText"; id: string };
+
 export type Selection =
   | { type: "character"; id: string }
   | { type: "line"; id: string }
@@ -265,6 +271,7 @@ export type Selection =
   | { type: "box"; id: string }
   | { type: "floatingText"; id: string }
   | { type: "bookmark"; id: string }
+  | { type: "multi"; items: MultiSelectableItem[] }
   | null;
 
 export interface Bounds {

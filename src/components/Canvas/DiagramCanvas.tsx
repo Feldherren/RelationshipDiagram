@@ -24,6 +24,11 @@ import { toChipItems } from "./MembershipChips";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
 import { consumeSuppressStageClick } from "../../utils/suppressStageClick";
+import {
+  hitTestMarqueeSelection,
+  isItemSelected,
+  selectionFromMarqueeHits,
+} from "../../utils/selectionMulti";
 
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -105,6 +110,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     stageSize,
     setStageSize,
     setSelection,
+    setMultiSelection,
     setExportBounds,
     moveCharacter,
     moveFloatingText,
@@ -135,6 +141,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
+      setMultiSelection: s.setMultiSelection,
       setExportBounds: s.setExportBounds,
       moveCharacter: s.moveCharacter,
       moveFloatingText: s.moveFloatingText,
@@ -157,6 +164,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const suppressClick = useRef(false);
   const [isPanningView, setIsPanningView] = useState(false);
   const [isDrawingExport, setIsDrawingExport] = useState(false);
+  const [isDrawingMarquee, setIsDrawingMarquee] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(
     null,
   );
@@ -164,6 +172,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     x: number;
     y: number;
   } | null>(null);
+  const drawStartRef = useRef(drawStart);
+  const drawCurrentRef = useRef(drawCurrent);
+  drawStartRef.current = drawStart;
+  drawCurrentRef.current = drawCurrent;
   const [isResizingBox, setIsResizingBox] = useState(false);
   const [isDraggingBox, setIsDraggingBox] = useState(false);
   const isInteractingWithBox = isResizingBox || isDraggingBox;
@@ -261,6 +273,66 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   }, [isPanningView, movePan, endPan]);
 
   useEffect(() => {
+    if (!isDrawingMarquee) return;
+
+    const pointerToWorld = (clientX: number, clientY: number) => {
+      const stage = stageRef.current;
+      if (!stage) return null;
+      const rect = stage.container().getBoundingClientRect();
+      return screenToWorld({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      });
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const world = pointerToWorld(e.clientX, e.clientY);
+      if (world) setDrawCurrent(world);
+    };
+
+    const onUp = (e: MouseEvent) => {
+      const world = pointerToWorld(e.clientX, e.clientY);
+      const start = drawStartRef.current;
+      const current = world ?? drawCurrentRef.current;
+      suppressClick.current = true;
+      if (start && current) {
+        const x = Math.min(start.x, current.x);
+        const y = Math.min(start.y, current.y);
+        const width = Math.abs(current.x - start.x);
+        const height = Math.abs(current.y - start.y);
+        if (width > 4 && height > 4) {
+          const state = useDiagramStore.getState();
+          const hits = hitTestMarqueeSelection(
+            { x, y, width, height },
+            {
+              characters: state.characters,
+              boxes: state.boxes,
+              floatingTexts: state.floatingTexts,
+              fontFamily: state.diagramFontFamily,
+            },
+          );
+          const next = selectionFromMarqueeHits(hits);
+          if (next?.type === "multi") {
+            state.setMultiSelection(next.items);
+          } else {
+            state.setSelection(next, { openDetails: false });
+          }
+        }
+      }
+      setIsDrawingMarquee(false);
+      setDrawStart(null);
+      setDrawCurrent(null);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isDrawingMarquee, stageRef, screenToWorld]);
+
+  useEffect(() => {
     const layer = layerRef.current;
     if (!layer) return;
     layer.listening(!isPanningView);
@@ -306,6 +378,19 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       return;
     }
 
+    if (
+      isStage &&
+      e.evt.button === 0 &&
+      e.evt.shiftKey &&
+      toolMode === "select"
+    ) {
+      const pos = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
+      setIsDrawingMarquee(true);
+      setDrawStart(pos);
+      setDrawCurrent(pos);
+      return;
+    }
+
     if (isStage && e.evt.button === 0) {
       startPan(e.evt.clientX, e.evt.clientY);
       setIsPanningView(true);
@@ -317,7 +402,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     if (!isPanningView && !connectDrag && !isInteractingWithBox) {
       movePan(e.evt.clientX, e.evt.clientY);
     }
-    if (isDrawingExport && drawStart) {
+    if ((isDrawingExport || isDrawingMarquee) && drawStart) {
       const pos = screenToWorld({ x: e.evt.offsetX, y: e.evt.offsetY });
       setDrawCurrent(pos);
     }
@@ -372,15 +457,24 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     fontFamily: diagramFontFamily,
   };
 
-  const previewBounds =
-    isDrawingExport && drawStart && drawCurrent
+  const dragRectBounds =
+    (isDrawingExport || isDrawingMarquee) && drawStart && drawCurrent
       ? {
           x: Math.min(drawStart.x, drawCurrent.x),
           y: Math.min(drawStart.y, drawCurrent.y),
           width: Math.abs(drawCurrent.x - drawStart.x),
           height: Math.abs(drawCurrent.y - drawStart.y),
         }
+      : null;
+  const previewBounds = isDrawingMarquee
+    ? dragRectBounds
+    : isDrawingExport
+      ? dragRectBounds
       : exportBounds;
+  const previewStroke = isDrawingMarquee ? "#4a90d9" : "#e67e22";
+  const previewFill = isDrawingMarquee
+    ? "rgba(74, 144, 217, 0.08)"
+    : "rgba(230, 126, 34, 0.08)";
 
   return (
     <div
@@ -426,9 +520,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 key={`${box.id}-bg`}
                 box={box}
                 characters={characters}
-                selected={
-                  selection?.type === "box" && selection.id === box.id
-                }
+                selected={isItemSelected(selection, "box", box.id)}
                 isConnectSource={isConnectSource({
                   id: box.id,
                   kind: "box",
@@ -543,10 +635,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 <CharacterNode
                   key={character.id}
                   character={character}
-                  selected={
-                    selection?.type === "character" &&
-                    selection.id === character.id
-                  }
+                  selected={isItemSelected(
+                    selection,
+                    "character",
+                    character.id,
+                  )}
                   isConnectSource={isConnectSource({
                     id: character.id,
                     kind: "character",
@@ -604,9 +697,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 key={`${box.id}-fg`}
                 box={box}
                 characters={characters}
-                selected={
-                  selection?.type === "box" && selection.id === box.id
-                }
+                selected={isItemSelected(selection, "box", box.id)}
                 isConnectSource={isConnectSource({
                   id: box.id,
                   kind: "box",
@@ -644,9 +735,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 key={box.id}
                 box={box}
                 characters={characters}
-                selected={
-                  selection?.type === "box" && selection.id === box.id
-                }
+                selected={isItemSelected(selection, "box", box.id)}
                 isConnectSource={isConnectSource({
                   id: box.id,
                   kind: "box",
@@ -690,10 +779,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             <FloatingTextNode
               key={floatingText.id}
               floatingText={floatingText}
-              selected={
-                selection?.type === "floatingText" &&
-                selection.id === floatingText.id
-              }
+              selected={isItemSelected(
+                selection,
+                "floatingText",
+                floatingText.id,
+              )}
               draggable={
                 toolMode !== "exportBounds" &&
                 toolMode !== "editGroupMembers" &&
@@ -730,8 +820,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               y={previewBounds.y}
               width={previewBounds.width}
               height={previewBounds.height}
-              stroke="#e67e22"
-              fill="rgba(230, 126, 34, 0.08)"
+              stroke={previewStroke}
+              fill={previewFill}
               dashPattern={[8, 4]}
             />
           )}

@@ -27,6 +27,7 @@ import {
   MembershipChips,
   type MembershipChipItem,
 } from "./MembershipChips";
+import { isIdInMultiSelection } from "../../utils/selectionMulti";
 
 interface CharacterNodeProps {
   character: Character;
@@ -118,8 +119,12 @@ export function CharacterNode({
   const [hovered, setHovered] = useState(false);
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
-  const setSelection = useDiagramStore((s) => s.setSelection);
+  const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const selection = useDiagramStore((s) => s.selection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const moveMultiSelectionByDelta = useDiagramStore(
+    (s) => s.moveMultiSelectionByDelta,
+  );
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -192,15 +197,35 @@ export function CharacterNode({
           e.target.stopDrag();
           return;
         }
-        // Dragging is layout, not inspect — close any open float.
+        // Dragging is layout, not inspect — keep selection, close the float.
         captureHistory();
-        setSelection(null);
+        useDiagramStore.setState({ selectionDetailsOpen: false });
+        multiDragLastPosRef.current = {
+          x: character.position.x,
+          y: character.position.y,
+        };
       }}
       onDragMove={(e) => {
-        onDragMove({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        if (isIdInMultiSelection(selection, "character", character.id)) {
+          const last = multiDragLastPosRef.current ?? pos;
+          const dx = pos.x - last.x;
+          const dy = pos.y - last.y;
+          multiDragLastPosRef.current = pos;
+          if (dx !== 0 || dy !== 0) {
+            moveMultiSelectionByDelta({ dx, dy }, { recordHistory: false });
+          }
+          return;
+        }
+        onDragMove(pos);
       }}
       onDragEnd={(e) => {
-        onDragEnd({ x: e.target.x(), y: e.target.y() });
+        const pos = { x: e.target.x(), y: e.target.y() };
+        multiDragLastPosRef.current = null;
+        if (isIdInMultiSelection(selection, "character", character.id)) {
+          return;
+        }
+        onDragEnd(pos);
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

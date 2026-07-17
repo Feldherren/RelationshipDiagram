@@ -80,6 +80,9 @@ export function selectionFloatPlacementKey(
   selection: NonNullable<Selection>,
 ): string | null {
   if (selection.type === "bookmark") return null;
+  if (selection.type === "multi") {
+    return `multi:${selection.items.map((i) => `${i.type}:${i.id}`).join(",")}`;
+  }
   if (selection.type === "group") {
     return `group:${selection.id}:${selection.anchorCharacterId ?? ""}`;
   }
@@ -307,9 +310,9 @@ export function getSelectionAnchorWorld(
     };
   }
 
-  // Groups are not world-anchored while open; chip opens use
+  // Groups and multi-select are not world-anchored while open; chip opens use
   // getGroupChipAnchorWorld once for the initial screen placement.
-  if (selection.type === "group") {
+  if (selection.type === "group" || selection.type === "multi") {
     return null;
   }
 

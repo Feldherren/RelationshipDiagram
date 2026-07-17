@@ -799,6 +799,19 @@ export function SelectionFloat() {
         onClose={() => setChipAppearanceOpen(false)}
       />
     );
+  } else if (selection.type === "multi") {
+    body = (
+      <>
+        <h2>{t("selection.multi")}</h2>
+        <p className="hint">
+          {t("selection.multiCount", { count: selection.items.length })}
+        </p>
+        <p className="hint">{t("selection.multiHint")}</p>
+        <button type="button" className="btn-danger" onClick={deleteSelected}>
+          {t("selection.deleteMulti")}
+        </button>
+      </>
+    );
   }
 
   if (!body) return null;

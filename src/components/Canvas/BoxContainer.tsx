@@ -25,6 +25,7 @@ import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
 import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
+import { isIdInMultiSelection } from "../../utils/selectionMulti";
 import {
   getCollapsedBoxConnectHandlePosition,
   getBoxConnectHandlePosition,
@@ -155,6 +156,9 @@ export function BoxContainer({
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
+  const moveMultiSelectionByDelta = useDiagramStore(
+    (s) => s.moveMultiSelectionByDelta,
+  );
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const boxNameLabel = useDiagramStore(
@@ -264,23 +268,26 @@ export function BoxContainer({
       if (movedFarEnough && !gestureClearedSelectionRef.current) {
         gestureClearedSelectionRef.current = true;
         clickGuard.noticeDrag();
-        setSelection(null);
+        useDiagramStore.setState({ selectionDetailsOpen: false });
       }
 
       if (!moveHistoryCapturedRef.current) {
         moveHistoryCapturedRef.current = true;
         captureHistory();
       }
-      onMoveByDeltaRef.current(
-        {
-          dx: pointer.x - dragStart.pointer.x,
-          dy: pointer.y - dragStart.pointer.y,
-        },
-        {
+      const delta = {
+        dx: pointer.x - dragStart.pointer.x,
+        dy: pointer.y - dragStart.pointer.y,
+      };
+      const selection = useDiagramStore.getState().selection;
+      if (isIdInMultiSelection(selection, "box", box.id)) {
+        moveMultiSelectionByDelta(delta, { recordHistory: false });
+      } else {
+        onMoveByDeltaRef.current(delta, {
           characterIds: dragStart.characterIds,
           floatingTextIds: dragStart.floatingTextIds,
-        },
-      );
+        });
+      }
       dragStart.pointer = pointer;
     };
 
@@ -297,7 +304,14 @@ export function BoxContainer({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, screenToWorld, clickGuard.noticeDrag, setSelection, captureHistory]);
+  }, [
+    dragging,
+    box.id,
+    screenToWorld,
+    clickGuard.noticeDrag,
+    captureHistory,
+    moveMultiSelectionByDelta,
+  ]);
 
   const beginResize = (
     e: Konva.KonvaEventObject<MouseEvent>,

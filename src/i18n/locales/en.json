@@ -331,7 +331,11 @@
     "doneEditingMembers": "Done editing members",
     "membersHintIdle": "Enter edit mode, then click characters on the canvas to toggle membership.",
     "membersHintActive": "Click characters on the canvas to add or remove them.",
-    "deleteGroup": "Delete group"
+    "deleteGroup": "Delete group",
+    "multi": "Multiple selection",
+    "multiCount": "{{count}} items selected",
+    "multiHint": "Drag any selected item to move them together. Shift+drag on empty canvas to select.",
+    "deleteMulti": "Delete selected"
   },
   "chipAppearance": {
     "title": "Chip appearance",

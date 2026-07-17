@@ -13,6 +13,7 @@ import type {
   GridStyle,
   Group,
   Line,
+  MultiSelectableItem,
   NodeRef,
   RGB,
   Selection,
@@ -27,10 +28,13 @@ import {
 } from "../models/types";
 import {
   getBoxCenter,
+  getCharactersContainedInBox,
   getEmptyBoxBounds,
+  getFloatingTextsContainedInBox,
   isCharacterContainedInBox,
   resolveBoxBounds,
 } from "../utils/geometry";
+import { selectionAfterRemovingItem } from "../utils/selectionMulti";
 import {
   DEFAULT_DIAGRAM_FONT,
   cleanupDeprecatedFonts,
@@ -131,6 +135,11 @@ interface DiagramState {
   setSelection: (
     selection: Selection,
     options?: { openDetails?: boolean },
+  ) => void;
+  setMultiSelection: (items: MultiSelectableItem[]) => void;
+  moveMultiSelectionByDelta: (
+    delta: { dx: number; dy: number },
+    options?: HistoryOptions,
   ) => void;
   openSelectionDetails: () => void;
   setShowGrid: (show: boolean) => void;
@@ -402,7 +411,9 @@ export const useDiagramStore = create<DiagramState>()(
       selection.id === editingGroupId;
     const openDetails =
       options?.openDetails ??
-      (selection != null && selection.type !== "bookmark");
+      (selection != null &&
+        selection.type !== "bookmark" &&
+        selection.type !== "multi");
     set({
       selection,
       selectionDetailsOpen: openDetails,
@@ -410,6 +421,97 @@ export const useDiagramStore = create<DiagramState>()(
         ? { toolMode: "select" as const }
         : {}),
     });
+  },
+  setMultiSelection: (items) => {
+    if (items.length === 0) {
+      get().setSelection(null);
+      return;
+    }
+    if (items.length === 1) {
+      get().setSelection(items[0], { openDetails: false });
+      return;
+    }
+    get().setSelection({ type: "multi", items }, { openDetails: true });
+  },
+  moveMultiSelectionByDelta: (delta, options) => {
+    const { selection, characters, boxes, floatingTexts, diagramFontFamily } =
+      get();
+    if (selection?.type !== "multi" || selection.items.length === 0) return;
+    if (delta.dx === 0 && delta.dy === 0) return;
+
+    if (options?.recordHistory !== false) get().captureHistory();
+
+    const selectedBoxIds = new Set(
+      selection.items.filter((i) => i.type === "box").map((i) => i.id),
+    );
+    const selectedCharacterIds = new Set(
+      selection.items.filter((i) => i.type === "character").map((i) => i.id),
+    );
+    const selectedFloatingTextIds = new Set(
+      selection.items
+        .filter((i) => i.type === "floatingText")
+        .map((i) => i.id),
+    );
+
+    const movedByBoxCharacters = new Set<string>();
+    const movedByBoxFloatingTexts = new Set<string>();
+
+    for (const boxId of selectedBoxIds) {
+      const box = boxes.find((b) => b.id === boxId);
+      if (!box) continue;
+      const containedCharacters = getCharactersContainedInBox(
+        box,
+        characters,
+        diagramFontFamily,
+      );
+      const containedFloatingTexts = getFloatingTextsContainedInBox(
+        box,
+        floatingTexts,
+        diagramFontFamily,
+      );
+      for (const c of containedCharacters) movedByBoxCharacters.add(c.id);
+      for (const t of containedFloatingTexts) movedByBoxFloatingTexts.add(t.id);
+
+      get().moveBox(
+        boxId,
+        delta,
+        {
+          characterIds: containedCharacters.map((c) => c.id),
+          floatingTextIds: containedFloatingTexts.map((t) => t.id),
+        },
+        { recordHistory: false },
+      );
+    }
+
+    for (const characterId of selectedCharacterIds) {
+      if (movedByBoxCharacters.has(characterId)) continue;
+      const character = get().characters.find((c) => c.id === characterId);
+      if (!character) continue;
+      get().moveCharacter(
+        characterId,
+        {
+          x: character.position.x + delta.dx,
+          y: character.position.y + delta.dy,
+        },
+        { recordHistory: false },
+      );
+    }
+
+    for (const floatingTextId of selectedFloatingTextIds) {
+      if (movedByBoxFloatingTexts.has(floatingTextId)) continue;
+      const floatingText = get().floatingTexts.find(
+        (t) => t.id === floatingTextId,
+      );
+      if (!floatingText) continue;
+      get().moveFloatingText(
+        floatingTextId,
+        {
+          x: floatingText.position.x + delta.dx,
+          y: floatingText.position.y + delta.dy,
+        },
+        { recordHistory: false },
+      );
+    }
   },
   openSelectionDetails: () => {
     const { selection } = get();
@@ -686,10 +788,7 @@ export const useDiagramStore = create<DiagramState>()(
         ...g,
         memberCharacterIds: g.memberCharacterIds.filter((mid) => mid !== id),
       })),
-      selection:
-        s.selection?.type === "character" && s.selection.id === id
-          ? null
-          : s.selection,
+      selection: selectionAfterRemovingItem(s.selection, "character", id),
     }));
   },
 
@@ -875,10 +974,7 @@ export const useDiagramStore = create<DiagramState>()(
           !(l.from.kind === "box" && l.from.id === id) &&
           !(l.to.kind === "box" && l.to.id === id),
       ),
-      selection:
-        s.selection?.type === "box" && s.selection.id === id
-          ? null
-          : s.selection,
+      selection: selectionAfterRemovingItem(s.selection, "box", id),
     }));
   },
 
@@ -993,10 +1089,7 @@ export const useDiagramStore = create<DiagramState>()(
     get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.filter((t) => t.id !== id),
-      selection:
-        s.selection?.type === "floatingText" && s.selection.id === id
-          ? null
-          : s.selection,
+      selection: selectionAfterRemovingItem(s.selection, "floatingText", id),
     }));
   },
 
@@ -1184,6 +1277,53 @@ export const useDiagramStore = create<DiagramState>()(
   deleteSelected: () => {
     const { selection } = get();
     if (!selection) return;
+
+    if (selection.type === "multi") {
+      get().captureHistory();
+      const characterIds = selection.items
+        .filter((i) => i.type === "character")
+        .map((i) => i.id);
+      const boxIds = selection.items
+        .filter((i) => i.type === "box")
+        .map((i) => i.id);
+      const floatingTextIds = selection.items
+        .filter((i) => i.type === "floatingText")
+        .map((i) => i.id);
+
+      set((s) => {
+        const characterIdSet = new Set(characterIds);
+        const boxIdSet = new Set(boxIds);
+        const floatingTextIdSet = new Set(floatingTextIds);
+
+        return {
+          characters: s.characters.filter((c) => !characterIdSet.has(c.id)),
+          boxes: s.boxes.filter((b) => !boxIdSet.has(b.id)),
+          floatingTexts: s.floatingTexts.filter(
+            (t) => !floatingTextIdSet.has(t.id),
+          ),
+          lines: s.lines.filter(
+            (l) =>
+              !(
+                (l.from.kind === "character" &&
+                  characterIdSet.has(l.from.id)) ||
+                (l.to.kind === "character" && characterIdSet.has(l.to.id)) ||
+                (l.from.kind === "box" && boxIdSet.has(l.from.id)) ||
+                (l.to.kind === "box" && boxIdSet.has(l.to.id))
+              ),
+          ),
+          groups: s.groups.map((g) => ({
+            ...g,
+            memberCharacterIds: g.memberCharacterIds.filter(
+              (mid) => !characterIdSet.has(mid),
+            ),
+          })),
+          selection: null,
+          selectionDetailsOpen: false,
+        };
+      });
+      return;
+    }
+
     if (selection.type === "character") get().deleteCharacter(selection.id);
     if (selection.type === "line") get().deleteLine(selection.id);
     if (selection.type === "group") get().deleteGroup(selection.id);

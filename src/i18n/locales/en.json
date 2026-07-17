@@ -232,7 +232,7 @@
     "headerTitleLabel": "Title",
     "headerSubtitleLabel": "Subtitle",
     "groupBackground": "Background",
-    "backgroundGridColour": "Grid colour",
+    "backgroundDetailColour": "Detail colour",
     "previewBackgroundAria": "Background pattern preview",
     "groupFont": "Font",
     "groupCharacters": "Characters",
@@ -479,13 +479,16 @@
     "hexAria": "{{label}} hex code"
   },
   "background": {
+    "white": "White",
     "offWhite": "Off-white",
+    "paleGrey": "Pale grey",
     "paleRose": "Pale rose",
     "palePeach": "Pale peach",
     "paleCream": "Pale cream",
     "paleMint": "Pale mint",
     "paleSky": "Pale sky",
-    "paleLavender": "Pale lavender",
+    "paleIndigo": "Pale indigo",
+    "paleViolet": "Pale violet",
     "transparent": "Transparent"
   },
   "defaults": {

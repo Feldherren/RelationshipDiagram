@@ -21,7 +21,7 @@ interface BackgroundModeControlsProps {
   onBackgroundColorChange: (color: DiagramBackgroundColor) => void;
   onGridColorChange: (color: RGB) => void;
   colourLabel?: string;
-  gridColourLabel?: string;
+  detailColourLabel?: string;
 }
 
 export function BackgroundModeControls({
@@ -32,7 +32,7 @@ export function BackgroundModeControls({
   onBackgroundColorChange,
   onGridColorChange,
   colourLabel,
-  gridColourLabel,
+  detailColourLabel,
 }: BackgroundModeControlsProps) {
   const { t } = useTranslation();
   const showPrimaryColour = backgroundModeUsesColour(mode);
@@ -75,8 +75,8 @@ export function BackgroundModeControls({
               {showGridColour && (
                 <RgbPicker
                   label={
-                    gridColourLabel ??
-                    t("diagramAppearance.backgroundGridColour")
+                    detailColourLabel ??
+                    t("diagramAppearance.backgroundDetailColour")
                   }
                   value={gridColor}
                   onChange={onGridColorChange}

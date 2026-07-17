@@ -6,7 +6,7 @@ export const DEFAULT_DIAGRAM_GRID_COLOR: RGB = { r: 224, g: 224, b: 224 };
 export const DIAGRAM_GRID_STROKE = rgbToCss(DEFAULT_DIAGRAM_GRID_COLOR);
 export const DIAGRAM_GRID_DOT_RADIUS = 1.25;
 
-/** Lighter swatches for grid/dot colour — subtler than character/line pastels. */
+/** Lighter swatches for grid/dot detail colour — paired with BACKGROUND_PRESETS hues. */
 export const GRID_COLOR_PALETTE: { id: string; color: RGB }[] = [
   { id: "white", color: { r: 255, g: 255, b: 255 } },
   { id: "lightGrey", color: { ...DEFAULT_DIAGRAM_GRID_COLOR } },

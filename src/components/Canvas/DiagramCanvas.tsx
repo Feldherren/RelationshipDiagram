@@ -294,13 +294,13 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       const world = pointerToWorld(e.clientX, e.clientY);
       const start = drawStartRef.current;
       const current = world ?? drawCurrentRef.current;
-      suppressClick.current = true;
       if (start && current) {
         const x = Math.min(start.x, current.x);
         const y = Math.min(start.y, current.y);
         const width = Math.abs(current.x - start.x);
         const height = Math.abs(current.y - start.y);
         if (width > 4 && height > 4) {
+          suppressClick.current = true;
           const state = useDiagramStore.getState();
           const hits = hitTestMarqueeSelection(
             { x, y, width, height },
@@ -360,6 +360,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (connectDrag || isInteractingWithBox) return;
+
+    // A new press starts a fresh gesture; any suppress flag from a prior
+    // drag (e.g. marquee) that never emitted a trailing click is stale.
+    suppressClick.current = false;
 
     const isStage = e.target === e.target.getStage();
 

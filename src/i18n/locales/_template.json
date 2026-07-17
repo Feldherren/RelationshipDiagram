@@ -190,8 +190,6 @@
     "languageHint": "Affects the application interface, not text inside your diagram.",
     "languageSystem": "System",
     "accessibilitySection": "Accessibility",
-    "bookmarksVisible": "Show bookmark flags on canvas",
-    "bookmarksVisibleHint": "Display coloured flags for saved viewport bookmarks. You can also toggle this from the eye button on the canvas.",
     "selectionPulseEnabled": "Pulse selected items",
     "selectionPulseEnabledHint": "Show a soft pulsing highlight on selected characters, boxes, and lines in their border or line colour. Automatically disabled when your system prefers reduced motion.",
     "editingSection": "Editing",

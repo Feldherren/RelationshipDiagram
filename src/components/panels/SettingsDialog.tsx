@@ -82,7 +82,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const [forkPendingAppearance, setForkPendingAppearance] =
     useState<DiagramAppearance | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
-  const setBookmarksVisible = useDiagramStore((s) => s.setBookmarksVisible);
   const setSelectionPulseEnabled = useDiagramStore(
     (s) => s.setSelectionPulseEnabled,
   );
@@ -424,19 +423,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           </label>
 
           <hr className="theme-editor-divider" />
-
-          <label className="field checkbox">
-            <input
-              type="checkbox"
-              checked={prefs.bookmarksVisible}
-              onChange={(e) => {
-                setBookmarksVisible(e.target.checked);
-                setPrefsState(getAppPreferences());
-              }}
-            />
-            <span>{t("appSettings.bookmarksVisible")}</span>
-          </label>
-          <p className="hint">{t("appSettings.bookmarksVisibleHint")}</p>
 
           <label className="field checkbox">
             <input

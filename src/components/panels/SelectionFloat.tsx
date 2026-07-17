@@ -216,8 +216,8 @@ export function SelectionFloat() {
     return null;
   }
 
-  // Canvas bookmark selection shows a viewport outline only (no float panel).
-  if (selection.type === "bookmark") {
+  // Canvas bookmark / multi-select: highlight only (no float panel).
+  if (selection.type === "bookmark" || selection.type === "multi") {
     return null;
   }
 
@@ -798,19 +798,6 @@ export function SelectionFloat() {
         open={chipAppearanceOpen}
         onClose={() => setChipAppearanceOpen(false)}
       />
-    );
-  } else if (selection.type === "multi") {
-    body = (
-      <>
-        <h2>{t("selection.multi")}</h2>
-        <p className="hint">
-          {t("selection.multiCount", { count: selection.items.length })}
-        </p>
-        <p className="hint">{t("selection.multiHint")}</p>
-        <button type="button" className="btn-danger" onClick={deleteSelected}>
-          {t("selection.deleteMulti")}
-        </button>
-      </>
     );
   }
 

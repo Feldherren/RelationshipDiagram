@@ -7,6 +7,7 @@ import { GroupsListPopup } from "./components/panels/GroupsListPopup";
 import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog } from "./components/panels/SettingsDialog";
+import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
 import { Toolbar } from "./components/Toolbar";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
@@ -27,6 +28,7 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [diagramPropertiesOpen, setDiagramPropertiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
@@ -93,6 +95,7 @@ function App() {
         onOpen={handleOpen}
         onExport={handleExport}
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}
+        onHelp={() => setHelpOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
       <main className="main">
@@ -113,6 +116,10 @@ function App() {
       <DiagramPropertiesDialog
         open={diagramPropertiesOpen}
         onClose={() => setDiagramPropertiesOpen(false)}
+      />
+      <HelpControlsDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
       />
       <SettingsDialog
         open={settingsOpen}

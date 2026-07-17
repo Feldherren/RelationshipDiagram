@@ -7,7 +7,32 @@ interface ToolbarProps {
   onOpen: () => void;
   onExport: () => void;
   onDiagramProperties: () => void;
+  onHelp: () => void;
   onSettings: () => void;
+}
+
+function HelpIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <text
+        x="12"
+        y="12"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="18"
+        fontWeight="700"
+        fill="currentColor"
+      >
+        ?
+      </text>
+    </svg>
+  );
 }
 
 function SettingsGearIcon() {
@@ -84,6 +109,7 @@ export function Toolbar({
   onOpen,
   onExport,
   onDiagramProperties,
+  onHelp,
   onSettings,
 }: ToolbarProps) {
   const { t } = useTranslation();
@@ -165,6 +191,15 @@ export function Toolbar({
           title={t("toolbar.settings")}
         >
           <SettingsGearIcon />
+        </button>
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={onHelp}
+          aria-label={t("toolbar.helpAria")}
+          title={t("toolbar.help")}
+        >
+          <HelpIcon />
         </button>
       </div>
     </header>

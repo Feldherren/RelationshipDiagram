@@ -431,7 +431,7 @@ export const useDiagramStore = create<DiagramState>()(
       get().setSelection(items[0], { openDetails: false });
       return;
     }
-    get().setSelection({ type: "multi", items }, { openDetails: true });
+    get().setSelection({ type: "multi", items }, { openDetails: false });
   },
   moveMultiSelectionByDelta: (delta, options) => {
     const { selection, characters, boxes, floatingTexts, diagramFontFamily } =
@@ -515,7 +515,13 @@ export const useDiagramStore = create<DiagramState>()(
   },
   openSelectionDetails: () => {
     const { selection } = get();
-    if (!selection || selection.type === "bookmark") return;
+    if (
+      !selection ||
+      selection.type === "bookmark" ||
+      selection.type === "multi"
+    ) {
+      return;
+    }
     set({ selectionDetailsOpen: true });
   },
   setShowGrid: (show) =>

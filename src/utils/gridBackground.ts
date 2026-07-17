@@ -36,13 +36,12 @@ export function computeViewportGridLineBounds(
   return { startX, endX, startY, endY };
 }
 
+/** Path-building only — callers apply stroke/fill via Konva shape styles. */
 interface GridDrawContext {
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
-  fill(): void;
-  stroke(): void;
 }
 
 export function drawGridLines(
@@ -60,7 +59,6 @@ export function drawGridLines(
     ctx.moveTo(startX, y);
     ctx.lineTo(endX, y);
   }
-  ctx.stroke();
 }
 
 export function drawGridDots(
@@ -77,7 +75,6 @@ export function drawGridDots(
       ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
     }
   }
-  ctx.fill();
 }
 
 export function drawGrid(

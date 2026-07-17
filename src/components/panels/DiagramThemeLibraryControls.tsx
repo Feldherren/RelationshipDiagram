@@ -6,6 +6,7 @@ import {
   setAppPreferences,
   type AppPreferences,
 } from "../../utils/appPreferences";
+import { downloadJson } from "../../utils/downloadJson";
 import {
   cloneDiagramAppearance,
   createDiagramThemeDocument,
@@ -16,16 +17,6 @@ import {
   type DiagramThemeDocument,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
-
-function downloadJson(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function resolveThemeName(
   preference: DiagramThemePreference,
@@ -44,13 +35,8 @@ export interface DiagramThemeLibraryControlsProps {
   /** Prefs snapshot; when omitted, reads from storage on each action. */
   prefs?: AppPreferences;
   onPrefsChange?: (prefs: AppPreferences) => void;
-  /** When set, import applies appearance to the open diagram after confirm. */
+  /** When set, shows Apply and confirms before writing to the open diagram. */
   onApplyAppearance?: (appearance: DiagramAppearance) => void;
-  /**
-   * Full editor: create / select / apply / library list.
-   * Compact: name + save / import / export (Diagram properties).
-   */
-  editorMode?: boolean;
   hintKey?: string;
 }
 
@@ -59,8 +45,7 @@ export function DiagramThemeLibraryControls({
   prefs: prefsProp,
   onPrefsChange,
   onApplyAppearance,
-  editorMode = false,
-  hintKey = "diagramProperties.appearanceThemesHint",
+  hintKey = "appSettings.diagramThemesLibraryHint",
 }: DiagramThemeLibraryControlsProps) {
   const { t } = useTranslation();
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -176,46 +161,32 @@ export function DiagramThemeLibraryControls({
 
   const handleSave = () => {
     const prefs = readPrefs();
-    if (prefs.diagramThemePreference === "default" && editorMode) {
+    if (prefs.diagramThemePreference === "default") {
       return;
     }
     const name = themeName.trim() || defaultName;
-    const preference = prefs.diagramThemePreference;
-    const editing =
-      preference !== "default"
-        ? prefs.customDiagramThemes.find((theme) => theme.id === preference)
-        : undefined;
+    const editing = prefs.customDiagramThemes.find(
+      (theme) => theme.id === prefs.diagramThemePreference,
+    );
+    if (!editing) return;
 
-    if (editing) {
-      const updated: DiagramThemeDocument = {
-        ...editing,
-        name,
-        appearance: cloneDiagramAppearance(appearance),
-      };
-      const customDiagramThemes = prefs.customDiagramThemes.map((theme) =>
-        theme.id === editing.id ? updated : theme,
-      );
-      commitPrefs({
-        customDiagramThemes,
-        diagramThemePreference: updated.id,
-        diagramAppearance: updated.appearance,
-      });
-      setThemeName(updated.name);
-      setStatus(
-        t("diagramAppearance.themeUpdatedFeedback", { name: updated.name }),
-      );
-      return;
-    }
-
-    const id = uniqueDiagramThemeId(name, prefs.customDiagramThemes);
-    const theme = createDiagramThemeDocument(id, name, appearance);
+    const updated: DiagramThemeDocument = {
+      ...editing,
+      name,
+      appearance: cloneDiagramAppearance(appearance),
+    };
+    const customDiagramThemes = prefs.customDiagramThemes.map((theme) =>
+      theme.id === editing.id ? updated : theme,
+    );
     commitPrefs({
-      customDiagramThemes: [...prefs.customDiagramThemes, theme],
-      diagramThemePreference: theme.id,
-      diagramAppearance: theme.appearance,
+      customDiagramThemes,
+      diagramThemePreference: updated.id,
+      diagramAppearance: updated.appearance,
     });
-    setThemeName(theme.name);
-    setStatus(t("diagramAppearance.themeSavedFeedback", { name: theme.name }));
+    setThemeName(updated.name);
+    setStatus(
+      t("diagramAppearance.themeUpdatedFeedback", { name: updated.name }),
+    );
   };
 
   const handleApplyToDiagram = () => {
@@ -262,11 +233,6 @@ export function DiagramThemeLibraryControls({
         setStatus(t("diagramAppearance.themeImportInvalid"));
         return;
       }
-      if (onApplyAppearance && !editorMode) {
-        if (!window.confirm(t("diagramAppearance.themeImportConfirm"))) {
-          return;
-        }
-      }
       const prefs = readPrefs();
       const existing = prefs.customDiagramThemes.filter(
         (entry) => entry.id !== theme.id,
@@ -277,9 +243,6 @@ export function DiagramThemeLibraryControls({
         diagramAppearance: theme.appearance,
       });
       setThemeName(theme.name);
-      if (!editorMode) {
-        onApplyAppearance?.(theme.appearance);
-      }
       setStatus(
         t("diagramAppearance.themeImportedFeedback", { name: theme.name }),
       );
@@ -361,106 +324,100 @@ export function DiagramThemeLibraryControls({
     <div className="diagram-theme-library">
       <p className="hint">{t(hintKey)}</p>
 
-      {editorMode && (
-        <div className="theme-editor-create-row">
-          <label className="field theme-editor-create-name">
-            <span>{t("diagramAppearance.themeNewName")}</span>
-            <input
-              type="text"
-              value={newName}
-              placeholder={defaultName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{t("diagramAppearance.themeCreateBase")}</span>
-            <select
-              value={createBase}
-              onChange={(e) =>
-                setCreateBase(e.target.value as DiagramThemePreference)
-              }
-            >
-              {createBaseOptions}
-            </select>
-          </label>
-          <button type="button" className="btn-secondary" onClick={handleCreate}>
-            {t("diagramAppearance.themeCreate")}
-          </button>
-        </div>
+      <div className="theme-editor-create-row">
+        <label className="field theme-editor-create-name">
+          <span>{t("diagramAppearance.themeNewName")}</span>
+          <input
+            type="text"
+            value={newName}
+            placeholder={defaultName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>{t("diagramAppearance.themeCreateBase")}</span>
+          <select
+            value={createBase}
+            onChange={(e) =>
+              setCreateBase(e.target.value as DiagramThemePreference)
+            }
+          >
+            {createBaseOptions}
+          </select>
+        </label>
+        <button type="button" className="btn-secondary" onClick={handleCreate}>
+          {t("diagramAppearance.themeCreate")}
+        </button>
+      </div>
+
+      <hr className="theme-editor-divider" />
+
+      <label className="field">
+        <span>{t("diagramAppearance.themeSelected")}</span>
+        <select
+          value={prefs.diagramThemePreference}
+          onChange={(e) =>
+            handleSelectTheme(e.target.value as DiagramThemePreference)
+          }
+        >
+          <option value="default">{defaultThemeLabel}</option>
+          {prefs.customDiagramThemes.map((theme) => (
+            <option key={theme.id} value={theme.id}>
+              {theme.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="hint">
+        {isDefaultSelected
+          ? t("diagramAppearance.themeSelectedDefaultHint")
+          : t("diagramAppearance.themeSelectedCustomHint", {
+              name: themeName,
+            })}
+      </p>
+
+      {prefs.customDiagramThemes.length > 0 && (
+        <ul className="custom-theme-list">
+          {prefs.customDiagramThemes.map((theme) => {
+            const selected = prefs.diagramThemePreference === theme.id;
+            return (
+              <li
+                key={theme.id}
+                className={`custom-theme-row${selected ? " selected" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="custom-theme-select"
+                  onClick={() => handleSelectTheme(theme.id)}
+                >
+                  <span style={{ flex: 1 }}>{theme.name}</span>
+                  {selected && (
+                    <span className="custom-theme-editing-badge">
+                      {t("diagramAppearance.themeSelectedBadge")}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleExportListed(theme.id)}
+                >
+                  {t("appSettings.themeExport")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-danger"
+                  onClick={() => handleRemove(theme.id, theme.name)}
+                >
+                  {t("appSettings.themeRemove")}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      {editorMode && <hr className="theme-editor-divider" />}
-
-      {editorMode && (
-        <>
-          <label className="field">
-            <span>{t("diagramAppearance.themeSelected")}</span>
-            <select
-              value={prefs.diagramThemePreference}
-              onChange={(e) =>
-                handleSelectTheme(e.target.value as DiagramThemePreference)
-              }
-            >
-              <option value="default">{defaultThemeLabel}</option>
-              {prefs.customDiagramThemes.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="hint">
-            {isDefaultSelected
-              ? t("diagramAppearance.themeSelectedDefaultHint")
-              : t("diagramAppearance.themeSelectedCustomHint", {
-                  name: themeName,
-                })}
-          </p>
-
-          {prefs.customDiagramThemes.length > 0 && (
-            <ul className="custom-theme-list">
-              {prefs.customDiagramThemes.map((theme) => {
-                const selected = prefs.diagramThemePreference === theme.id;
-                return (
-                  <li
-                    key={theme.id}
-                    className={`custom-theme-row${selected ? " selected" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className="custom-theme-select"
-                      onClick={() => handleSelectTheme(theme.id)}
-                    >
-                      <span style={{ flex: 1 }}>{theme.name}</span>
-                      {selected && (
-                        <span className="custom-theme-editing-badge">
-                          {t("diagramAppearance.themeSelectedBadge")}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => handleExportListed(theme.id)}
-                    >
-                      {t("appSettings.themeExport")}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-danger"
-                      onClick={() => handleRemove(theme.id, theme.name)}
-                    >
-                      {t("appSettings.themeRemove")}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      )}
-
-      {(!editorMode || editingCustom) && (
+      {editingCustom && (
         <label className="field">
           <span>{t("diagramAppearance.themeName")}</span>
           <input
@@ -476,12 +433,12 @@ export function DiagramThemeLibraryControls({
       )}
 
       <div className="custom-theme-actions">
-        {(!editorMode || editingCustom) && (
+        {editingCustom && (
           <button type="button" className="btn-primary" onClick={handleSave}>
             {t("diagramAppearance.themeSave")}
           </button>
         )}
-        {editorMode && onApplyAppearance && (
+        {onApplyAppearance && (
           <button
             type="button"
             className="btn-secondary"

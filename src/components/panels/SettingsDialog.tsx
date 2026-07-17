@@ -36,6 +36,7 @@ import {
   exportZoomPercentFromRatio,
   exportZoomRatioFromPercent,
 } from "../../utils/exportZoom";
+import { downloadJson } from "../../utils/downloadJson";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
 import { ForkDiagramThemeDialog } from "./ForkDiagramThemeDialog";
@@ -44,7 +45,7 @@ import { ThemeEditorPanel } from "./ThemeEditorPanel";
 import { DefaultFolderField } from "./DefaultFolderField";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
-type SettingsSectionId =
+export type SettingsSectionId =
   | "appearance"
   | "themeEditor"
   | "diagramDefaults"
@@ -58,19 +59,15 @@ type SettingsSectionId =
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Section to show when the dialog opens. Defaults to Appearance. */
+  initialSection?: SettingsSectionId;
 }
 
-function downloadJson(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onClose,
+  initialSection = "appearance",
+}: SettingsDialogProps) {
   const { t } = useTranslation();
   const [languagePreference, setLanguagePreferenceState] = useState(
     getLanguagePreference,
@@ -97,8 +94,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     }
     setPrefsState(getAppPreferences());
     setLanguagePreferenceState(getLanguagePreference());
-    setActiveSection("appearance");
-  }, [open]);
+    setActiveSection(initialSection);
+  }, [open, initialSection]);
 
   const updatePrefs = (patch: Partial<AppPreferences>) => {
     const next = setAppPreferences(patch);
@@ -349,7 +346,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             appearance={prefs.diagramAppearance}
             prefs={prefs}
             onPrefsChange={setPrefsState}
-            editorMode
             onApplyAppearance={replaceDiagramAppearance}
             hintKey="appSettings.diagramThemesLibraryHint"
           />

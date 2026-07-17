@@ -6,7 +6,7 @@ import { SelectionFloat } from "./components/panels/SelectionFloat";
 import { GroupsListPopup } from "./components/panels/GroupsListPopup";
 import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
-import { SettingsDialog } from "./components/panels/SettingsDialog";
+import { SettingsDialog, type SettingsSectionId } from "./components/panels/SettingsDialog";
 import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
 import { Toolbar } from "./components/Toolbar";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
@@ -28,6 +28,8 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [diagramPropertiesOpen, setDiagramPropertiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsSectionId>("appearance");
   const [helpOpen, setHelpOpen] = useState(false);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
@@ -87,6 +89,16 @@ function App() {
     setExportOpen(true);
   };
 
+  const openSettings = (section: SettingsSectionId = "appearance") => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  };
+
+  const openDiagramThemesFromProperties = () => {
+    setDiagramPropertiesOpen(false);
+    openSettings("diagramDefaults");
+  };
+
   return (
     <div className="app">
       <Toolbar
@@ -96,7 +108,7 @@ function App() {
         onExport={handleExport}
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}
         onHelp={() => setHelpOpen(true)}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => openSettings()}
       />
       <main className="main">
         <div className="workspace">
@@ -116,6 +128,7 @@ function App() {
       <DiagramPropertiesDialog
         open={diagramPropertiesOpen}
         onClose={() => setDiagramPropertiesOpen(false)}
+        onManageThemes={openDiagramThemesFromProperties}
       />
       <HelpControlsDialog
         open={helpOpen}
@@ -124,6 +137,7 @@ function App() {
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        initialSection={settingsSection}
       />
     </div>
   );

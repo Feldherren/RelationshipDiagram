@@ -363,7 +363,7 @@
     "edit": "Edit",
     "deleteKeys": "Delete / Backspace",
     "deleteDetail": "Delete the current selection (including multi-select)",
-    "propertiesKeys": "Enter / double-click",
+    "propertiesKeys": "Enter / double-click / RMB",
     "propertiesDetail": "Open properties for a single selection",
     "escapeKeys": "Esc",
     "escapeDetail": "Cancel connect mode or finish editing group members",

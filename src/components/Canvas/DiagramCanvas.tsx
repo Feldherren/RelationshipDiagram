@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Line, Rect } from "react-konva";
 import type Konva from "konva";
 import { useTranslation } from "react-i18next";
@@ -24,12 +24,18 @@ import {
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
-import { getGroupsForCharacter } from "../../utils/geometry";
-import { toChipItems } from "./MembershipChips";
+import {
+  buildCharacterMembershipChipMap,
+  EMPTY_MEMBERSHIP_CHIPS,
+} from "./MembershipChips";
 import { setMembershipChipTooltip } from "../../utils/membershipChipTooltip";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
-import { buildBackgroundImageCssStyle } from "../../utils/backgroundImageStyle";
+import {
+  applyWallpaperCssToElement,
+  buildBackgroundImageCssStyle,
+  clearWallpaperCssOnElement,
+} from "../../utils/backgroundImageStyle";
 import { useImageNaturalSize } from "../../hooks/useImageNaturalSize";
 import { consumeSuppressStageClick } from "../../utils/suppressStageClick";
 import {
@@ -37,7 +43,7 @@ import {
   isItemSelected,
   selectionFromMarqueeHits,
 } from "../../utils/selectionMulti";
-
+import { routeLine } from "../../utils/lineRouting";
 interface DiagramCanvasProps {
   stageRef: React.RefObject<Konva.Stage | null>;
 }
@@ -116,7 +122,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     diagramBackgroundColor,
     diagramAppearance,
     diagramFontFamily,
-    viewport,
     stageSize,
     setStageSize,
     setSelection,
@@ -148,7 +153,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       diagramBackgroundColor: s.diagramBackgroundColor,
       diagramAppearance: s.diagramAppearance,
       diagramFontFamily: s.diagramFontFamily,
-      viewport: s.viewport,
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
@@ -175,10 +179,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const wallpaperNaturalSizeRef = useRef(wallpaperNaturalSize);
   wallpaperNaturalSizeRef.current = wallpaperNaturalSize;
 
-  const { startPan, movePan, endPan, shouldPan } = usePanZoom(
-    containerRef,
-    stageRef,
-    (nextViewport) => {
+  const applyWallpaperForViewport = useCallback(
+    (nextViewport: {
+      x: number;
+      y: number;
+      scale: number;
+    }) => {
       const el = containerRef.current;
       if (!el) return;
       const appearance = useDiagramStore.getState().diagramAppearance;
@@ -186,31 +192,45 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         appearance.backgroundMode !== "image" ||
         !appearance.backgroundImageData
       ) {
+        clearWallpaperCssOnElement(el);
         return;
       }
-      const natural = wallpaperNaturalSizeRef.current;
       const css = buildBackgroundImageCssStyle({
         imageData: appearance.backgroundImageData,
         placement: appearance.backgroundImagePlacement,
         scale: appearance.backgroundImageScale,
         offset: appearance.backgroundImageOffset,
-        naturalSize: natural,
+        naturalSize: wallpaperNaturalSizeRef.current,
         viewport: nextViewport,
       });
-      if (css.backgroundImage != null) {
-        el.style.backgroundImage = String(css.backgroundImage);
-      }
-      if (css.backgroundRepeat != null) {
-        el.style.backgroundRepeat = String(css.backgroundRepeat);
-      }
-      if (css.backgroundPosition != null) {
-        el.style.backgroundPosition = String(css.backgroundPosition);
-      }
-      if (css.backgroundSize != null) {
-        el.style.backgroundSize = String(css.backgroundSize);
-      }
+      applyWallpaperCssToElement(el, css);
     },
+    [],
   );
+
+  const { startPan, movePan, endPan, shouldPan } = usePanZoom(
+    containerRef,
+    stageRef,
+    applyWallpaperForViewport,
+  );
+
+  // Sync wallpaper when appearance/size changes, and when viewport jumps
+  // outside the pan preview path (fit, bookmark, load).
+  useEffect(() => {
+    applyWallpaperForViewport(useDiagramStore.getState().viewport);
+    return useDiagramStore.subscribe((state, prev) => {
+      if (state.viewport === prev.viewport) return;
+      applyWallpaperForViewport(state.viewport);
+    });
+  }, [
+    applyWallpaperForViewport,
+    wallpaperData,
+    wallpaperNaturalSize,
+    diagramAppearance.backgroundImagePlacement,
+    diagramAppearance.backgroundImageScale,
+    diagramAppearance.backgroundImageOffset,
+    diagramAppearance.backgroundMode,
+  ]);
   const suppressClick = useRef(false);
   const [isPanningView, setIsPanningView] = useState(false);
   const [isDrawingExport, setIsDrawingExport] = useState(false);
@@ -559,15 +579,34 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     });
   };
 
-  const diagram = {
-    schemaVersion: 2 as const,
-    characters,
-    lines,
-    groups,
-    boxes,
-    floatingTexts,
-    fontFamily: diagramFontFamily,
-  };
+  const diagram = useMemo(
+    () => ({
+      schemaVersion: 2 as const,
+      characters,
+      lines,
+      groups,
+      boxes,
+      floatingTexts,
+      fontFamily: diagramFontFamily,
+    }),
+    [characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
+  );
+
+  const membershipByCharacterId = useMemo(
+    () => buildCharacterMembershipChipMap(groups),
+    [groups],
+  );
+
+  const visibleRoutedLines = useMemo(
+    () =>
+      lines
+        .filter((line) => shouldRenderLine(line, diagram))
+        .map((line) => ({
+          line,
+          routed: routeLine(line, diagram),
+        })),
+    [lines, diagram],
+  );
 
   const dragRectBounds =
     (isDrawingExport || isDrawingMarquee) && drawStart && drawCurrent
@@ -592,24 +631,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     diagramBackgroundColor === null
       ? undefined
       : (backgroundColorForDisplay(diagramBackgroundColor) ?? undefined);
-  const wallpaperCss =
-    isImageBackground && wallpaperData
-      ? buildBackgroundImageCssStyle({
-          imageData: wallpaperData,
-          placement: diagramAppearance.backgroundImagePlacement,
-          scale: diagramAppearance.backgroundImageScale,
-          offset: diagramAppearance.backgroundImageOffset,
-          naturalSize: wallpaperNaturalSize,
-          viewport,
-        })
-      : {};
-  const canvasStyle =
-    underlayCss || Object.keys(wallpaperCss).length > 0
-      ? {
-          ...(underlayCss ? { backgroundColor: underlayCss } : {}),
-          ...wallpaperCss,
-        }
-      : undefined;
+  const canvasStyle = underlayCss
+    ? { backgroundColor: underlayCss }
+    : undefined;
 
   return (
     <div
@@ -684,13 +708,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               />
             ))}
 
-          {lines
-            .filter((line) => shouldRenderLine(line, diagram))
-            .map((line) => (
+          {visibleRoutedLines.map(({ line, routed }) => (
               <LineEdge
                 key={line.id}
                 line={line}
                 diagram={diagram}
+                routed={routed}
                 selected={
                   selection?.type === "line" && selection.id === line.id
                 }
@@ -713,13 +736,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               />
             ))}
 
-          {lines
-            .filter((line) => shouldRenderLine(line, diagram))
-            .map((line) => (
+          {visibleRoutedLines.map(({ line, routed }) => (
               <LineEdge
                 key={`${line.id}-label`}
                 line={line}
                 diagram={diagram}
+                routed={routed}
                 selected={
                   selection?.type === "line" && selection.id === line.id
                 }
@@ -761,7 +783,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 !isCharacterHidden(c.id, boxes, characters, diagramFontFamily),
             )
             .map((character) => {
-              const memberOf = getGroupsForCharacter(character.id, groups);
+              const membershipGroups =
+                membershipByCharacterId.get(character.id) ??
+                EMPTY_MEMBERSHIP_CHIPS;
               const isMember =
                 highlightedMemberIds?.has(character.id) ?? false;
               return (
@@ -777,7 +801,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     id: character.id,
                     kind: "character",
                   })}
-                  membershipGroups={toChipItems(memberOf)}
+                  membershipGroups={membershipGroups}
                   highlightedGroupId={highlightedGroupId}
                   dimmed={highlightedMemberIds != null && !isMember}
                   membershipEmphasized={isMember}

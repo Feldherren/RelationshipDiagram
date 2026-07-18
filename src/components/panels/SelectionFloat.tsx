@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
-import type { LineStyle } from "../../models/types";
+import type { LineStyle, Selection, Viewport } from "../../models/types";
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
@@ -47,6 +47,72 @@ import {
   nextRouteIndex,
   resolveLineBend,
 } from "../../utils/lineRouting";
+
+/** Connector only — keeps viewport subscription off the detached panel body. */
+function SelectionFloatConnector({
+  selection,
+  left,
+  top,
+  panelHeight,
+  stageWidth,
+  stageHeight,
+}: {
+  selection: NonNullable<Selection>;
+  left: number;
+  top: number;
+  panelHeight: number;
+  stageWidth: number;
+  stageHeight: number;
+}) {
+  const viewport = useDiagramStore((s) => s.viewport);
+  const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagram = getDiagram();
+  const panelBounds = {
+    x: left,
+    y: top,
+    width: SELECTION_FLOAT_WIDTH,
+    height: panelHeight,
+  };
+  const panelCenterScreen = {
+    x: left + SELECTION_FLOAT_WIDTH / 2,
+    y: top + panelHeight / 2,
+  };
+  const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
+    selection,
+    diagram,
+    screenToWorld(panelCenterScreen, viewport),
+  );
+  if (!connectorAnchorWorld) return null;
+  const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+  if (!shouldShowFloatConnector(panelBounds, anchorScreen)) return null;
+  const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+  return (
+    <svg
+      className="selection-float-connector"
+      width={stageWidth}
+      height={stageHeight}
+      aria-hidden
+    >
+      <line
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        className="selection-float-connector-line"
+      />
+      <circle
+        cx={from.x}
+        cy={from.y}
+        r={3}
+        className="selection-float-connector-dot"
+      />
+    </svg>
+  );
+}
+
+function liveViewport(tracked: Viewport | null): Viewport {
+  return tracked ?? useDiagramStore.getState().viewport;
+}
 
 const LINE_STYLES: LineStyle[] = ["straight", "wavy", "dotted", "jagged"];
 
@@ -137,7 +203,6 @@ export function SelectionFloat() {
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
-  const viewport = useDiagramStore((s) => s.viewport);
   const stageSize = useDiagramStore((s) => s.stageSize);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
@@ -155,6 +220,20 @@ export function SelectionFloat() {
   const placementKey = selection
     ? selectionFloatPlacementKey(selection)
     : null;
+  const placementDetached = Boolean(
+    placementKey &&
+      floatPlacement?.key === placementKey &&
+      floatPlacement.detached,
+  );
+  const trackViewport =
+    Boolean(selectionDetailsOpen) &&
+    selection != null &&
+    selection.type !== "bookmark" &&
+    selection.type !== "multi" &&
+    !placementDetached;
+  const viewport = useDiagramStore((s) =>
+    trackViewport ? s.viewport : null,
+  );
 
   useEffect(() => {
     setChipAppearanceOpen(false);
@@ -186,9 +265,10 @@ export function SelectionFloat() {
       selection.anchorCharacterId,
       diagram,
     );
+    const vp = liveViewport(viewport);
     const placed = placeSelectionFloat({
       anchorScreen: chipAnchor
-        ? worldToScreen(chipAnchor, viewport)
+        ? worldToScreen(chipAnchor, vp)
         : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
       stageWidth: stageSize.width,
       stageHeight: stageSize.height,
@@ -226,6 +306,7 @@ export function SelectionFloat() {
 
   const diagram = getDiagram();
   const isGroupSelection = selection.type === "group";
+  const vp = liveViewport(viewport);
 
   let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
   if (selection.type === "line") {
@@ -233,7 +314,7 @@ export function SelectionFloat() {
     if (line) {
       avoidScreen = worldBoundsToScreen(
         getLineSelectionAvoidBounds(line, diagram),
-        viewport,
+        vp,
       );
     }
   }
@@ -262,7 +343,7 @@ export function SelectionFloat() {
     );
     ({ left, top } = placeSelectionFloat({
       anchorScreen: chipAnchor
-        ? worldToScreen(chipAnchor, viewport)
+        ? worldToScreen(chipAnchor, vp)
         : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
       stageWidth: stageSize.width,
       stageHeight: stageSize.height,
@@ -272,7 +353,7 @@ export function SelectionFloat() {
   } else {
     const anchorWorld = getSelectionAnchorWorld(selection, diagram);
     const anchorScreen = anchorWorld
-      ? worldToScreen(anchorWorld, viewport)
+      ? worldToScreen(anchorWorld, vp)
       : defaultFloatAnchorScreen(stageSize.width, stageSize.height);
     ({ left, top } = placeSelectionFloat({
       anchorScreen,
@@ -888,49 +969,16 @@ export function SelectionFloat() {
 
   let connector: ReactNode = null;
   if (isDetached) {
-    const panelBounds = {
-      x: left,
-      y: top,
-      width: SELECTION_FLOAT_WIDTH,
-      height: panelHeight,
-    };
-    const panelCenterScreen = {
-      x: left + SELECTION_FLOAT_WIDTH / 2,
-      y: top + panelHeight / 2,
-    };
-    const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
-      selection,
-      diagram,
-      screenToWorld(panelCenterScreen, viewport),
+    connector = (
+      <SelectionFloatConnector
+        selection={selection}
+        left={left}
+        top={top}
+        panelHeight={panelHeight}
+        stageWidth={stageSize.width}
+        stageHeight={stageSize.height}
+      />
     );
-    if (connectorAnchorWorld) {
-      const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
-      if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
-        const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
-        connector = (
-          <svg
-            className="selection-float-connector"
-            width={stageSize.width}
-            height={stageSize.height}
-            aria-hidden
-          >
-            <line
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              className="selection-float-connector-line"
-            />
-            <circle
-              cx={from.x}
-              cy={from.y}
-              r={3}
-              className="selection-float-connector-dot"
-            />
-          </svg>
-        );
-      }
-    }
   }
 
   return (

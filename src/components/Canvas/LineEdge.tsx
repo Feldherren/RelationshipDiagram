@@ -10,6 +10,7 @@ import {
   MIN_SELF_LOOP_BEND,
   resolveLineBend,
   routeLine,
+  type RoutedLine,
 } from "../../utils/lineRouting";
 import {
   getLineDisplayLabel,
@@ -35,6 +36,8 @@ interface LineEdgeProps {
   /** Shared hover when stroke and label are rendered as separate instances. */
   hovered?: boolean;
   onHoverChange?: (hovered: boolean) => void;
+  /** Precomputed route (avoids duplicate work for stroke + label passes). */
+  routed?: RoutedLine;
 }
 
 interface BendDragStart {
@@ -55,8 +58,9 @@ export function LineEdge({
   part = "full",
   hovered: hoveredProp,
   onHoverChange,
+  routed: routedProp,
 }: LineEdgeProps) {
-  const routed = routeLine(line, diagram);
+  const routed = routedProp ?? routeLine(line, diagram);
   const displayLabel = getLineDisplayLabel(line, diagram);
   const fromResolved = resolveLineEndpoint(line.from, diagram);
   const toResolved = resolveLineEndpoint(line.to, diagram);

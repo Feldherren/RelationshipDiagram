@@ -241,3 +241,26 @@ export function toChipItems(groups: MembershipGroup[]): MembershipChipItem[] {
     appearance: g.appearance,
   }));
 }
+
+/** Stable empty list for characters with no memberships. */
+export const EMPTY_MEMBERSHIP_CHIPS: MembershipChipItem[] = [];
+
+/** Invert groups → per-character chip lists (one pass). */
+export function buildCharacterMembershipChipMap(
+  groups: MembershipGroup[],
+): Map<string, MembershipChipItem[]> {
+  const map = new Map<string, MembershipChipItem[]>();
+  for (const group of groups) {
+    const item: MembershipChipItem = {
+      id: group.id,
+      name: group.name,
+      appearance: group.appearance,
+    };
+    for (const characterId of group.memberCharacterIds) {
+      const existing = map.get(characterId);
+      if (existing) existing.push(item);
+      else map.set(characterId, [item]);
+    }
+  }
+  return map;
+}

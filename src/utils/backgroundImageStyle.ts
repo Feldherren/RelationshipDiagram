@@ -228,3 +228,30 @@ export async function createBackgroundImageCanvas(
   );
   return canvas;
 }
+
+const WALLPAPER_STYLE_KEYS = [
+  "backgroundImage",
+  "backgroundRepeat",
+  "backgroundPosition",
+  "backgroundSize",
+] as const;
+
+/** Apply wallpaper CSS onto a DOM node (imperative pan/zoom path). */
+export function applyWallpaperCssToElement(
+  el: HTMLElement,
+  css: CSSProperties,
+): void {
+  for (const key of WALLPAPER_STYLE_KEYS) {
+    const value = css[key];
+    if (value != null) {
+      el.style[key] = String(value);
+    }
+  }
+}
+
+/** Clear wallpaper-related inline styles. */
+export function clearWallpaperCssOnElement(el: HTMLElement): void {
+  for (const key of WALLPAPER_STYLE_KEYS) {
+    el.style[key] = "";
+  }
+}

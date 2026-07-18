@@ -6,6 +6,8 @@ import { computeDiagramBounds } from "./diagramBounds";
 import type { Diagram } from "../models/types";
 import { expandBounds, mergeBounds } from "./geometry";
 import { resolveDiagramBackground } from "./diagramBackground";
+import { createBackgroundImageCanvas } from "./backgroundImageStyle";
+import type { BackgroundImagePlacement } from "../models/types";
 import {
   DIAGRAM_SUBTITLE_FONT_SIZE,
   DIAGRAM_TITLE_FONT_SIZE,
@@ -27,10 +29,19 @@ import {
 
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
+export const EXPORT_BACKGROUND_IMAGE_NODE_NAME =
+  "diagram-export-background-image";
 export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
 export const HOVER_AURA_NODE_NAME = "diagram-hover-aura";
 export const SELECTION_PILL_NODE_NAME = "diagram-selection-pill";
 export const EXPORT_CONNECT_HANDLE_NODE_NAME = "diagram-connect-handle";
+
+const EXPORT_BOUNDS_SKIP_NAMES = new Set([
+  GRID_NODE_NAME,
+  EXPORT_BACKGROUND_NODE_NAME,
+  EXPORT_BACKGROUND_IMAGE_NODE_NAME,
+  EXPORT_GRID_NODE_NAME,
+]);
 
 interface ExportUiRestoreState {
   node: Konva.Node;
@@ -113,6 +124,10 @@ export interface ExportOptions {
   showGrid?: boolean;
   gridStyle?: GridStyle;
   gridColor?: RGB;
+  /** Wallpaper data URL when exporting an image-mode background. */
+  backgroundImageData?: string | null;
+  backgroundImagePlacement?: BackgroundImagePlacement;
+  backgroundImageScale?: number;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -140,7 +155,8 @@ export function getStageContentBounds(
   let result: Bounds | null = null;
 
   for (const child of layer.getChildren()) {
-    if (child.name() === GRID_NODE_NAME || !child.visible()) continue;
+    const name = child.name();
+    if (EXPORT_BOUNDS_SKIP_NAMES.has(name) || !child.visible()) continue;
 
     const rect = child.getClientRect({
       relativeTo: layer,
@@ -187,6 +203,9 @@ export async function exportStageToPng(
     showGrid,
     gridStyle = "lines",
     gridColor = DEFAULT_DIAGRAM_GRID_COLOR,
+    backgroundImageData,
+    backgroundImagePlacement,
+    backgroundImageScale,
     header,
     viewportScale = 1,
   } = options;
@@ -214,6 +233,7 @@ export async function exportStageToPng(
   const layer = stage.getLayers()[0];
   const tempNodes: KonvaLib.Node[] = [];
   let backgroundRect: KonvaLib.Rect | null = null;
+  let backgroundImageNode: KonvaLib.Image | null = null;
   const existingGrid = layer?.findOne(
     (node: KonvaLib.Node) => node.name() === GRID_NODE_NAME,
   );
@@ -248,6 +268,40 @@ export async function exportStageToPng(
     tempNodes.push(backgroundRect);
   }
 
+  if (backgroundImageData && layer) {
+    try {
+      const wallpaperCanvas = await createBackgroundImageCanvas(
+        crop.width,
+        crop.height,
+        {
+          imageData: backgroundImageData,
+          placement: backgroundImagePlacement,
+          scale: backgroundImageScale,
+          worldOrigin: { x: crop.x, y: crop.y },
+        },
+      );
+      if (wallpaperCanvas) {
+        backgroundImageNode = new KonvaLib.Image({
+          x: crop.x,
+          y: crop.y,
+          width: crop.width,
+          height: crop.height,
+          image: wallpaperCanvas,
+          listening: false,
+          name: EXPORT_BACKGROUND_IMAGE_NODE_NAME,
+        });
+        layer.add(backgroundImageNode);
+        backgroundImageNode.moveToBottom();
+        if (backgroundRect) {
+          backgroundImageNode.moveUp();
+        }
+        tempNodes.push(backgroundImageNode);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   if (showGrid && layer) {
     const gridBounds = computeGridLineBounds(crop);
     const isDots = gridStyle === "dots";
@@ -268,8 +322,11 @@ export async function exportStageToPng(
     });
     layer.add(exportGrid);
     exportGrid.moveToBottom();
-    if (backgroundRect) {
+    if (backgroundRect || backgroundImageNode) {
       exportGrid.moveUp();
+      if (backgroundRect && backgroundImageNode) {
+        exportGrid.moveUp();
+      }
     }
     tempNodes.push(exportGrid);
   }

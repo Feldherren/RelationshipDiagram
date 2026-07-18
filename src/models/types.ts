@@ -205,15 +205,24 @@ export interface LabelChrome {
   borderColor: RGB;
 }
 
+/** How a diagram wallpaper image is placed within the viewport / export crop. */
+export type BackgroundImagePlacement = "tile" | "center";
+
 /**
  * Diagram canvas appearance: creation defaults for new entities, plus
  * shared label chrome applied live to all matching pills, plus canvas background.
  */
 export interface DiagramAppearance {
-  /** Canvas background mode (plain / blank / grid / dots). */
-  backgroundMode: "plain" | "blank" | "grid" | "dots";
-  /** Canvas fill; null means transparent (blank). */
+  /** Canvas background mode (plain / blank / grid / dots / image). */
+  backgroundMode: "plain" | "blank" | "grid" | "dots" | "image";
+  /** Canvas fill; null means transparent (blank). Underlay when mode is image. */
   backgroundColor: RGB | null;
+  /** Data URL wallpaper when using image mode; null when unset. */
+  backgroundImageData: string | null;
+  /** Tile or centre the wallpaper within the fill rect. */
+  backgroundImagePlacement: BackgroundImagePlacement;
+  /** Scale relative to the image's natural pixel size; 1 = 100%. */
+  backgroundImageScale: number;
   /** Grid line or dot colour when background mode is grid or dots. */
   backgroundGridColor: RGB;
   defaultLineColor: RGB;

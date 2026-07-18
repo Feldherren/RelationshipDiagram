@@ -2,17 +2,21 @@ import { useCallback, useEffect, useRef } from "react";
 import type Konva from "konva";
 import { useDiagramStore } from "../store/diagramStore";
 
+export type ViewportTransform = { x: number; y: number; scale: number };
+
 export function usePanZoom(
   containerRef: React.RefObject<HTMLElement | null>,
   stageRef?: React.RefObject<Konva.Stage | null>,
+  /** Called immediately when the live transform changes (before store flush). */
+  onViewportPreview?: (viewport: ViewportTransform) => void,
 ) {
   const setViewport = useDiagramStore((s) => s.setViewport);
   const isPanning = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
-  const pendingViewport = useRef<{ x: number; y: number; scale: number } | null>(
-    null,
-  );
+  const pendingViewport = useRef<ViewportTransform | null>(null);
+  const onViewportPreviewRef = useRef(onViewportPreview);
+  onViewportPreviewRef.current = onViewportPreview;
   const rafId = useRef(0);
   const DRAG_THRESHOLD = 3;
 
@@ -25,7 +29,7 @@ export function usePanZoom(
   }, [setViewport]);
 
   const scheduleViewport = useCallback(
-    (next: { x: number; y: number; scale: number }) => {
+    (next: ViewportTransform) => {
       pendingViewport.current = next;
       const stage = stageRef?.current;
       if (stage) {
@@ -33,6 +37,7 @@ export function usePanZoom(
         stage.scale({ x: next.scale, y: next.scale });
         stage.batchDraw();
       }
+      onViewportPreviewRef.current?.(next);
       if (!rafId.current) {
         rafId.current = requestAnimationFrame(flushViewport);
       }

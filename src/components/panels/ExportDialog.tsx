@@ -130,9 +130,16 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
         bounds: activeBounds,
         pixelRatio: exportZoomRatioFromPercent(exportZoom),
         backgroundColor: diagramBackgroundColor,
-        showGrid,
+        showGrid:
+          diagramAppearance.backgroundMode === "image" ? false : showGrid,
         gridStyle,
         gridColor,
+        backgroundImageData:
+          diagramAppearance.backgroundMode === "image"
+            ? diagramAppearance.backgroundImageData
+            : null,
+        backgroundImagePlacement: diagramAppearance.backgroundImagePlacement,
+        backgroundImageScale: diagramAppearance.backgroundImageScale,
         header: exportHeader,
         viewportScale,
       });

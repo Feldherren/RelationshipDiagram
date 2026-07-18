@@ -27,6 +27,8 @@ import { getGroupsForCharacter } from "../../utils/geometry";
 import { toChipItems } from "./MembershipChips";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
+import { buildBackgroundImageCssStyle } from "../../utils/backgroundImageStyle";
+import { useImageNaturalSize } from "../../hooks/useImageNaturalSize";
 import { consumeSuppressStageClick } from "../../utils/suppressStageClick";
 import {
   hitTestMarqueeSelection,
@@ -110,7 +112,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     showGrid,
     exportBounds,
     diagramBackgroundColor,
+    diagramAppearance,
     diagramFontFamily,
+    viewport,
     stageSize,
     setStageSize,
     setSelection,
@@ -140,7 +144,9 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       showGrid: s.showGrid,
       exportBounds: s.exportBounds,
       diagramBackgroundColor: s.diagramBackgroundColor,
+      diagramAppearance: s.diagramAppearance,
       diagramFontFamily: s.diagramFontFamily,
+      viewport: s.viewport,
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
@@ -159,9 +165,48 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     })),
   );
 
+  const isImageBackground = diagramAppearance.backgroundMode === "image";
+  const wallpaperData = isImageBackground
+    ? diagramAppearance.backgroundImageData
+    : null;
+  const wallpaperNaturalSize = useImageNaturalSize(wallpaperData);
+  const wallpaperNaturalSizeRef = useRef(wallpaperNaturalSize);
+  wallpaperNaturalSizeRef.current = wallpaperNaturalSize;
+
   const { startPan, movePan, endPan, shouldPan } = usePanZoom(
     containerRef,
     stageRef,
+    (nextViewport) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const appearance = useDiagramStore.getState().diagramAppearance;
+      if (
+        appearance.backgroundMode !== "image" ||
+        !appearance.backgroundImageData
+      ) {
+        return;
+      }
+      const natural = wallpaperNaturalSizeRef.current;
+      const css = buildBackgroundImageCssStyle({
+        imageData: appearance.backgroundImageData,
+        placement: appearance.backgroundImagePlacement,
+        scale: appearance.backgroundImageScale,
+        naturalSize: natural,
+        viewport: nextViewport,
+      });
+      if (css.backgroundImage != null) {
+        el.style.backgroundImage = String(css.backgroundImage);
+      }
+      if (css.backgroundRepeat != null) {
+        el.style.backgroundRepeat = String(css.backgroundRepeat);
+      }
+      if (css.backgroundPosition != null) {
+        el.style.backgroundPosition = String(css.backgroundPosition);
+      }
+      if (css.backgroundSize != null) {
+        el.style.backgroundSize = String(css.backgroundSize);
+      }
+    },
   );
   const suppressClick = useRef(false);
   const [isPanningView, setIsPanningView] = useState(false);
@@ -538,17 +583,35 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     ? "rgba(74, 144, 217, 0.08)"
     : "rgba(230, 126, 34, 0.08)";
 
+  const underlayCss =
+    diagramBackgroundColor === null
+      ? undefined
+      : (backgroundColorForDisplay(diagramBackgroundColor) ?? undefined);
+  const wallpaperCss =
+    isImageBackground && wallpaperData
+      ? buildBackgroundImageCssStyle({
+          imageData: wallpaperData,
+          placement: diagramAppearance.backgroundImagePlacement,
+          scale: diagramAppearance.backgroundImageScale,
+          naturalSize: wallpaperNaturalSize,
+          viewport,
+        })
+      : {};
+  const canvasStyle =
+    underlayCss || Object.keys(wallpaperCss).length > 0
+      ? {
+          ...(underlayCss ? { backgroundColor: underlayCss } : {}),
+          ...wallpaperCss,
+        }
+      : undefined;
+
   return (
     <div
       ref={containerRef}
       className={`canvas-container${isPanningView ? " panning" : ""}${connectDrag ? " connecting" : ""}${toolMode === "editGroupMembers" ? " editing-members" : ""}${isInteractingWithBox ? " resizing-group" : ""}${
         diagramBackgroundColor === null ? " canvas-checkerboard" : ""
       }`}
-      style={
-        diagramBackgroundColor === null
-          ? undefined
-          : { background: backgroundColorForDisplay(diagramBackgroundColor) ?? undefined }
-      }
+      style={canvasStyle}
       onContextMenu={(e) => e.preventDefault()}
     >
       <DiagramTitle />

@@ -940,6 +940,10 @@ body,
   margin-bottom: 0;
 }
 
+.background-mode-pickers .field .btn-secondary {
+  margin-top: 0.5rem;
+}
+
 .background-pattern-preview {
   flex: 0 0 9rem;
   width: 9rem;

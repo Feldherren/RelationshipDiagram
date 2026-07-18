@@ -74,6 +74,7 @@ import {
   type DiagramBackgroundMode,
   resolveDiagramBackground,
   serializeDiagramBackground,
+  syncBackgroundModeFromCanvasState,
 } from "../utils/diagramBackground";
 import {
   cloneDiagramAppearance,
@@ -544,6 +545,7 @@ export const useDiagramStore = create<DiagramState>()(
         showGrid: show,
         diagramAppearance: {
           ...s.diagramAppearance,
+          // Leaving image mode when the user explicitly toggles the grid.
           backgroundMode: getDiagramBackgroundMode(
             show,
             s.gridStyle,
@@ -558,6 +560,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle: style,
       diagramAppearance: {
         ...s.diagramAppearance,
+        // Leaving image mode when the user explicitly changes grid style.
         backgroundMode: getDiagramBackgroundMode(
           s.showGrid,
           style,
@@ -628,7 +631,8 @@ export const useDiagramStore = create<DiagramState>()(
       return {
         diagramAppearance: {
           ...diagramAppearance,
-          backgroundMode: getDiagramBackgroundMode(
+          backgroundMode: syncBackgroundModeFromCanvasState(
+            diagramAppearance.backgroundMode,
             background.showGrid,
             background.gridStyle,
             background.backgroundColor,
@@ -652,7 +656,8 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       diagramAppearance: {
         ...diagramAppearance,
-        backgroundMode: getDiagramBackgroundMode(
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          diagramAppearance.backgroundMode,
           background.showGrid,
           background.gridStyle,
           background.backgroundColor,
@@ -742,7 +747,8 @@ export const useDiagramStore = create<DiagramState>()(
         : prefs.defaultDiagramFont,
       appearance: serializeDiagramAppearance({
         ...appearance,
-        backgroundMode: getDiagramBackgroundMode(
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          appearance.backgroundMode,
           background.showGrid,
           background.gridStyle,
           background.backgroundColor,
@@ -1412,6 +1418,9 @@ export const useDiagramStore = create<DiagramState>()(
       diagram.titleColor,
       diagram.subtitleColor,
     );
+    const isImageBackground = resolvedAppearance.backgroundMode === "image";
+    const liveShowGrid = isImageBackground ? false : showGrid;
+    const liveGridStyle = isImageBackground ? "lines" : gridStyle;
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -1428,16 +1437,18 @@ export const useDiagramStore = create<DiagramState>()(
       diagramBackgroundColor,
       diagramAppearance: {
         ...resolvedAppearance,
-        // Keep open-diagram background as source of truth for the live canvas.
-        backgroundMode: getDiagramBackgroundMode(
-          showGrid,
-          gridStyle,
+        // Keep open-diagram background as source of truth for the live canvas,
+        // but preserve explicit image mode from appearance.
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          resolvedAppearance.backgroundMode,
+          liveShowGrid,
+          liveGridStyle,
           diagramBackgroundColor,
         ),
         backgroundColor: diagramBackgroundColor,
       },
-      showGrid,
-      gridStyle,
+      showGrid: liveShowGrid,
+      gridStyle: liveGridStyle,
       selection: null,
       selectionDetailsOpen: false,
       connectFrom: null,

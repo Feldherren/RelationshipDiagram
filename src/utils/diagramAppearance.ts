@@ -4,8 +4,13 @@ import {
   DEFAULT_FLOATING_TEXT_COLOR,
   defaultRgb,
 } from "../models/types";
+import type { BackgroundImagePlacement } from "../models/types";
 import {
+  DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  DEFAULT_BACKGROUND_IMAGE_SCALE,
   DEFAULT_DIAGRAM_BACKGROUND,
+  clampBackgroundImageScale,
+  isBackgroundImagePlacement,
   type DiagramBackgroundMode,
   type DiagramBackgroundColor,
 } from "./diagramBackground";
@@ -82,6 +87,9 @@ function defaultDiagramSubtitleLabel(): LabelChrome {
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
+  backgroundImageData: null,
+  backgroundImagePlacement: DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
   backgroundGridColor: cloneRgb(DEFAULT_DIAGRAM_GRID_COLOR),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
@@ -132,8 +140,31 @@ function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
     value === "plain" ||
     value === "blank" ||
     value === "grid" ||
-    value === "dots"
+    value === "dots" ||
+    value === "image"
   );
+}
+
+function resolveBackgroundImageData(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string" || !value.startsWith("data:image/")) {
+    return null;
+  }
+  return value;
+}
+
+function resolveBackgroundImagePlacement(
+  value: unknown,
+  fallback: BackgroundImagePlacement,
+): BackgroundImagePlacement {
+  return isBackgroundImagePlacement(value) ? value : fallback;
+}
+
+function resolveBackgroundImageScale(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return clampBackgroundImageScale(fallback);
+  }
+  return clampBackgroundImageScale(value);
 }
 
 function resolveBackgroundColor(
@@ -160,6 +191,9 @@ export function cloneDiagramAppearance(
   return {
     backgroundMode: appearance.backgroundMode,
     backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
+    backgroundImageData: appearance.backgroundImageData,
+    backgroundImagePlacement: appearance.backgroundImagePlacement,
+    backgroundImageScale: appearance.backgroundImageScale,
     backgroundGridColor: cloneRgb(appearance.backgroundGridColor),
     defaultLineColor: cloneRgb(appearance.defaultLineColor),
     defaultCharacterBorderColor: cloneRgb(
@@ -194,6 +228,17 @@ export function resolveDiagramAppearance(
     backgroundColor: resolveBackgroundColor(
       partial.backgroundColor,
       defaults.backgroundColor,
+    ),
+    backgroundImageData: resolveBackgroundImageData(
+      partial.backgroundImageData,
+    ),
+    backgroundImagePlacement: resolveBackgroundImagePlacement(
+      partial.backgroundImagePlacement,
+      defaults.backgroundImagePlacement,
+    ),
+    backgroundImageScale: resolveBackgroundImageScale(
+      partial.backgroundImageScale,
+      defaults.backgroundImageScale,
     ),
     backgroundGridColor: resolveRgb(
       partial.backgroundGridColor,
@@ -311,6 +356,18 @@ export function serializeDiagramAppearance(
     )
   ) {
     out.backgroundColor = cloneBackgroundColor(appearance.backgroundColor);
+  }
+
+  if (appearance.backgroundImageData) {
+    out.backgroundImageData = appearance.backgroundImageData;
+  }
+  if (
+    appearance.backgroundImagePlacement !== defaults.backgroundImagePlacement
+  ) {
+    out.backgroundImagePlacement = appearance.backgroundImagePlacement;
+  }
+  if (appearance.backgroundImageScale !== defaults.backgroundImageScale) {
+    out.backgroundImageScale = appearance.backgroundImageScale;
   }
 
   if (
@@ -438,6 +495,23 @@ export function patchDiagramAppearance(
   }
   if (patch.backgroundColor !== undefined) {
     next.backgroundColor = cloneBackgroundColor(patch.backgroundColor);
+  }
+  if (patch.backgroundImageData !== undefined) {
+    next.backgroundImageData = resolveBackgroundImageData(
+      patch.backgroundImageData,
+    );
+  }
+  if (patch.backgroundImagePlacement !== undefined) {
+    next.backgroundImagePlacement = resolveBackgroundImagePlacement(
+      patch.backgroundImagePlacement,
+      next.backgroundImagePlacement,
+    );
+  }
+  if (patch.backgroundImageScale !== undefined) {
+    next.backgroundImageScale = resolveBackgroundImageScale(
+      patch.backgroundImageScale,
+      next.backgroundImageScale,
+    );
   }
   if (patch.backgroundGridColor) {
     next.backgroundGridColor = cloneRgb(patch.backgroundGridColor);

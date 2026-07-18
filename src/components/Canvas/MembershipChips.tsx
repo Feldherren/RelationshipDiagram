@@ -12,6 +12,10 @@ import {
 } from "../../models/types";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import { useDiagramStore } from "../../store/diagramStore";
+import {
+  getMembershipChipTooltip,
+  setMembershipChipTooltip,
+} from "../../utils/membershipChipTooltip";
 import { MembershipChipSymbol } from "./MembershipChipSymbol";
 
 export interface MembershipChipItem {
@@ -24,6 +28,9 @@ interface MembershipChipsProps {
   groups: MembershipChipItem[];
   characterSize: number;
   borderShape: BorderShape;
+  /** Character centre in world space — used to place the hover name overlay. */
+  characterX: number;
+  characterY: number;
   highlightedGroupId?: string | null;
   onChipClick?: (groupId: string) => void;
 }
@@ -105,10 +112,66 @@ export function MembershipChip({
   );
 }
 
+function MembershipChipHitTarget({
+  group,
+  x,
+  y,
+  characterX,
+  characterY,
+  emphasized,
+  onChipClick,
+}: {
+  group: MembershipChipItem;
+  x: number;
+  y: number;
+  characterX: number;
+  characterY: number;
+  emphasized: boolean;
+  onChipClick?: (groupId: string) => void;
+}) {
+  const label = group.name.trim();
+
+  return (
+    <Group
+      x={x}
+      y={y}
+      onMouseEnter={() => {
+        if (!label) return;
+        setMembershipChipTooltip({
+          id: group.id,
+          text: label,
+          chipX: characterX + x,
+          chipY: characterY + y,
+        });
+      }}
+      onMouseLeave={() => {
+        if (getMembershipChipTooltip()?.id === group.id) {
+          setMembershipChipTooltip(null);
+        }
+      }}
+      onClick={(e) => {
+        if (!onChipClick) return;
+        e.cancelBubble = true;
+        if (e.evt.button !== 0) return;
+        onChipClick(group.id);
+      }}
+      onTap={(e) => {
+        if (!onChipClick) return;
+        e.cancelBubble = true;
+        onChipClick(group.id);
+      }}
+    >
+      <MembershipChip appearance={group.appearance} emphasized={emphasized} />
+    </Group>
+  );
+}
+
 export function MembershipChips({
   groups,
   characterSize,
   borderShape,
+  characterX,
+  characterY,
   highlightedGroupId,
   onChipClick,
 }: MembershipChipsProps) {
@@ -119,31 +182,20 @@ export function MembershipChips({
   const overflow = groups.length - visible.length;
 
   return (
-    <Group listening={!!onChipClick}>
+    <Group listening>
       {visible.map((group, index) => {
         const pos = chipPositionOnBorder(index, characterSize, borderShape);
         return (
-          <Group
+          <MembershipChipHitTarget
             key={group.id}
+            group={group}
             x={pos.x}
             y={pos.y}
-            onClick={(e) => {
-              if (!onChipClick) return;
-              e.cancelBubble = true;
-              if (e.evt.button !== 0) return;
-              onChipClick(group.id);
-            }}
-            onTap={(e) => {
-              if (!onChipClick) return;
-              e.cancelBubble = true;
-              onChipClick(group.id);
-            }}
-          >
-            <MembershipChip
-              appearance={group.appearance}
-              emphasized={highlightedGroupId === group.id}
-            />
-          </Group>
+            characterX={characterX}
+            characterY={characterY}
+            emphasized={highlightedGroupId === group.id}
+            onChipClick={onChipClick}
+          />
         );
       })}
       {overflow > 0 && (

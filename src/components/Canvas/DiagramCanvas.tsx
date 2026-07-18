@@ -11,6 +11,7 @@ import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
+import { MembershipChipNameOverlay } from "./MembershipChipNameOverlay";
 import {
   CanvasAddObjectMenu,
   type CanvasAddObjectMenuState,
@@ -25,6 +26,7 @@ import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
 import { getGroupsForCharacter } from "../../utils/geometry";
 import { toChipItems } from "./MembershipChips";
+import { setMembershipChipTooltip } from "../../utils/membershipChipTooltip";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
 import { buildBackgroundImageCssStyle } from "../../utils/backgroundImageStyle";
@@ -429,6 +431,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
     if (shouldPan(e.evt.button)) {
       e.evt.preventDefault();
+      setMembershipChipTooltip(null);
       startPan(e.evt.clientX, e.evt.clientY);
       setIsPanningView(true);
       return;
@@ -456,6 +459,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     }
 
     if (isStage && e.evt.button === 0) {
+      setMembershipChipTooltip(null);
       startPan(e.evt.clientX, e.evt.clientY);
       setIsPanningView(true);
     }
@@ -955,6 +959,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             />
           )}
         </Layer>
+        <MembershipChipNameOverlay />
         <BookmarkFlagsLayer />
       </ViewportStage>
       <CanvasAddObjectMenu

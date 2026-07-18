@@ -879,6 +879,22 @@ body,
   flex: 1;
 }
 
+.range-row input[type="number"] {
+  width: 2.5rem;
+  flex-shrink: 0;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.range-row input[type="number"]::-webkit-outer-spin-button,
+.range-row input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .range-end {
   font-size: 0.6875rem;
   color: var(--ui-text-subtle);

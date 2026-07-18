@@ -8,7 +8,9 @@ import type { LineStyle } from "../../models/types";
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MAX_CHARACTER_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
+  MIN_CHARACTER_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
 } from "../../models/types";
 import {
@@ -381,6 +383,19 @@ export function SelectionFloat() {
       }
     };
 
+    const commitSize = (raw: string) => {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) {
+        return;
+      }
+      updateCharacter(character.id, {
+        size: Math.min(
+          MAX_CHARACTER_SIZE,
+          Math.max(MIN_CHARACTER_SIZE, Math.round(parsed)),
+        ),
+      });
+    };
+
     body = (
       <>
         <h2>{t("selection.character")}</h2>
@@ -454,17 +469,43 @@ export function SelectionFloat() {
         />
         <label className="field">
           <span>{t("selection.size")}</span>
-          <input
-            type="range"
-            min={24}
-            max={80}
-            value={character.size}
-            onChange={(e) =>
-              updateCharacter(character.id, {
-                size: Number(e.target.value),
-              })
-            }
-          />
+          <div className="range-row">
+            <input
+              type="number"
+              min={MIN_CHARACTER_SIZE}
+              max={MAX_CHARACTER_SIZE}
+              step={1}
+              value={character.size}
+              aria-label={t("selection.size")}
+              onChange={(e) => {
+                if (e.target.value.trim() === "") return;
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                updateCharacter(character.id, {
+                  size: Math.round(parsed),
+                });
+              }}
+              onBlur={(e) => commitSize(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitSize((e.target as HTMLInputElement).value);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+            <input
+              type="range"
+              min={MIN_CHARACTER_SIZE}
+              max={MAX_CHARACTER_SIZE}
+              value={character.size}
+              onChange={(e) =>
+                updateCharacter(character.id, {
+                  size: Number(e.target.value),
+                })
+              }
+            />
+          </div>
         </label>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           {t("selection.deleteCharacter")}

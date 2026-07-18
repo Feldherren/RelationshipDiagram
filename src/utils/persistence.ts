@@ -18,6 +18,7 @@ import type {
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MAX_FLOATING_TEXT_FONT_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
   normalizeMembershipAppearance,
 } from "../models/types";
@@ -119,7 +120,10 @@ function normalizeFloatingTexts(
     };
     const fontSize =
       typeof partial.fontSize === "number" && Number.isFinite(partial.fontSize)
-        ? Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize))
+        ? Math.min(
+            MAX_FLOATING_TEXT_FONT_SIZE,
+            Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize)),
+          )
         : DEFAULT_FLOATING_TEXT_FONT_SIZE;
     return {
       id: partial.id,

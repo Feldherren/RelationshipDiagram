@@ -177,6 +177,7 @@ export interface FloatingText {
 export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
 export const DEFAULT_FLOATING_TEXT_FONT_SIZE = 15;
 export const MIN_FLOATING_TEXT_FONT_SIZE = 10;
+export const MAX_FLOATING_TEXT_FONT_SIZE = 72;
 
 export interface Viewport {
   x: number;

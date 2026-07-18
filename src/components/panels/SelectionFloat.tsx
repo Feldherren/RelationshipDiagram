@@ -9,6 +9,7 @@ import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   MAX_CHARACTER_SIZE,
+  MAX_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
   MIN_CHARACTER_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
@@ -283,6 +284,17 @@ export function SelectionFloat() {
     }));
   }
 
+  /** Keep the panel fixed while size sliders change object bounds under the cursor. */
+  const freezeFloatPlacement = () => {
+    if (!placementKey || isDetached) return;
+    setFloatPlacement({
+      key: placementKey,
+      left,
+      top,
+      detached: true,
+    });
+  };
+
   const endFloatDrag = (pointerId: number) => {
     const drag = floatDragRef.current;
     if (!drag || drag.pointerId !== pointerId) return;
@@ -499,6 +511,8 @@ export function SelectionFloat() {
               min={MIN_CHARACTER_SIZE}
               max={MAX_CHARACTER_SIZE}
               value={character.size}
+              onPointerDown={freezeFloatPlacement}
+              onFocus={freezeFloatPlacement}
               onChange={(e) =>
                 updateCharacter(character.id, {
                   size: Number(e.target.value),
@@ -691,7 +705,10 @@ export function SelectionFloat() {
         return;
       }
       updateFloatingText(floatingText.id, {
-        fontSize: Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(parsed)),
+        fontSize: Math.min(
+          MAX_FLOATING_TEXT_FONT_SIZE,
+          Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(parsed)),
+        ),
       });
     };
 
@@ -718,28 +735,45 @@ export function SelectionFloat() {
         />
         <label className="field">
           <span>{t("selection.fontSize")}</span>
-          <input
-            type="number"
-            min={MIN_FLOATING_TEXT_FONT_SIZE}
-            step={1}
-            value={fontSize}
-            onChange={(e) => {
-              if (e.target.value.trim() === "") return;
-              const parsed = Number(e.target.value);
-              if (!Number.isFinite(parsed)) return;
-              updateFloatingText(floatingText.id, {
-                fontSize: Math.round(parsed),
-              });
-            }}
-            onBlur={(e) => commitFontSize(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitFontSize((e.target as HTMLInputElement).value);
-                (e.target as HTMLInputElement).blur();
+          <div className="range-row">
+            <input
+              type="number"
+              min={MIN_FLOATING_TEXT_FONT_SIZE}
+              max={MAX_FLOATING_TEXT_FONT_SIZE}
+              step={1}
+              value={fontSize}
+              aria-label={t("selection.fontSize")}
+              onChange={(e) => {
+                if (e.target.value.trim() === "") return;
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                updateFloatingText(floatingText.id, {
+                  fontSize: Math.round(parsed),
+                });
+              }}
+              onBlur={(e) => commitFontSize(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitFontSize((e.target as HTMLInputElement).value);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+            <input
+              type="range"
+              min={MIN_FLOATING_TEXT_FONT_SIZE}
+              max={MAX_FLOATING_TEXT_FONT_SIZE}
+              value={fontSize}
+              onPointerDown={freezeFloatPlacement}
+              onFocus={freezeFloatPlacement}
+              onChange={(e) =>
+                updateFloatingText(floatingText.id, {
+                  fontSize: Number(e.target.value),
+                })
               }
-            }}
-          />
+            />
+          </div>
         </label>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           {t("selection.deleteText")}

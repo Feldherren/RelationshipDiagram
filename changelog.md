@@ -17,6 +17,11 @@
 - Bookmark marker improvements:
 	- Double-click (or double-tap) a bookmark marker to open its edit window, same as right-click.
 	- Bookmark edit window now anchors next to the marker like other detail panels (drag away for a dotted connector).
+- Group improvements:
+	- Groups can now have a presence on the canvas beyond just the membership chips on members
+	- Spokes connect all members of a group, converging at a central point where the group badge sits.
+	- The group badge is a valid target for relationships.
+	- If all of this is distracting, it can be hidden with a new eye-button near the Groups button.
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

@@ -1,3 +1,6 @@
+# v0.6.0
+- Added numerical field to character size slider
+- Added slider to floating text font size field
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

@@ -113,7 +113,7 @@
     "backgroundImageCenter": "Centre",
     "backgroundImageTile": "Tile",
     "backgroundImageScale": "Image scale ({{percent}}%)",
-    "backgroundImageTooLarge": "Image is too large (max about 1.5 MB).",
+    "backgroundImageTooLarge": "Image is too large (max about 10 MB).",
     "backgroundImageInvalid": "Could not use that image file.",
     "diagramFont": "Diagram font",
     "fontMissing": "The font “{{font}}” is not available on this device. Choose it from installed fonts above. Diagram files only store the font name, not the font file itself.",

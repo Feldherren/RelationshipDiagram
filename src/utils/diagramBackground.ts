@@ -19,8 +19,8 @@ export const DEFAULT_BACKGROUND_IMAGE_SCALE = 1;
 export const DEFAULT_BACKGROUND_IMAGE_OFFSET = { x: 0, y: 0 };
 export const BACKGROUND_IMAGE_SCALE_MIN = 0.1;
 export const BACKGROUND_IMAGE_SCALE_MAX = 4;
-/** Soft cap for wallpaper uploads (protects theme localStorage quota). */
-export const BACKGROUND_IMAGE_MAX_FILE_BYTES = Math.floor(1.5 * 1024 * 1024);
+/** Soft cap for wallpaper uploads (keeps memory / decode cost reasonable). */
+export const BACKGROUND_IMAGE_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Canvas fill presets — paler analogues of GRID_COLOR_PALETTE, plus transparent. */
 export const BACKGROUND_PRESETS: {

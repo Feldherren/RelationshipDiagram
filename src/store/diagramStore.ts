@@ -86,6 +86,7 @@ import {
 } from "../utils/diagramAppearance";
 import {
   getAppPreferences,
+  hydrateAppPreferenceWallpapers,
   setAppPreferences,
 } from "../utils/appPreferences";
 import { computeDiagramBounds } from "../utils/diagramBounds";
@@ -691,6 +692,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   bootstrapApp: async () => {
+    await hydrateAppPreferenceWallpapers();
     const prefs = getAppPreferences();
     cancelScheduledAutosave();
     set({ autosaveEnabled: false });

@@ -72,7 +72,8 @@ export type MembershipSymbol =
   | "rock"
   | "plant"
   | "sparkle"
-  | "skull";
+  | "skull"
+  | "question";
 
 /** Visual identity for a membership group chip. */
 export interface MembershipAppearance {
@@ -105,6 +106,7 @@ export const MEMBERSHIP_SYMBOLS: MembershipSymbol[] = [
   "plant",
   "sparkle",
   "skull",
+  "question",
 ];
 
 export function isMembershipSymbol(value: unknown): value is MembershipSymbol {

@@ -12,6 +12,9 @@ import {
   MOON_PATH,
   MUSIC_NOTE_LAYOUT,
   MUSIC_NOTE_PATH,
+  QUESTION_MARK_DOT_Y,
+  QUESTION_MARK_OFFSET_X,
+  QUESTION_MARK_PATH,
   ROCK_LAYOUT,
   ROCK_PATH,
   SKULL_LAYOUT,
@@ -20,6 +23,7 @@ import {
   SPARKLE_PATH,
   SWORD_LAYOUT,
   SWORD_PATH,
+  scaleSvgPath,
 } from "../../utils/membershipSymbolGeometry";
 
 interface MembershipChipSymbolProps {
@@ -295,6 +299,30 @@ export function MembershipChipSymbol({
         />
       );
     }
+    case "question":
+      // Bake scale into path coords (same space as plus/cross Lines) so stroke
+      // width is not distorted by Path scaleX/scaleY.
+      return (
+        <Group x={glyph * QUESTION_MARK_OFFSET_X} listening={false}>
+          <Path
+            data={scaleSvgPath(QUESTION_MARK_PATH, glyph)}
+            stroke={fill}
+            strokeWidth={stroke}
+            lineCap="round"
+            lineJoin="round"
+            fillEnabled={false}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Circle
+            y={glyph * QUESTION_MARK_DOT_Y}
+            radius={stroke * 0.55}
+            fill={fill}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        </Group>
+      );
     default:
       return null;
   }

@@ -6,6 +6,8 @@
 	- Tile or centre the image, zoom in or out.
 	- Drag (via hidden handle, similar to bookmark markers) to reposition.
 	- Background included in export.
+	- Background images are stored in indexedDB, and saved in .rdiagram files and themes in base64.
+- Added question mark symbol for group icons
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

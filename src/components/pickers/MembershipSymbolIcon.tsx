@@ -11,6 +11,9 @@ import {
   MOON_PATH,
   MUSIC_NOTE_LAYOUT,
   MUSIC_NOTE_PATH,
+  QUESTION_MARK_DOT_Y,
+  QUESTION_MARK_OFFSET_X,
+  QUESTION_MARK_PATH,
   ROCK_LAYOUT,
   ROCK_PATH,
   SKULL_LAYOUT,
@@ -278,6 +281,26 @@ export function MembershipSymbolIcon({
             transform={`scale(${SKULL_LAYOUT.unitScale}) translate(${-SKULL_LAYOUT.centerX} ${-SKULL_LAYOUT.centerY})`}
           >
             <path d={SKULL_PATH} fill="currentColor" fillRule="evenodd" />
+          </g>
+        </SvgShell>
+      );
+    case "question":
+      return (
+        <SvgShell title={label}>
+          <g transform={`translate(${QUESTION_MARK_OFFSET_X} 0)`}>
+            <path
+              d={QUESTION_MARK_PATH}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={0.24}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle
+              cy={QUESTION_MARK_DOT_Y}
+              r={0.13}
+              fill="currentColor"
+            />
           </g>
         </SvgShell>
       );

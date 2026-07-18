@@ -16,6 +16,7 @@ export type DiagramBackgroundMode =
 export const DEFAULT_BACKGROUND_IMAGE_PLACEMENT: BackgroundImagePlacement =
   "center";
 export const DEFAULT_BACKGROUND_IMAGE_SCALE = 1;
+export const DEFAULT_BACKGROUND_IMAGE_OFFSET = { x: 0, y: 0 };
 export const BACKGROUND_IMAGE_SCALE_MIN = 0.1;
 export const BACKGROUND_IMAGE_SCALE_MAX = 4;
 /** Soft cap for wallpaper uploads (protects theme localStorage quota). */

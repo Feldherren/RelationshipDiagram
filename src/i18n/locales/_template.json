@@ -34,7 +34,8 @@
     "zoomAria": "Zoom level {{percent}} percent",
     "zoomTitle": "Current diagram zoom",
     "fitToContent": "Zoom to extents",
-    "fitToContentTitle": "Zoom to extents"
+    "fitToContentTitle": "Zoom to extents",
+    "backgroundImageHandle": "Background"
   },
   "bookmarks": {
     "title": "Bookmarks",
@@ -48,8 +49,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "updateView": "Update to current view",
-    "showFlags": "Show bookmark flags",
-    "hideFlags": "Hide bookmark flags",
+    "showFlags": "Show markers",
+    "hideFlags": "Hide markers",
     "editTitle": "Edit bookmark"
   },
   "groups": {

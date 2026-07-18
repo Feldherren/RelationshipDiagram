@@ -191,6 +191,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         imageData: appearance.backgroundImageData,
         placement: appearance.backgroundImagePlacement,
         scale: appearance.backgroundImageScale,
+        offset: appearance.backgroundImageOffset,
         naturalSize: natural,
         viewport: nextViewport,
       });
@@ -593,6 +594,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           imageData: wallpaperData,
           placement: diagramAppearance.backgroundImagePlacement,
           scale: diagramAppearance.backgroundImageScale,
+          offset: diagramAppearance.backgroundImageOffset,
           naturalSize: wallpaperNaturalSize,
           viewport,
         })

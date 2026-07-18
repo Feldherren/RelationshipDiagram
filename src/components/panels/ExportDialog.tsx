@@ -140,6 +140,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
             : null,
         backgroundImagePlacement: diagramAppearance.backgroundImagePlacement,
         backgroundImageScale: diagramAppearance.backgroundImageScale,
+        backgroundImageOffset: diagramAppearance.backgroundImageOffset,
         header: exportHeader,
         viewportScale,
       });

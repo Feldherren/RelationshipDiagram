@@ -223,6 +223,11 @@ export interface DiagramAppearance {
   backgroundImagePlacement: BackgroundImagePlacement;
   /** Scale relative to the image's natural pixel size; 1 = 100%. */
   backgroundImageScale: number;
+  /**
+   * World-space anchor for the wallpaper: centre point in centre mode,
+   * tile-grid origin in tile mode. Default is the world origin.
+   */
+  backgroundImageOffset: Point;
   /** Grid line or dot colour when background mode is grid or dots. */
   backgroundGridColor: RGB;
   defaultLineColor: RGB;

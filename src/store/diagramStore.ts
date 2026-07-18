@@ -158,7 +158,10 @@ interface DiagramState {
   setShowDiagramHeader: (show: boolean) => void;
   setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
-  setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
+  setDiagramAppearance: (
+    patch: Partial<DiagramAppearance>,
+    options?: HistoryOptions,
+  ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
@@ -611,8 +614,8 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
 
-  setDiagramAppearance: (patch) => {
-    get().captureHistory();
+  setDiagramAppearance: (patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => {
       const diagramAppearance = patchDiagramAppearance(
         s.diagramAppearance,

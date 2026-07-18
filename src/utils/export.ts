@@ -1,13 +1,18 @@
 import type Konva from "konva";
 import KonvaLib from "konva";
-import type { Bounds, GridStyle, RGB } from "../models/types";
+import type {
+  BackgroundImagePlacement,
+  Bounds,
+  Diagram,
+  GridStyle,
+  Point,
+  RGB,
+} from "../models/types";
 import { rgbToCss } from "../models/types";
 import { computeDiagramBounds } from "./diagramBounds";
-import type { Diagram } from "../models/types";
 import { expandBounds, mergeBounds } from "./geometry";
 import { resolveDiagramBackground } from "./diagramBackground";
 import { createBackgroundImageCanvas } from "./backgroundImageStyle";
-import type { BackgroundImagePlacement } from "../models/types";
 import {
   DIAGRAM_SUBTITLE_FONT_SIZE,
   DIAGRAM_TITLE_FONT_SIZE,
@@ -35,6 +40,8 @@ export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
 export const HOVER_AURA_NODE_NAME = "diagram-hover-aura";
 export const SELECTION_PILL_NODE_NAME = "diagram-selection-pill";
 export const EXPORT_CONNECT_HANDLE_NODE_NAME = "diagram-connect-handle";
+export const BACKGROUND_IMAGE_HANDLE_NODE_NAME =
+  "diagram-background-image-handle";
 
 const EXPORT_BOUNDS_SKIP_NAMES = new Set([
   GRID_NODE_NAME,
@@ -128,6 +135,7 @@ export interface ExportOptions {
   backgroundImageData?: string | null;
   backgroundImagePlacement?: BackgroundImagePlacement;
   backgroundImageScale?: number;
+  backgroundImageOffset?: Point;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -206,6 +214,7 @@ export async function exportStageToPng(
     backgroundImageData,
     backgroundImagePlacement,
     backgroundImageScale,
+    backgroundImageOffset,
     header,
     viewportScale = 1,
   } = options;
@@ -239,6 +248,8 @@ export async function exportStageToPng(
   );
   const gridWasVisible = existingGrid?.visible() ?? true;
   let hiddenExportUi: ExportUiRestoreState[] = [];
+  const overlayLayers = stage.getLayers().slice(1);
+  const overlayVisibility = overlayLayers.map((overlay) => overlay.visible());
   const headerLayout =
     header && layer ? layoutExportHeader(crop, header, viewportScale) : null;
 
@@ -247,6 +258,10 @@ export async function exportStageToPng(
 
   if (existingGrid) {
     existingGrid.visible(false);
+  }
+
+  for (const overlay of overlayLayers) {
+    overlay.visible(false);
   }
 
   if (layer) {
@@ -277,6 +292,7 @@ export async function exportStageToPng(
           imageData: backgroundImageData,
           placement: backgroundImagePlacement,
           scale: backgroundImageScale,
+          offset: backgroundImageOffset,
           worldOrigin: { x: crop.x, y: crop.y },
         },
       );
@@ -350,6 +366,9 @@ export async function exportStageToPng(
     if (existingGrid) {
       existingGrid.visible(gridWasVisible);
     }
+    overlayLayers.forEach((overlay, index) => {
+      overlay.visible(overlayVisibility[index] ?? true);
+    });
     restoreExportUi(hiddenExportUi);
     stage.position(position);
     stage.scale(scale);

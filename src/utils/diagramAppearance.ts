@@ -1,11 +1,17 @@
-import type { DiagramAppearance, LabelChrome, RGB } from "../models/types";
+import type {
+  BackgroundImagePlacement,
+  DiagramAppearance,
+  LabelChrome,
+  Point,
+  RGB,
+} from "../models/types";
 import {
   colorsEqual,
   DEFAULT_FLOATING_TEXT_COLOR,
   defaultRgb,
 } from "../models/types";
-import type { BackgroundImagePlacement } from "../models/types";
 import {
+  DEFAULT_BACKGROUND_IMAGE_OFFSET,
   DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
   DEFAULT_BACKGROUND_IMAGE_SCALE,
   DEFAULT_DIAGRAM_BACKGROUND,
@@ -90,6 +96,7 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundImageData: null,
   backgroundImagePlacement: DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
   backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
+  backgroundImageOffset: { ...DEFAULT_BACKGROUND_IMAGE_OFFSET },
   backgroundGridColor: cloneRgb(DEFAULT_DIAGRAM_GRID_COLOR),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
@@ -167,6 +174,25 @@ function resolveBackgroundImageScale(value: unknown, fallback: number): number {
   return clampBackgroundImageScale(value);
 }
 
+function clonePoint(point: Point): Point {
+  return { x: point.x, y: point.y };
+}
+
+function resolveBackgroundImageOffset(
+  value: unknown,
+  fallback: Point,
+): Point {
+  if (!value || typeof value !== "object") return clonePoint(fallback);
+  const point = value as Partial<Point>;
+  const x = typeof point.x === "number" && Number.isFinite(point.x) ? point.x : fallback.x;
+  const y = typeof point.y === "number" && Number.isFinite(point.y) ? point.y : fallback.y;
+  return { x, y };
+}
+
+function pointsEqual(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y;
+}
+
 function resolveBackgroundColor(
   value: unknown,
   fallback: DiagramBackgroundColor,
@@ -194,6 +220,7 @@ export function cloneDiagramAppearance(
     backgroundImageData: appearance.backgroundImageData,
     backgroundImagePlacement: appearance.backgroundImagePlacement,
     backgroundImageScale: appearance.backgroundImageScale,
+    backgroundImageOffset: clonePoint(appearance.backgroundImageOffset),
     backgroundGridColor: cloneRgb(appearance.backgroundGridColor),
     defaultLineColor: cloneRgb(appearance.defaultLineColor),
     defaultCharacterBorderColor: cloneRgb(
@@ -239,6 +266,10 @@ export function resolveDiagramAppearance(
     backgroundImageScale: resolveBackgroundImageScale(
       partial.backgroundImageScale,
       defaults.backgroundImageScale,
+    ),
+    backgroundImageOffset: resolveBackgroundImageOffset(
+      partial.backgroundImageOffset,
+      defaults.backgroundImageOffset,
     ),
     backgroundGridColor: resolveRgb(
       partial.backgroundGridColor,
@@ -368,6 +399,14 @@ export function serializeDiagramAppearance(
   }
   if (appearance.backgroundImageScale !== defaults.backgroundImageScale) {
     out.backgroundImageScale = appearance.backgroundImageScale;
+  }
+  if (
+    !pointsEqual(
+      appearance.backgroundImageOffset,
+      defaults.backgroundImageOffset,
+    )
+  ) {
+    out.backgroundImageOffset = clonePoint(appearance.backgroundImageOffset);
   }
 
   if (
@@ -511,6 +550,12 @@ export function patchDiagramAppearance(
     next.backgroundImageScale = resolveBackgroundImageScale(
       patch.backgroundImageScale,
       next.backgroundImageScale,
+    );
+  }
+  if (patch.backgroundImageOffset !== undefined) {
+    next.backgroundImageOffset = resolveBackgroundImageOffset(
+      patch.backgroundImageOffset,
+      next.backgroundImageOffset,
     );
   }
   if (patch.backgroundGridColor) {

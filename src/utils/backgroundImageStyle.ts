@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
-import type { BackgroundImagePlacement } from "../models/types";
+import type { BackgroundImagePlacement, Point } from "../models/types";
 import {
   clampBackgroundImageScale,
+  DEFAULT_BACKGROUND_IMAGE_OFFSET,
   DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
   DEFAULT_BACKGROUND_IMAGE_SCALE,
 } from "./diagramBackground";
@@ -10,6 +11,8 @@ export interface BackgroundImagePaintOptions {
   imageData: string | null | undefined;
   placement?: BackgroundImagePlacement;
   scale?: number;
+  /** World-space anchor (centre or tile origin). */
+  offset?: Point | null;
 }
 
 export interface BackgroundImageNaturalSize {
@@ -33,9 +36,20 @@ function resolvePlacement(
   return placement ?? DEFAULT_BACKGROUND_IMAGE_PLACEMENT;
 }
 
+function resolveOffset(offset: Point | null | undefined): Point {
+  if (
+    offset &&
+    Number.isFinite(offset.x) &&
+    Number.isFinite(offset.y)
+  ) {
+    return { x: offset.x, y: offset.y };
+  }
+  return { ...DEFAULT_BACKGROUND_IMAGE_OFFSET };
+}
+
 /**
  * CSS wallpaper locked to diagram world space (same pan/zoom as the stage).
- * Centre places the image around world origin; tile aligns a tile corner to origin.
+ * Centre places the image around `offset`; tile aligns a tile corner to `offset`.
  */
 export function buildBackgroundImageCssStyle(
   options: BackgroundImagePaintOptions & {
@@ -51,6 +65,7 @@ export function buildBackgroundImageCssStyle(
 
   const placement = resolvePlacement(options.placement);
   const imageScale = resolveImageScale(options.scale);
+  const offset = resolveOffset(options.offset);
   const viewport = options.viewport;
 
   if (!naturalSize || naturalSize.width <= 0 || naturalSize.height <= 0) {
@@ -82,12 +97,12 @@ export function buildBackgroundImageCssStyle(
   // screen = world * scale + viewport.{x,y}
   const posX =
     placement === "center"
-      ? viewport.x - (tileW / 2) * viewScale
-      : viewport.x;
+      ? viewport.x + (offset.x - tileW / 2) * viewScale
+      : viewport.x + offset.x * viewScale;
   const posY =
     placement === "center"
-      ? viewport.y - (tileH / 2) * viewScale
-      : viewport.y;
+      ? viewport.y + (offset.y - tileH / 2) * viewScale
+      : viewport.y + offset.y * viewScale;
 
   return {
     backgroundImage: `url("${imageData}")`,
@@ -148,40 +163,39 @@ export function paintBackgroundImage(
   placement: BackgroundImagePlacement = DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
   scale: number = DEFAULT_BACKGROUND_IMAGE_SCALE,
   worldOrigin?: { x: number; y: number },
+  offset: Point = DEFAULT_BACKGROUND_IMAGE_OFFSET,
 ): void {
   const clamped = resolveImageScale(scale);
   const tileW = Math.max(1, image.naturalWidth * clamped);
   const tileH = Math.max(1, image.naturalHeight * clamped);
+  const anchor = resolveOffset(offset);
 
   if (placement === "center") {
+    const worldX = anchor.x - tileW / 2;
+    const worldY = anchor.y - tileH / 2;
     const localX = worldOrigin
-      ? bounds.x + -tileW / 2 - worldOrigin.x
-      : bounds.x + (bounds.width - tileW) / 2;
+      ? bounds.x + worldX - worldOrigin.x
+      : bounds.x + (bounds.width - tileW) / 2 + anchor.x;
     const localY = worldOrigin
-      ? bounds.y + -tileH / 2 - worldOrigin.y
-      : bounds.y + (bounds.height - tileH) / 2;
+      ? bounds.y + worldY - worldOrigin.y
+      : bounds.y + (bounds.height - tileH) / 2 + anchor.y;
     drawTileClipped(ctx, image, localX, localY, tileW, tileH, bounds);
     return;
   }
 
-  if (!worldOrigin) {
-    for (let y = bounds.y; y < bounds.y + bounds.height; y += tileH) {
-      for (let x = bounds.x; x < bounds.x + bounds.width; x += tileW) {
-        drawTileClipped(ctx, image, x, y, tileW, tileH, bounds);
-      }
-    }
-    return;
-  }
-
-  const startCol = Math.floor(worldOrigin.x / tileW);
-  const startRow = Math.floor(worldOrigin.y / tileH);
-  const endCol = Math.ceil((worldOrigin.x + bounds.width) / tileW);
-  const endRow = Math.ceil((worldOrigin.y + bounds.height) / tileH);
+  // Tile mode: grid origin at `anchor` in world space.
+  const origin = worldOrigin ?? { x: bounds.x, y: bounds.y };
+  const startCol = Math.floor((origin.x - anchor.x) / tileW);
+  const startRow = Math.floor((origin.y - anchor.y) / tileH);
+  const endCol = Math.ceil((origin.x + bounds.width - anchor.x) / tileW);
+  const endRow = Math.ceil((origin.y + bounds.height - anchor.y) / tileH);
 
   for (let row = startRow; row < endRow; row += 1) {
     for (let col = startCol; col < endCol; col += 1) {
-      const localX = bounds.x + col * tileW - worldOrigin.x;
-      const localY = bounds.y + row * tileH - worldOrigin.y;
+      const worldX = anchor.x + col * tileW;
+      const worldY = anchor.y + row * tileH;
+      const localX = bounds.x + worldX - origin.x;
+      const localY = bounds.y + worldY - origin.y;
       drawTileClipped(ctx, image, localX, localY, tileW, tileH, bounds);
     }
   }
@@ -210,6 +224,7 @@ export async function createBackgroundImageCanvas(
     resolvePlacement(options.placement),
     resolveImageScale(options.scale),
     options.worldOrigin,
+    resolveOffset(options.offset),
   );
   return canvas;
 }

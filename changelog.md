@@ -1,4 +1,4 @@
-# v0.6.0
+# v0.6.0-dev
 - Added numerical field to character size slider
 - Added slider to floating text font size field
 # v0.5.0

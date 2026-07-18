@@ -25,4 +25,4 @@ src-tauri/target
 *.njsproj
 *.sln
 *.sw?
-notes.txt
+notes.md

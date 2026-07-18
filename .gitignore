@@ -26,4 +26,3 @@ src-tauri/target
 *.sln
 *.sw?
 notes.txt
-.cursorignore

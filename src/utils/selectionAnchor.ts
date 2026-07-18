@@ -8,6 +8,7 @@ import type {
 } from "../models/types";
 import {
   COLLAPSED_BOX_SIZE,
+  GROUP_HUB_BADGE_RADIUS,
 } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
@@ -20,6 +21,7 @@ import {
   getFloatingTextById,
   resolveBoxBounds,
 } from "./geometry";
+import { getGroupCentroid } from "./groupHub";
 import { getPillLabelSize } from "./labelMetrics";
 import { getLineDisplayLabel } from "./lineEndpoints";
 import { routeLine } from "./lineRouting";
@@ -207,6 +209,22 @@ export function getSelectionConnectorAnchorWorld(
   }
 
   if (selection.type === "group") {
+    const group = diagram.groups.find((g) => g.id === selection.id);
+    if (!group) return null;
+    const centroid = getGroupCentroid(
+      group,
+      diagram.characters,
+      diagram.boxes,
+    );
+    if (centroid) {
+      const dx = towardWorld.x - centroid.x;
+      const dy = towardWorld.y - centroid.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: centroid.x + (dx / len) * GROUP_HUB_BADGE_RADIUS,
+        y: centroid.y + (dy / len) * GROUP_HUB_BADGE_RADIUS,
+      };
+    }
     if (!selection.anchorCharacterId) return null;
     const character = getCharacterById(diagram, selection.anchorCharacterId);
     if (!character) return null;

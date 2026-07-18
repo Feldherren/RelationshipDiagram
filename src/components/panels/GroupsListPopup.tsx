@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { rgbToCss } from "../../models/types";
+import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
 
 export function GroupsListPopup() {
   const { t } = useTranslation();
@@ -9,6 +10,8 @@ export function GroupsListPopup() {
   const rootRef = useRef<HTMLDivElement>(null);
   const selection = useDiagramStore((s) => s.selection);
   const groups = useDiagramStore((s) => s.groups);
+  const groupsVisible = useDiagramStore((s) => s.groupsVisible);
+  const setGroupsVisible = useDiagramStore((s) => s.setGroupsVisible);
   const addGroup = useDiagramStore((s) => s.addGroup);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
@@ -84,13 +87,13 @@ export function GroupsListPopup() {
           ) : (
             <ul className="groups-list">
               {groups.map((group) => {
-                const selected = selectedGroupId === group.id;
+                const active = selectedGroupId === group.id;
                 return (
                   <li key={group.id} className="groups-list-row">
                     <button
                       type="button"
                       className={
-                        selected
+                        active
                           ? "groups-list-item active"
                           : "groups-list-item"
                       }
@@ -130,17 +133,41 @@ export function GroupsListPopup() {
           )}
         </div>
       )}
-      <button
-        type="button"
-        className={
-          open ? "groups-list-toggle active" : "groups-list-toggle"
-        }
-        aria-pressed={open}
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {t("groups.title")}
-      </button>
+      <div className="groups-list-controls">
+        <button
+          type="button"
+          className={
+            open ? "groups-list-toggle active" : "groups-list-toggle"
+          }
+          aria-pressed={open}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {t("groups.title")}
+        </button>
+        <button
+          type="button"
+          className={
+            groupsVisible
+              ? "groups-visibility-toggle active"
+              : "groups-visibility-toggle"
+          }
+          title={
+            groupsVisible ? t("groups.hideChrome") : t("groups.showChrome")
+          }
+          aria-label={
+            groupsVisible ? t("groups.hideChrome") : t("groups.showChrome")
+          }
+          aria-pressed={groupsVisible}
+          onClick={() => setGroupsVisible(!groupsVisible)}
+        >
+          {groupsVisible ? (
+            <EyeOpenIcon className="groups-visibility-icon" size={18} />
+          ) : (
+            <EyeClosedIcon className="groups-visibility-icon" size={18} />
+          )}
+        </button>
+      </div>
     </div>
   );
 }

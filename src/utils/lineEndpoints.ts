@@ -11,11 +11,12 @@ import {
   isCharacterContainedInBox,
   isFloatingTextContainedInBox,
 } from "./geometry";
+import { getGroupCentroid } from "./groupHub";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 export interface ResolvedLineEndpoint {
   logical: NodeRef;
-  anchorKind: "character" | "box";
+  anchorKind: "character" | "box" | "group";
   anchorId: string;
   hiddenCharacterId?: string;
   hiddenCharacterName?: string;
@@ -52,10 +53,14 @@ export function getCollapsedBoxForFloatingText(
 
 export function resolveLineEndpoint(
   ref: NodeRef,
-  diagram: Pick<Diagram, "characters" | "boxes" | "fontFamily">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): ResolvedLineEndpoint {
   if (ref.kind === "box") {
     return { logical: ref, anchorKind: "box", anchorId: ref.id };
+  }
+
+  if (ref.kind === "group") {
+    return { logical: ref, anchorKind: "group", anchorId: ref.id };
   }
 
   const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
@@ -105,7 +110,7 @@ export function isLineFullyInsideCollapsedBox(
 
 export function shouldRenderLine(
   line: Line,
-  diagram: Pick<Diagram, "characters" | "boxes" | "fontFamily">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): boolean {
   const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
   if (
@@ -117,6 +122,21 @@ export function shouldRenderLine(
     )
   ) {
     return false;
+  }
+
+  if (line.from.kind === "group" || line.to.kind === "group") {
+    const groups = diagram.groups ?? [];
+    for (const ref of [line.from, line.to]) {
+      if (ref.kind !== "group") continue;
+      const group = groups.find((g) => g.id === ref.id);
+      if (!group) return false;
+      const centroid = getGroupCentroid(
+        group,
+        diagram.characters,
+        diagram.boxes,
+      );
+      if (!centroid) return false;
+    }
   }
 
   const from = resolveLineEndpoint(line.from, diagram);
@@ -135,7 +155,7 @@ export function shouldRenderLine(
 
 export function getLineDisplayLabel(
   line: Line,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups">,
 ): string | null {
   const from = resolveLineEndpoint(line.from, diagram);
   const to = resolveLineEndpoint(line.to, diagram);

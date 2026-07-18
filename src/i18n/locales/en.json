@@ -59,7 +59,9 @@
     "add": "Add group",
     "empty": "No groups yet.",
     "editMembersTooltip": "Add or remove members on canvas",
-    "editMembersAria": "Add or remove members of {{name}}"
+    "editMembersAria": "Add or remove members of {{name}}",
+    "showChrome": "Show group hubs and spokes",
+    "hideChrome": "Hide group hubs and spokes"
   },
   "export": {
     "title": "Export diagram",
@@ -340,7 +342,7 @@
     "colour": "Colour",
     "fontSize": "Font size",
     "deleteText": "Delete text",
-    "groupHint": "Membership chips appear on characters. Selecting a group highlights its members.",
+    "groupHint": "Membership chips appear on characters. The hub badge at the members’ centre is the connect target for group relationships.",
     "chip": "Chip",
     "customiseChip": "Customise chip…",
     "members": "Members ({{count}})",

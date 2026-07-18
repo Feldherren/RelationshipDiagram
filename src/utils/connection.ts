@@ -1,7 +1,11 @@
 import type { Point } from "../models/types";
-import type { Bounds, Box, Character, NodeRef } from "../models/types";
+import type { Bounds, Box, Character, Group, NodeRef } from "../models/types";
 import { resolveBoxBounds, getCollapsedBoxSquareBounds } from "./geometry";
 import { getCollapsedBoxForCharacter } from "./lineEndpoints";
+import {
+  getGroupCentroid,
+  getGroupHubHitRadius,
+} from "./groupHub";
 
 /** Matches RoundedRectAura outer padding in HoverAura.tsx */
 const BOX_CONNECTION_HIT_PADDING = 20;
@@ -48,6 +52,7 @@ export function findConnectionTargetAt(
   point: Point,
   characters: Character[],
   boxes: Box[],
+  groups: Group[] = [],
 ): NodeRef | null {
   let bestCharacter: { ref: NodeRef; dist: number } | null = null;
 
@@ -65,6 +70,21 @@ export function findConnectionTargetAt(
 
   if (bestCharacter) {
     return bestCharacter.ref;
+  }
+
+  let bestGroup: { ref: NodeRef; dist: number } | null = null;
+  const hubHitRadius = getGroupHubHitRadius();
+  for (const group of groups) {
+    const centroid = getGroupCentroid(group, characters, boxes);
+    if (!centroid) continue;
+    const dist = Math.hypot(point.x - centroid.x, point.y - centroid.y);
+    if (dist <= hubHitRadius && (!bestGroup || dist < bestGroup.dist)) {
+      bestGroup = { ref: { id: group.id, kind: "group" }, dist };
+    }
+  }
+
+  if (bestGroup) {
+    return bestGroup.ref;
   }
 
   let bestBox: { ref: NodeRef; dist: number } | null = null;

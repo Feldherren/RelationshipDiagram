@@ -16,6 +16,7 @@ import {
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   BOX_HEADER_HEIGHT,
   BOX_PADDING,
+  GROUP_HUB_BADGE_RADIUS,
   MIN_BOX_HEIGHT,
   MIN_BOX_WIDTH,
 } from "../models/types";
@@ -372,13 +373,38 @@ export function getBoxCenter(box: Box): Point {
 }
 
 export function getNodeCenter(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.position ?? { x: 0, y: 0 };
+  }
+  if (kind === "group") {
+    const group = diagram.groups?.find((g) => g.id === id);
+    if (!group) return { x: 0, y: 0 };
+    const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+    // Prefer shared hub helper when available; fall back to member positions.
+    // Inline average avoids a geometry ↔ groupHub import cycle.
+    const byId = new Map(diagram.characters.map((c) => [c.id, c]));
+    let x = 0;
+    let y = 0;
+    let n = 0;
+    for (const memberId of group.memberCharacterIds) {
+      const character = byId.get(memberId);
+      if (!character) continue;
+      const collapsed = diagram.boxes.find(
+        (b) =>
+          b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
+      );
+      const anchor = collapsed?.collapsedPosition ?? character.position;
+      x += anchor.x;
+      y += anchor.y;
+      n += 1;
+    }
+    if (n === 0) return { x: 0, y: 0 };
+    return { x: x / n, y: y / n };
   }
   const box = getBoxById(diagram, id);
   if (!box) return { x: 0, y: 0 };
@@ -386,13 +412,16 @@ export function getNodeCenter(
 }
 
 export function getNodeRadius(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): number {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.size ?? DEFAULT_CHARACTER_SIZE;
+  }
+  if (kind === "group") {
+    return GROUP_HUB_BADGE_RADIUS;
   }
   const box = getBoxById(diagram, id);
   if (!box) return COLLAPSED_BOX_SIZE;
@@ -495,15 +524,19 @@ export function getBoxEdgePoint(box: Box, toward: Point): Point {
 }
 
 export function getNodeEdgePoint(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
   toward: Point,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     if (!character) return toward;
     return getCharacterEdgePoint(character, toward);
+  }
+  if (kind === "group") {
+    const center = getNodeCenter("group", id, diagram);
+    return circleEdgePoint(center, GROUP_HUB_BADGE_RADIUS, toward);
   }
   const box = getBoxById(diagram, id);
   if (!box) return toward;
@@ -531,10 +564,10 @@ function pointInRegularPolygon(
 }
 
 export function isPointInsideNode(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
   point: Point,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): boolean {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
@@ -553,6 +586,14 @@ export function isPointInsideNode(
       default:
         return Math.hypot(dx, dy) <= size;
     }
+  }
+
+  if (kind === "group") {
+    const center = getNodeCenter("group", id, diagram);
+    return (
+      Math.hypot(point.x - center.x, point.y - center.y) <=
+      GROUP_HUB_BADGE_RADIUS
+    );
   }
 
   const box = getBoxById(diagram, id);

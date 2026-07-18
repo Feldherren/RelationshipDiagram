@@ -630,6 +630,11 @@ export function SelectionFloat() {
         const name = character?.name.trim();
         return name || t("selection.nameless");
       }
+      if (ref.kind === "group") {
+        const group = getGroupById({ groups }, ref.id);
+        const name = group?.name.trim();
+        return name || t("selection.group");
+      }
       const box = getBoxById({ boxes }, ref.id);
       const name = box?.name.trim();
       return name || t("selection.box");

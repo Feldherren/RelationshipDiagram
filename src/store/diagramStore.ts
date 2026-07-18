@@ -106,6 +106,8 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
+  /** Whether group hubs, spokes, and group-linked lines show on the canvas. */
+  groupsVisible: boolean;
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
@@ -163,6 +165,7 @@ interface DiagramState {
   ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
+  setGroupsVisible: (visible: boolean) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
   setLineLabelContrastWithBackground: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
@@ -341,6 +344,7 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
+  groupsVisible: true,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
   selection: null,
@@ -703,6 +707,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       autosaveEnabled: prefs.autosaveEnabled,
       bookmarksVisible: prefs.bookmarksVisible,
+      groupsVisible: prefs.groupsVisible,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
     });
@@ -913,12 +918,24 @@ export const useDiagramStore = create<DiagramState>()(
         s.toolMode === "editGroupMembers" &&
         s.selection?.type === "group" &&
         s.selection.id === id;
+      const lines = s.lines.filter(
+        (l) =>
+          !(l.from.kind === "group" && l.from.id === id) &&
+          !(l.to.kind === "group" && l.to.id === id),
+      );
+      let selection = s.selection;
+      if (selection?.type === "group" && selection.id === id) {
+        selection = null;
+      } else if (
+        selection?.type === "line" &&
+        !lines.some((l) => l.id === selection.id)
+      ) {
+        selection = null;
+      }
       return {
         groups: s.groups.filter((g) => g.id !== id),
-        selection:
-          s.selection?.type === "group" && s.selection.id === id
-            ? null
-            : s.selection,
+        lines,
+        selection,
         ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
       };
     });
@@ -1145,11 +1162,17 @@ export const useDiagramStore = create<DiagramState>()(
         get().toggleCharacterInGroup(ref.id, selection.id);
         return;
       }
+      if (ref.kind === "group") {
+        get().setSelection({ type: "group", id: ref.id }, { openDetails });
+        return;
+      }
       get().setSelection({ type: "box", id: ref.id });
       return;
     }
     if (ref.kind === "character") {
       get().setSelection({ type: "character", id: ref.id }, { openDetails });
+    } else if (ref.kind === "group") {
+      get().setSelection({ type: "group", id: ref.id }, { openDetails });
     } else {
       get().setSelection({ type: "box", id: ref.id }, { openDetails });
     }
@@ -1177,14 +1200,19 @@ export const useDiagramStore = create<DiagramState>()(
     ),
 
   endConnectDrag: (point) => {
-    const { connectDrag, characters, boxes } = get();
+    const { connectDrag, characters, boxes, groups } = get();
     if (!connectDrag) return;
 
     const moved = Math.hypot(
       point.x - connectDrag.startX,
       point.y - connectDrag.startY,
     );
-    const target = findConnectionTargetAt(point, characters, boxes);
+    const target = findConnectionTargetAt(
+      point,
+      characters,
+      boxes,
+      groups,
+    );
 
     if (target) {
       if (sameNodeRef(connectDrag.from, target)) {
@@ -1223,6 +1251,11 @@ export const useDiagramStore = create<DiagramState>()(
       ...(clearBookmarkSelection ? { selection: null } : {}),
     });
     setAppPreferences({ bookmarksVisible: visible });
+  },
+
+  setGroupsVisible: (visible) => {
+    set({ groupsVisible: visible });
+    setAppPreferences({ groupsVisible: visible });
   },
 
   setSelectionPulseEnabled: (enabled) => {
@@ -1476,7 +1509,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle,
     } = get();
     return {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,

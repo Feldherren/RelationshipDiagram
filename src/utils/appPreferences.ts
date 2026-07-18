@@ -60,6 +60,8 @@ export interface AppPreferences {
   customThemes: ThemeDocument[];
   /** Whether bookmark flags are shown on the canvas. */
   bookmarksVisible: boolean;
+  /** Whether group hubs, spokes, and group-linked lines show on the canvas. */
+  groupsVisible: boolean;
   /** Whether selected canvas items show a pulsing highlight. */
   selectionPulseEnabled: boolean;
   /**
@@ -88,6 +90,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiScale: 1,
   customThemes: [],
   bookmarksVisible: true,
+  groupsVisible: true,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
 };
@@ -281,6 +284,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.bookmarksVisible === "boolean"
         ? stored.bookmarksVisible
         : defaults.bookmarksVisible,
+    groupsVisible:
+      typeof stored.groupsVisible === "boolean"
+        ? stored.groupsVisible
+        : defaults.groupsVisible,
     selectionPulseEnabled:
       typeof stored.selectionPulseEnabled === "boolean"
         ? stored.selectionPulseEnabled

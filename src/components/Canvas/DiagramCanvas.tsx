@@ -11,6 +11,7 @@ import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
+import { GroupHubLayer } from "./GroupHubLayer";
 import { MembershipChipNameOverlay } from "./MembershipChipNameOverlay";
 import {
   CanvasAddObjectMenu,
@@ -24,6 +25,10 @@ import {
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
+import {
+  shouldShowGroupLine,
+  type GroupCanvasVisibilityContext,
+} from "../../utils/groupHub";
 import {
   buildCharacterMembershipChipMap,
   EMPTY_MEMBERSHIP_CHIPS,
@@ -117,6 +122,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     toolMode,
     connectFrom,
     connectDrag,
+    groupsVisible,
     showGrid,
     exportBounds,
     diagramBackgroundColor,
@@ -148,6 +154,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
       connectDrag: s.connectDrag,
+      groupsVisible: s.groupsVisible,
       showGrid: s.showGrid,
       exportBounds: s.exportBounds,
       diagramBackgroundColor: s.diagramBackgroundColor,
@@ -272,6 +279,25 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             [],
         )
       : null;
+
+  const groupVisibilityCtx: GroupCanvasVisibilityContext = useMemo(
+    () => ({
+      groupsVisible,
+      selectedGroupId: highlightedGroupId,
+      toolMode,
+      connectFrom,
+      connectDragFrom: connectDrag?.from ?? null,
+      lines,
+    }),
+    [
+      groupsVisible,
+      highlightedGroupId,
+      toolMode,
+      connectFrom,
+      connectDrag,
+      lines,
+    ],
+  );
 
   useEffect(() => {
     const clearBoxInteraction = () => {
@@ -581,7 +607,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const diagram = useMemo(
     () => ({
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       characters,
       lines,
       groups,
@@ -601,11 +627,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     () =>
       lines
         .filter((line) => shouldRenderLine(line, diagram))
+        .filter((line) => shouldShowGroupLine(line, groupVisibilityCtx))
         .map((line) => ({
           line,
           routed: routeLine(line, diagram),
         })),
-    [lines, diagram],
+    [lines, diagram, groupVisibilityCtx],
   );
 
   const dragRectBounds =
@@ -707,6 +734,28 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 part="background"
               />
             ))}
+
+          <GroupHubLayer
+            groups={groups}
+            characters={characters}
+            boxes={boxes}
+            lines={lines}
+            visibility={groupVisibilityCtx}
+            selectedGroupId={highlightedGroupId}
+            onSelectGroup={(groupId) =>
+              setSelection({ type: "group", id: groupId })
+            }
+            onOpenDetails={(groupId) =>
+              setSelection(
+                { type: "group", id: groupId },
+                { openDetails: true },
+              )
+            }
+            onConnectHandleDown={(groupId) =>
+              handleConnectHandleDown({ id: groupId, kind: "group" })
+            }
+            isConnectSource={isConnectSource}
+          />
 
           {visibleRoutedLines.map(({ line, routed }) => (
               <LineEdge

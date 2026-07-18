@@ -86,7 +86,7 @@ export function hasPersistedStateChanged(
 }
 
 export const EMPTY_DIAGRAM: Diagram = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   characters: [],
   lines: [],
   groups: [],

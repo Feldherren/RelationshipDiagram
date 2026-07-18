@@ -6,7 +6,7 @@ export interface RGB {
 
 export type BorderShape = "circle" | "square" | "pentagon" | "hexagon";
 export type LineStyle = "straight" | "wavy" | "dotted" | "jagged";
-export type NodeKind = "character" | "box";
+export type NodeKind = "character" | "box" | "group";
 export type ToolMode = "select" | "exportBounds" | "editGroupMembers";
 
 export interface ConnectDrag {
@@ -148,7 +148,10 @@ export function normalizeMembershipAppearance(
   };
 }
 
-/** Semantic membership group — chips / highlight only; not a canvas connect target. */
+/**
+ * Semantic membership group — chips on members plus a connectable centroid hub
+ * (badge + pale spokes). Line endpoints may use `kind: "group"`.
+ */
 export interface Group {
   id: string;
   name: string;
@@ -251,7 +254,7 @@ export interface DiagramAppearance {
 }
 
 export interface Diagram {
-  schemaVersion: 2;
+  schemaVersion: 3;
   title?: string;
   subtitle?: string;
   /** Title text colour; omit for default export-matching dark grey. */
@@ -315,6 +318,8 @@ export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
 export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
 export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
 export const MEMBERSHIP_CHIP_RADIUS = 11;
+/** Larger chip used as the group centroid hub badge on the canvas. */
+export const GROUP_HUB_BADGE_RADIUS = 18;
 
 export type BoxResizeEdge =
   | "n"

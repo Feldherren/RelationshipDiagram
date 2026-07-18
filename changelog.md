@@ -14,6 +14,9 @@
 	- Diagram no longer re-renders the full scene on every pan frame.
 	- Faster membership-chip and relationship-line updates.
 	- Detached selection panels stay lighter while panning.
+- Bookmark marker improvements:
+	- Double-click (or double-tap) a bookmark marker to open its edit window, same as right-click.
+	- Bookmark edit window now anchors next to the marker like other detail panels (drag away for a dotted connector).
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

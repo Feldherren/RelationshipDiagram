@@ -8,7 +8,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { rgbToCss } from "../../models/types";
 import { useDiagramStore } from "../../store/diagramStore";
-import { RgbPicker } from "../pickers/RgbPicker";
 import { BookmarkIcon, BookmarkAddIcon } from "../icons/BookmarkIcon";
 import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
 import {
@@ -36,24 +35,14 @@ export function ViewportControls() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const editPopupRef = useRef<HTMLDivElement>(null);
 
   const bookmarks = useDiagramStore((s) => s.bookmarks);
   const bookmarksVisible = useDiagramStore((s) => s.bookmarksVisible);
-  const editingBookmarkId = useDiagramStore((s) => s.editingBookmarkId);
   const setBookmarksVisible = useDiagramStore((s) => s.setBookmarksVisible);
   const openBookmarkEdit = useDiagramStore((s) => s.openBookmarkEdit);
   const closeBookmarkEdit = useDiagramStore((s) => s.closeBookmarkEdit);
   const addBookmark = useDiagramStore((s) => s.addBookmark);
-  const updateBookmark = useDiagramStore((s) => s.updateBookmark);
-  const updateBookmarkView = useDiagramStore((s) => s.updateBookmarkView);
-  const deleteBookmark = useDiagramStore((s) => s.deleteBookmark);
   const goToBookmark = useDiagramStore((s) => s.goToBookmark);
-
-  const editing =
-    editingBookmarkId != null
-      ? (bookmarks.find((b) => b.id === editingBookmarkId) ?? null)
-      : null;
 
   const swatchStyle = useSyncExternalStore(
     subscribeUiChrome,
@@ -61,19 +50,13 @@ export function ViewportControls() {
     () => SYMBOL_SWATCH_ON_LIGHT,
   );
 
-  // Close edit on outside click; keep the strip open during canvas interaction.
+  // Keep the strip open during canvas interaction; dismiss on outside click.
   useEffect(() => {
-    if (!open && !editing) return;
+    if (!open) return;
 
     const handlePointerDown = (e: MouseEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
-
-      if (editing && !editPopupRef.current?.contains(target)) {
-        closeBookmarkEdit();
-      }
-
-      if (!open) return;
       if (rootRef.current?.contains(target)) return;
       if (
         target instanceof Element &&
@@ -87,12 +70,7 @@ export function ViewportControls() {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (editing) {
-        closeBookmarkEdit();
-        return;
-      }
-      setOpen(false);
+      if (e.key === "Escape") setOpen(false);
     };
 
     window.addEventListener("mousedown", handlePointerDown);
@@ -101,7 +79,7 @@ export function ViewportControls() {
       window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, editing, closeBookmarkEdit]);
+  }, [open]);
 
   const handleAdd = () => {
     addBookmark();
@@ -194,50 +172,6 @@ export function ViewportControls() {
           >
             <BookmarkAddIcon className="viewport-control-icon" size={20} />
           </button>
-        </div>
-      )}
-
-      {editing && (
-        <div
-          ref={editPopupRef}
-          className="bookmarks-popup bookmarks-edit-popup"
-          role="dialog"
-          aria-label={t("bookmarks.editTitle")}
-        >
-          <div className="bookmarks-form">
-            <h3>{t("bookmarks.editTitle")}</h3>
-            <label className="field">
-              <span>{t("bookmarks.nameLabel")}</span>
-              <input
-                type="text"
-                value={editing.name}
-                onChange={(e) =>
-                  updateBookmark(editing.id, { name: e.target.value })
-                }
-                maxLength={80}
-                autoFocus
-              />
-            </label>
-            <RgbPicker
-              label={t("bookmarks.colourLabel")}
-              value={editing.color}
-              onChange={(color) => updateBookmark(editing.id, { color })}
-            />
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => updateBookmarkView(editing.id)}
-            >
-              {t("bookmarks.updateView")}
-            </button>
-            <button
-              type="button"
-              className="btn-danger"
-              onClick={() => deleteBookmark(editing.id)}
-            >
-              {t("bookmarks.delete")}
-            </button>
-          </div>
         </div>
       )}
     </div>

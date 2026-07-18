@@ -129,7 +129,7 @@ export function usePanZoom(
           return;
         }
         const { selection } = useDiagramStore.getState();
-        if (!selection || selection.type === "bookmark" || selection.type === "multi") {
+        if (!selection || selection.type === "multi") {
           return;
         }
         e.preventDefault();

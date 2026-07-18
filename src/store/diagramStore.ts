@@ -106,8 +106,6 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
-  /** When set, the bookmark edit dialog is open for this id. */
-  editingBookmarkId: string | null;
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
@@ -326,7 +324,6 @@ function restoreHistorySnapshot(
     viewport,
     selection: null,
     selectionDetailsOpen: false,
-    editingBookmarkId: null,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -344,7 +341,6 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
-  editingBookmarkId: null,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
   selection: null,
@@ -533,11 +529,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
   openSelectionDetails: () => {
     const { selection } = get();
-    if (
-      !selection ||
-      selection.type === "bookmark" ||
-      selection.type === "multi"
-    ) {
+    if (!selection || selection.type === "multi") {
       return;
     }
     set({ selectionDetailsOpen: true });
@@ -1219,13 +1211,13 @@ export const useDiagramStore = create<DiagramState>()(
   cancelConnect: () => set({ connectFrom: null, connectDrag: null }),
 
   setBookmarksVisible: (visible) => {
-    const { selection, editingBookmarkId } = get();
-    // Keep selection while editing so the flag and extents stay visible
-    // even when other bookmark markers are hidden.
+    const { selection, selectionDetailsOpen } = get();
+    // Keep selection while the bookmark float is open so the flag and extents
+    // stay visible even when other bookmark markers are hidden.
     const clearBookmarkSelection =
       visible === false &&
       selection?.type === "bookmark" &&
-      editingBookmarkId !== selection.id;
+      !selectionDetailsOpen;
     set({
       bookmarksVisible: visible,
       ...(clearBookmarkSelection ? { selection: null } : {}),
@@ -1246,20 +1238,17 @@ export const useDiagramStore = create<DiagramState>()(
   openBookmarkEdit: (id) => {
     if (!get().bookmarks.some((b) => b.id === id)) return;
     set({
-      editingBookmarkId: id,
       selection: { type: "bookmark", id },
-      selectionDetailsOpen: false,
+      selectionDetailsOpen: true,
     });
   },
 
   closeBookmarkEdit: () => {
-    const { selection, editingBookmarkId } = get();
+    const { selection, selectionDetailsOpen } = get();
+    if (selection?.type !== "bookmark" || !selectionDetailsOpen) return;
     set({
-      editingBookmarkId: null,
-      ...(selection?.type === "bookmark" &&
-      selection.id === editingBookmarkId
-        ? { selection: null }
-        : {}),
+      selectionDetailsOpen: false,
+      selection: null,
     });
   },
 
@@ -1332,9 +1321,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       bookmarks: s.bookmarks.filter((b) => b.id !== id),
       ...(s.selection?.type === "bookmark" && s.selection.id === id
-        ? { selection: null }
+        ? { selection: null, selectionDetailsOpen: false }
         : {}),
-      ...(s.editingBookmarkId === id ? { editingBookmarkId: null } : {}),
     }));
   },
 

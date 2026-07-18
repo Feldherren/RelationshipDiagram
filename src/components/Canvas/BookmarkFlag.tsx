@@ -81,6 +81,10 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
         Math.abs(dx) > DRAG_THRESHOLD / scale ||
         Math.abs(dy) > DRAG_THRESHOLD / scale
       ) {
+        if (!didDragRef.current) {
+          // Dragging is layout, not inspect — keep selection, close the float.
+          useDiagramStore.setState({ selectionDetailsOpen: false });
+        }
         didDragRef.current = true;
         clickGuard.noticeDrag();
       }
@@ -149,7 +153,9 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
     setSelection({ type: "bookmark", id: bookmark.id });
   };
 
-  const handleOpenEdit = (e: Konva.KonvaEventObject<PointerEvent>) => {
+  const handleOpenEdit = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent | PointerEvent>,
+  ) => {
     e.cancelBubble = true;
     e.evt.preventDefault();
     openBookmarkEdit(bookmark.id);
@@ -162,6 +168,8 @@ export function BookmarkFlag({ bookmark, selected }: BookmarkFlagProps) {
       onMouseDown={beginDrag}
       onClick={select}
       onTap={select}
+      onDblClick={handleOpenEdit}
+      onDblTap={handleOpenEdit}
       onContextMenu={handleOpenEdit}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

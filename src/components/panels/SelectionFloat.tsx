@@ -81,6 +81,7 @@ function SelectionFloatConnector({
     selection,
     diagram,
     screenToWorld(panelCenterScreen, viewport),
+    viewport.scale,
   );
   if (!connectorAnchorWorld) return null;
   const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
@@ -203,6 +204,7 @@ export function SelectionFloat() {
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
+  const bookmarks = useDiagramStore((s) => s.bookmarks);
   const stageSize = useDiagramStore((s) => s.stageSize);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
@@ -210,6 +212,9 @@ export function SelectionFloat() {
   const updateGroup = useDiagramStore((s) => s.updateGroup);
   const updateBox = useDiagramStore((s) => s.updateBox);
   const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
+  const updateBookmark = useDiagramStore((s) => s.updateBookmark);
+  const updateBookmarkView = useDiagramStore((s) => s.updateBookmarkView);
+  const deleteBookmark = useDiagramStore((s) => s.deleteBookmark);
   const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
   const toolMode = useDiagramStore((s) => s.toolMode);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
@@ -228,7 +233,6 @@ export function SelectionFloat() {
   const trackViewport =
     Boolean(selectionDetailsOpen) &&
     selection != null &&
-    selection.type !== "bookmark" &&
     selection.type !== "multi" &&
     !placementDetached;
   const viewport = useDiagramStore((s) =>
@@ -253,7 +257,16 @@ export function SelectionFloat() {
     if (height > 0 && Math.abs(height - panelHeight) > 1) {
       setPanelHeight(height);
     }
-  }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
+  }, [
+    selection,
+    characters,
+    lines,
+    groups,
+    boxes,
+    floatingTexts,
+    bookmarks,
+    panelHeight,
+  ]);
 
   // Groups freeze in screen space as soon as they open (detached).
   useLayoutEffect(() => {
@@ -299,8 +312,8 @@ export function SelectionFloat() {
     return null;
   }
 
-  // Canvas bookmark / multi-select: highlight only (no float panel).
-  if (selection.type === "bookmark" || selection.type === "multi") {
+  // Multi-select: highlight only (no float panel).
+  if (selection.type === "multi") {
     return null;
   }
 
@@ -954,6 +967,46 @@ export function SelectionFloat() {
         open={chipAppearanceOpen}
         onClose={() => setChipAppearanceOpen(false)}
       />
+    );
+  } else if (selection.type === "bookmark") {
+    const bookmark = bookmarks.find((b) => b.id === selection.id);
+    if (!bookmark) return null;
+
+    body = (
+      <>
+        <h2>{t("bookmarks.editTitle")}</h2>
+        <label className="field">
+          <span>{t("bookmarks.nameLabel")}</span>
+          <input
+            type="text"
+            value={bookmark.name}
+            onChange={(e) =>
+              updateBookmark(bookmark.id, { name: e.target.value })
+            }
+            maxLength={80}
+            autoFocus
+          />
+        </label>
+        <RgbPicker
+          label={t("bookmarks.colourLabel")}
+          value={bookmark.color}
+          onChange={(color) => updateBookmark(bookmark.id, { color })}
+        />
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => updateBookmarkView(bookmark.id)}
+        >
+          {t("bookmarks.updateView")}
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => deleteBookmark(bookmark.id)}
+        >
+          {t("bookmarks.delete")}
+        </button>
+      </>
     );
   }
 

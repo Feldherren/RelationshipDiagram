@@ -75,13 +75,20 @@ export type MembershipSymbol =
   | "skull"
   | "question";
 
-/** Visual identity for a membership group chip. */
+/** Visual identity for a membership group chip and hub corridors. */
 export interface MembershipAppearance {
   backgroundColor: RGB;
   symbol: MembershipSymbol;
   symbolColor: RGB;
   borderColor: RGB;
+  /** Corridor / spoke colour (defaults to backgroundColour). */
+  corridorColor: RGB;
+  /** Corridor opacity 0–1 (applied once to the whole spoke group). */
+  corridorOpacity: number;
 }
+
+/** Default translucent corridor strength when none is stored. */
+export const DEFAULT_GROUP_CORRIDOR_OPACITY = 0.18;
 
 export const MEMBERSHIP_SYMBOLS: MembershipSymbol[] = [
   "none",
@@ -119,12 +126,20 @@ export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
 export function defaultMembershipAppearance(
   backgroundColor: RGB = { r: 100, g: 140, b: 100 },
 ): MembershipAppearance {
+  const bg = { ...backgroundColor };
   return {
-    backgroundColor: { ...backgroundColor },
+    backgroundColor: bg,
     symbol: "none",
     symbolColor: { r: 255, g: 255, b: 255 },
     borderColor: { r: 51, g: 51, b: 51 },
+    corridorColor: { ...bg },
+    corridorOpacity: DEFAULT_GROUP_CORRIDOR_OPACITY,
   };
+}
+
+function clampCorridorOpacity(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(1, Math.max(0, value));
 }
 
 export function normalizeMembershipAppearance(
@@ -132,10 +147,11 @@ export function normalizeMembershipAppearance(
   fallbackBackground: RGB = { r: 100, g: 140, b: 100 },
 ): MembershipAppearance {
   const defaults = defaultMembershipAppearance(fallbackBackground);
+  const backgroundColor = appearance?.backgroundColor
+    ? { ...appearance.backgroundColor }
+    : defaults.backgroundColor;
   return {
-    backgroundColor: appearance?.backgroundColor
-      ? { ...appearance.backgroundColor }
-      : defaults.backgroundColor,
+    backgroundColor,
     symbol: isMembershipSymbol(appearance?.symbol)
       ? appearance.symbol
       : defaults.symbol,
@@ -145,6 +161,12 @@ export function normalizeMembershipAppearance(
     borderColor: appearance?.borderColor
       ? { ...appearance.borderColor }
       : defaults.borderColor,
+    corridorColor: appearance?.corridorColor
+      ? { ...appearance.corridorColor }
+      : { ...backgroundColor },
+    corridorOpacity:
+      clampCorridorOpacity(appearance?.corridorOpacity) ??
+      defaults.corridorOpacity,
   };
 }
 

@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Group as KonvaGroup, Line } from "react-konva";
 import type Konva from "konva";
-import type { Box, Character, Group, Line as DiagramLine, NodeRef } from "../../models/types";
-import { GROUP_HUB_BADGE_RADIUS } from "../../models/types";
+import type {
+  Box,
+  Character,
+  Group,
+  Line as DiagramLine,
+  NodeRef,
+  RGB,
+} from "../../models/types";
+import { GROUP_HUB_BADGE_RADIUS, rgbToCss } from "../../models/types";
 import { MembershipChip } from "./MembershipChips";
 import { ConnectHandle } from "./ConnectHandle";
 import { getConnectHandleOffset } from "../../utils/connection";
 import {
   getGroupCentroid,
   getGroupMemberAnchors,
-  paleGroupTint,
   shouldShowGroupHub,
   spokeStrokeWidth,
   type GroupCanvasVisibilityContext,
@@ -68,7 +74,6 @@ export function GroupHubLayer({
         if (!centroid) return null;
 
         const selected = selectedGroupId === group.id;
-        const tint = paleGroupTint(group.appearance.backgroundColor);
         const connectSource = isConnectSource({
           id: group.id,
           kind: "group",
@@ -83,7 +88,6 @@ export function GroupHubLayer({
             group={group}
             members={members}
             centroid={centroid}
-            tint={tint}
             selected={selected}
             showConnect={showConnect}
             connectSource={connectSource}
@@ -104,11 +108,68 @@ export function GroupHubLayer({
   );
 }
 
+/** Opaque strokes cached as one bitmap, then faded — overlaps don’t stack alpha. */
+function GroupSpokeCorridors({
+  groupId,
+  members,
+  centroid,
+  color,
+  opacity,
+  viewportScale,
+}: {
+  groupId: string;
+  members: { character: Character; anchor: { x: number; y: number } }[];
+  centroid: { x: number; y: number };
+  color: RGB;
+  opacity: number;
+  viewportScale: number;
+}) {
+  const spokesRef = useRef<Konva.Group>(null);
+  const stroke = rgbToCss(color);
+  const geometryKey =
+    members
+      .map(
+        ({ character, anchor }) =>
+          `${character.id}:${anchor.x.toFixed(1)},${anchor.y.toFixed(1)},${character.size}`,
+      )
+      .join("|") +
+    `|${centroid.x.toFixed(1)},${centroid.y.toFixed(1)}|${stroke}|${opacity.toFixed(3)}`;
+
+  useLayoutEffect(() => {
+    const node = spokesRef.current;
+    if (!node) return;
+    node.clearCache();
+    // Children draw opaque into the cache; Group.opacity applies when blitting.
+    node.cache({
+      pixelRatio: Math.min(2, Math.max(1, viewportScale)),
+    });
+  }, [geometryKey, viewportScale]);
+
+  return (
+    <KonvaGroup
+      ref={spokesRef}
+      opacity={opacity}
+      listening={false}
+    >
+      {members.map(({ character, anchor }) => (
+        <Line
+          key={`${groupId}-spoke-${character.id}`}
+          points={[anchor.x, anchor.y, centroid.x, centroid.y]}
+          stroke={stroke}
+          strokeWidth={spokeStrokeWidth(character.size)}
+          lineCap="round"
+          listening={false}
+          perfectDrawEnabled={false}
+        />
+      ))}
+    </KonvaGroup>
+  );
+}
+
 function GroupHubNode({
   group,
   members,
   centroid,
-  tint,
   selected,
   showConnect,
   connectSource,
@@ -122,7 +183,6 @@ function GroupHubNode({
   group: Group;
   members: { character: Character; anchor: { x: number; y: number } }[];
   centroid: { x: number; y: number };
-  tint: string;
   selected: boolean;
   showConnect: boolean;
   connectSource: boolean;
@@ -138,17 +198,14 @@ function GroupHubNode({
 
   return (
     <KonvaGroup>
-      {members.map(({ character, anchor }) => (
-        <Line
-          key={`${group.id}-spoke-${character.id}`}
-          points={[anchor.x, anchor.y, centroid.x, centroid.y]}
-          stroke={tint}
-          strokeWidth={spokeStrokeWidth(character.size)}
-          lineCap="round"
-          listening={false}
-          perfectDrawEnabled={false}
-        />
-      ))}
+      <GroupSpokeCorridors
+        groupId={group.id}
+        members={members}
+        centroid={centroid}
+        color={group.appearance.corridorColor}
+        opacity={group.appearance.corridorOpacity}
+        viewportScale={viewportScale}
+      />
       <KonvaGroup
         x={centroid.x}
         y={centroid.y}
@@ -187,7 +244,11 @@ function GroupHubNode({
           onOpenDetails();
         }}
       >
-        <MembershipChip appearance={group.appearance} radius={GROUP_HUB_BADGE_RADIUS} emphasized={selected} />
+        <MembershipChip
+          appearance={group.appearance}
+          radius={GROUP_HUB_BADGE_RADIUS}
+          emphasized={selected}
+        />
         {showConnect && (
           <ConnectHandle
             x={handleOffset.x}

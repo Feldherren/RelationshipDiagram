@@ -400,11 +400,14 @@
   },
   "chipAppearance": {
     "title": "Chip appearance",
-    "hint": "How this group looks on member characters.",
+    "hint": "How this group looks on member characters and hub corridors.",
     "preview": "Preview",
     "backgroundColour": "Background colour",
     "symbolColour": "Symbol colour",
     "borderColour": "Border colour",
+    "corridorHint": "Corridors run from members to the group hub.",
+    "corridorColour": "Corridor colour",
+    "corridorOpacity": "Corridor opacity",
     "done": "Done"
   },
   "imageFocus": {

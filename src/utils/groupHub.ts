@@ -5,13 +5,11 @@ import type {
   Line,
   NodeRef,
   Point,
-  RGB,
 } from "../models/types";
 import { GROUP_HUB_BADGE_RADIUS } from "../models/types";
 
 /** Spoke stroke ≈ slightly larger than the member’s diameter. */
-export const GROUP_SPOKE_WIDTH_FACTOR = 2.2;
-export const GROUP_SPOKE_OPACITY = 0.18;
+export const GROUP_SPOKE_WIDTH_FACTOR = 1.12;
 export const GROUP_HUB_HIT_PADDING = 10;
 
 /**
@@ -78,13 +76,6 @@ export function getGroupHubHitRadius(): number {
 
 export function spokeStrokeWidth(characterSize: number): number {
   return Math.max(characterSize * 2 * GROUP_SPOKE_WIDTH_FACTOR, 8);
-}
-
-export function paleGroupTint(
-  color: RGB,
-  alpha: number = GROUP_SPOKE_OPACITY,
-): string {
-  return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
 }
 
 export function lineInvolvesGroup(line: Line, groupId?: string): boolean {

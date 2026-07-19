@@ -30,7 +30,7 @@ import {
   getFloatingTextSize,
   getPillLabelSize,
 } from "./labelMetrics";
-import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import { getGroupHubPosition } from "./groupHub";
 import { getConnectHandleOffset, CONNECT_HANDLE_SCREEN_RADIUS } from "./connection";
 
 const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
@@ -384,27 +384,12 @@ export function getNodeCenter(
   if (kind === "group") {
     const group = diagram.groups?.find((g) => g.id === id);
     if (!group) return { x: 0, y: 0 };
-    const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
-    // Prefer shared hub helper when available; fall back to member positions.
-    // Inline average avoids a geometry ↔ groupHub import cycle.
-    const byId = new Map(diagram.characters.map((c) => [c.id, c]));
-    let x = 0;
-    let y = 0;
-    let n = 0;
-    for (const memberId of group.memberCharacterIds) {
-      const character = byId.get(memberId);
-      if (!character) continue;
-      const collapsed = diagram.boxes.find(
-        (b) =>
-          b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
-      );
-      const anchor = collapsed?.collapsedPosition ?? character.position;
-      x += anchor.x;
-      y += anchor.y;
-      n += 1;
-    }
-    if (n === 0) return { x: 0, y: 0 };
-    return { x: x / n, y: y / n };
+    return (
+      getGroupHubPosition(group, diagram.characters, diagram.boxes) ?? {
+        x: 0,
+        y: 0,
+      }
+    );
   }
   const box = getBoxById(diagram, id);
   if (!box) return { x: 0, y: 0 };

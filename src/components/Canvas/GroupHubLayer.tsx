@@ -7,6 +7,7 @@ import type {
   Group,
   Line as DiagramLine,
   NodeRef,
+  Point,
   RGB,
 } from "../../models/types";
 import { GROUP_HUB_BADGE_RADIUS, rgbToCss } from "../../models/types";
@@ -14,7 +15,7 @@ import { MembershipChip } from "./MembershipChips";
 import { ConnectHandle } from "./ConnectHandle";
 import { getConnectHandleOffset } from "../../utils/connection";
 import {
-  getGroupCentroid,
+  getGroupHubPosition,
   getGroupMemberAnchors,
   shouldShowGroupHub,
   spokeStrokeWidth,
@@ -25,6 +26,7 @@ import {
   setMembershipChipTooltip,
 } from "../../utils/membershipChipTooltip";
 import { useDiagramStore } from "../../store/diagramStore";
+import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 
 interface GroupHubLayerProps {
   groups: Group[];
@@ -54,6 +56,8 @@ export function GroupHubLayer({
   isConnectSource,
 }: GroupHubLayerProps) {
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
+  const toolMode = useDiagramStore((s) => s.toolMode);
+  const connectDrag = useDiagramStore((s) => s.connectDrag);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
 
   return (
@@ -69,8 +73,8 @@ export function GroupHubLayer({
         ) {
           return null;
         }
-        const centroid = getGroupCentroid(group, characters, boxes);
-        if (!centroid) return null;
+        const hub = getGroupHubPosition(group, characters, boxes);
+        if (!hub) return null;
 
         const selected = selectedGroupId === group.id;
         const connectSource = isConnectSource({
@@ -80,18 +84,23 @@ export function GroupHubLayer({
         const showConnect =
           selected || hoveredGroupId === group.id || connectSource;
         const handleOffset = getConnectHandleOffset(GROUP_HUB_BADGE_RADIUS);
+        const draggable =
+          toolMode !== "exportBounds" &&
+          toolMode !== "editGroupMembers" &&
+          !connectDrag;
 
         return (
           <GroupHubNode
             key={group.id}
             group={group}
             members={members}
-            centroid={centroid}
+            hub={hub}
             selected={selected}
             showConnect={showConnect}
             connectSource={connectSource}
             handleOffset={handleOffset}
             viewportScale={viewportScale}
+            draggable={draggable}
             onHoverChange={(hovered) =>
               setHoveredGroupId((current) =>
                 hovered ? group.id : current === group.id ? null : current,
@@ -111,14 +120,14 @@ export function GroupHubLayer({
 function GroupSpokeCorridors({
   groupId,
   members,
-  centroid,
+  hub,
   color,
   opacity,
   viewportScale,
 }: {
   groupId: string;
   members: { character: Character; anchor: { x: number; y: number } }[];
-  centroid: { x: number; y: number };
+  hub: Point;
   color: RGB;
   opacity: number;
   viewportScale: number;
@@ -132,28 +141,23 @@ function GroupSpokeCorridors({
           `${character.id}:${anchor.x.toFixed(1)},${anchor.y.toFixed(1)},${character.size}`,
       )
       .join("|") +
-    `|${centroid.x.toFixed(1)},${centroid.y.toFixed(1)}|${stroke}|${opacity.toFixed(3)}`;
+    `|${hub.x.toFixed(1)},${hub.y.toFixed(1)}|${stroke}|${opacity.toFixed(3)}`;
 
   useLayoutEffect(() => {
     const node = spokesRef.current;
     if (!node) return;
     node.clearCache();
-    // Children draw opaque into the cache; Group.opacity applies when blitting.
     node.cache({
       pixelRatio: Math.min(2, Math.max(1, viewportScale)),
     });
   }, [geometryKey, viewportScale]);
 
   return (
-    <KonvaGroup
-      ref={spokesRef}
-      opacity={opacity}
-      listening={false}
-    >
+    <KonvaGroup ref={spokesRef} opacity={opacity} listening={false}>
       {members.map(({ character, anchor }) => (
         <Line
           key={`${groupId}-spoke-${character.id}`}
-          points={[anchor.x, anchor.y, centroid.x, centroid.y]}
+          points={[anchor.x, anchor.y, hub.x, hub.y]}
           stroke={stroke}
           strokeWidth={spokeStrokeWidth(character.size)}
           lineCap="round"
@@ -168,12 +172,13 @@ function GroupSpokeCorridors({
 function GroupHubNode({
   group,
   members,
-  centroid,
+  hub,
   selected,
   showConnect,
   connectSource,
   handleOffset,
   viewportScale,
+  draggable,
   onHoverChange,
   onSelect,
   onOpenDetails,
@@ -181,20 +186,27 @@ function GroupHubNode({
 }: {
   group: Group;
   members: { character: Character; anchor: { x: number; y: number } }[];
-  centroid: { x: number; y: number };
+  hub: Point;
   selected: boolean;
   showConnect: boolean;
   connectSource: boolean;
   handleOffset: { x: number; y: number };
   viewportScale: number;
+  draggable: boolean;
   onHoverChange: (hovered: boolean) => void;
   onSelect: () => void;
   onOpenDetails: () => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }) {
   const label = group.name.trim();
-  /** Manual double-click: first click may re-render (connect handle); Konva dblclick is unreliable. */
   const lastClickAtRef = useRef(0);
+  const allowDragRef = useRef(false);
+  const clickGuard = useClickWithoutDrag();
+  const updateGroup = useDiagramStore((s) => s.updateGroup);
+  const captureHistory = useDiagramStore((s) => s.captureHistory);
+  /** Live drag position so corridors track before store catches up. */
+  const [dragHub, setDragHub] = useState<Point | null>(null);
+  const hubPos = dragHub ?? hub;
 
   const handleOpenDetails = (
     e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
@@ -208,6 +220,7 @@ function GroupHubNode({
   const handleClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
     if ("button" in e.evt && e.evt.button !== 0) return;
+    if (clickGuard.consumeClickSuppression()) return;
     const now = performance.now();
     if (now - lastClickAtRef.current < 400) {
       handleOpenDetails(e);
@@ -222,22 +235,23 @@ function GroupHubNode({
       <GroupSpokeCorridors
         groupId={group.id}
         members={members}
-        centroid={centroid}
+        hub={hubPos}
         color={group.appearance.corridorColor}
         opacity={group.appearance.corridorOpacity}
         viewportScale={viewportScale}
       />
       <KonvaGroup
-        x={centroid.x}
-        y={centroid.y}
+        x={hubPos.x}
+        y={hubPos.y}
+        draggable={draggable}
         onMouseEnter={() => {
           onHoverChange(true);
           if (!label) return;
           setMembershipChipTooltip({
             id: `hub:${group.id}`,
             text: label,
-            chipX: centroid.x,
-            chipY: centroid.y,
+            chipX: hubPos.x,
+            chipY: hubPos.y,
           });
         }}
         onMouseLeave={() => {
@@ -246,11 +260,45 @@ function GroupHubNode({
             setMembershipChipTooltip(null);
           }
         }}
+        onMouseDown={(e) => {
+          allowDragRef.current = e.evt.button === 0;
+        }}
+        onTouchStart={() => {
+          allowDragRef.current = true;
+        }}
         onClick={handleClick}
         onTap={handleClick}
         onDblClick={handleOpenDetails}
         onDblTap={handleOpenDetails}
         onContextMenu={handleOpenDetails}
+        onDragStart={(e) => {
+          if (!allowDragRef.current) {
+            e.target.stopDrag();
+            return;
+          }
+          clickGuard.noticeDrag();
+          captureHistory();
+          useDiagramStore.setState({ selectionDetailsOpen: false });
+          setMembershipChipTooltip(null);
+        }}
+        onDragMove={(e) => {
+          const pos = { x: e.target.x(), y: e.target.y() };
+          setDragHub(pos);
+          updateGroup(
+            group.id,
+            { hubPosition: pos },
+            { recordHistory: false },
+          );
+        }}
+        onDragEnd={(e) => {
+          const pos = { x: e.target.x(), y: e.target.y() };
+          setDragHub(null);
+          updateGroup(
+            group.id,
+            { hubPosition: pos },
+            { recordHistory: false },
+          );
+        }}
       >
         <MembershipChip
           appearance={group.appearance}

@@ -955,6 +955,16 @@ export function SelectionFloat() {
             </>
           )}
         </div>
+        {group.hubPosition != null && (
+          <button
+            type="button"
+            className="btn-secondary"
+            title={t("selection.resetHubPositionHint")}
+            onClick={() => updateGroup(group.id, { hubPosition: null })}
+          >
+            {t("selection.resetHubPosition")}
+          </button>
+        )}
         <button
           type="button"
           className="btn-danger"

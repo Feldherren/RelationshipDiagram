@@ -21,7 +21,7 @@ import {
   getFloatingTextById,
   resolveBoxBounds,
 } from "./geometry";
-import { getGroupCentroid } from "./groupHub";
+import { getGroupHubPosition } from "./groupHub";
 import { getPillLabelSize } from "./labelMetrics";
 import { getLineDisplayLabel } from "./lineEndpoints";
 import { routeLine } from "./lineRouting";
@@ -211,18 +211,18 @@ export function getSelectionConnectorAnchorWorld(
   if (selection.type === "group") {
     const group = diagram.groups.find((g) => g.id === selection.id);
     if (!group) return null;
-    const centroid = getGroupCentroid(
+    const hub = getGroupHubPosition(
       group,
       diagram.characters,
       diagram.boxes,
     );
-    if (centroid) {
-      const dx = towardWorld.x - centroid.x;
-      const dy = towardWorld.y - centroid.y;
+    if (hub) {
+      const dx = towardWorld.x - hub.x;
+      const dy = towardWorld.y - hub.y;
       const len = Math.hypot(dx, dy) || 1;
       return {
-        x: centroid.x + (dx / len) * GROUP_HUB_BADGE_RADIUS,
-        y: centroid.y + (dy / len) * GROUP_HUB_BADGE_RADIUS,
+        x: hub.x + (dx / len) * GROUP_HUB_BADGE_RADIUS,
+        y: hub.y + (dy / len) * GROUP_HUB_BADGE_RADIUS,
       };
     }
     if (!selection.anchorCharacterId) return null;

@@ -170,6 +170,11 @@ function normalizeDiagram(
         g.appearance as Partial<MembershipAppearance> | undefined,
         { r: 100, g: 140, b: 100 },
       ),
+      ...(g.hubPosition &&
+      typeof g.hubPosition.x === "number" &&
+      typeof g.hubPosition.y === "number"
+        ? { hubPosition: { x: g.hubPosition.x, y: g.hubPosition.y } }
+        : {}),
     })),
     boxes: (data.boxes ?? []).map((b) => ({
       id: b.id,

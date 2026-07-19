@@ -22,6 +22,7 @@
 	- Spokes connect all members of a group, converging at a central point where the group badge sits.
 	- The group badge is a valid target for relationships (and for opening the group details window).
 	- Corridor colour and opacity can be tweaked per group (chip appearance dialog).
+	- The hub badge can be dragged; corridors follow. Reset to member-centre from the group panel.
 	- If all of this is distracting, it can be hidden with a new eye-button near the Groups button.
 - Box double-click now opens the details panel (same as other objects); collapse/expand via a chevron control on the box (or the panel button).
 # v0.5.0

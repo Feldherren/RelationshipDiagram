@@ -3,7 +3,7 @@ import type { Bounds, Box, Character, Group, NodeRef } from "../models/types";
 import { resolveBoxBounds, getCollapsedBoxSquareBounds } from "./geometry";
 import { getCollapsedBoxForCharacter } from "./lineEndpoints";
 import {
-  getGroupCentroid,
+  getGroupHubPosition,
   getGroupHubHitRadius,
 } from "./groupHub";
 
@@ -75,9 +75,9 @@ export function findConnectionTargetAt(
   let bestGroup: { ref: NodeRef; dist: number } | null = null;
   const hubHitRadius = getGroupHubHitRadius();
   for (const group of groups) {
-    const centroid = getGroupCentroid(group, characters, boxes);
-    if (!centroid) continue;
-    const dist = Math.hypot(point.x - centroid.x, point.y - centroid.y);
+    const hub = getGroupHubPosition(group, characters, boxes);
+    if (!hub) continue;
+    const dist = Math.hypot(point.x - hub.x, point.y - hub.y);
     if (dist <= hubHitRadius && (!bestGroup || dist < bestGroup.dist)) {
       bestGroup = { ref: { id: group.id, kind: "group" }, dist };
     }

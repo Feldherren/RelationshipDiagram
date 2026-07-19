@@ -70,6 +70,24 @@ export function getGroupCentroid(
   return { x: x / members.length, y: y / members.length };
 }
 
+/**
+ * Effective hub badge position: manual override if set, otherwise member centroid.
+ */
+export function getGroupHubPosition(
+  group: Group,
+  characters: Character[],
+  boxes: Box[],
+): Point | null {
+  if (group.hubPosition) {
+    return { x: group.hubPosition.x, y: group.hubPosition.y };
+  }
+  return getGroupCentroid(group, characters, boxes);
+}
+
+export function isGroupHubManuallyPlaced(group: Group): boolean {
+  return group.hubPosition != null;
+}
+
 export function getGroupHubHitRadius(): number {
   return GROUP_HUB_BADGE_RADIUS + GROUP_HUB_HIT_PADDING;
 }

@@ -342,7 +342,7 @@
     "colour": "Colour",
     "fontSize": "Font size",
     "deleteText": "Delete text",
-    "groupHint": "Membership chips appear on characters. The hub badge at the members’ centre is the connect target for group relationships.",
+    "groupHint": "Membership chips appear on characters. The hub badge is the connect target for group relationships — drag it to reposition.",
     "chip": "Chip",
     "customiseChip": "Customise chip…",
     "members": "Members ({{count}})",
@@ -351,6 +351,8 @@
     "doneEditingMembers": "Done editing members",
     "membersHintIdle": "Enter edit mode, then click characters on the canvas to toggle membership.",
     "membersHintActive": "Click characters on the canvas to add or remove them.",
+    "resetHubPosition": "Reset hub to centre",
+    "resetHubPositionHint": "Return the badge to the average position of group members.",
     "deleteGroup": "Delete group"
   },
   "help": {

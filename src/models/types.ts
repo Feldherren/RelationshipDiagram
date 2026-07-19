@@ -173,12 +173,15 @@ export function normalizeMembershipAppearance(
 /**
  * Semantic membership group — chips on members plus a connectable centroid hub
  * (badge + pale spokes). Line endpoints may use `kind: "group"`.
+ * Optional `hubPosition` overrides the auto member-centroid for the badge.
  */
 export interface Group {
   id: string;
   name: string;
   memberCharacterIds: string[];
   appearance: MembershipAppearance;
+  /** Manual hub badge position; omit to follow the members’ centroid. */
+  hubPosition?: Point;
 }
 
 /** Organisational region — labelled box, geometric containment, collapse. */

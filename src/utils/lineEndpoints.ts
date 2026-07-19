@@ -11,7 +11,7 @@ import {
   isCharacterContainedInBox,
   isFloatingTextContainedInBox,
 } from "./geometry";
-import { getGroupCentroid } from "./groupHub";
+import { getGroupHubPosition } from "./groupHub";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 export interface ResolvedLineEndpoint {
@@ -130,12 +130,12 @@ export function shouldRenderLine(
       if (ref.kind !== "group") continue;
       const group = groups.find((g) => g.id === ref.id);
       if (!group) return false;
-      const centroid = getGroupCentroid(
+      const hub = getGroupHubPosition(
         group,
         diagram.characters,
         diagram.boxes,
       );
-      if (!centroid) return false;
+      if (!hub) return false;
     }
   }
 

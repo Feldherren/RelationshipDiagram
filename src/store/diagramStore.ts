@@ -209,9 +209,12 @@ interface DiagramState {
   addGroup: (name?: string) => void;
   updateGroup: (
     id: string,
-    patch: Partial<Omit<Group, "appearance">> & {
+    patch: Partial<Omit<Group, "appearance" | "hubPosition">> & {
       appearance?: Partial<Group["appearance"]>;
+      /** Pass `null` to clear a manual hub and return to member centroid. */
+      hubPosition?: Group["hubPosition"] | null;
     },
+    options?: HistoryOptions,
   ) => void;
   deleteGroup: (id: string) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
@@ -894,19 +897,27 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateGroup: (id, patch) => {
-    get().captureHistory();
+  updateGroup: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       groups: s.groups.map((g) => {
         if (g.id !== id) return g;
-        const { appearance: appearancePatch, ...rest } = patch;
-        return {
+        const { appearance: appearancePatch, hubPosition, ...rest } = patch;
+        const next: Group = {
           ...g,
           ...rest,
           appearance: appearancePatch
             ? { ...g.appearance, ...appearancePatch }
             : g.appearance,
         };
+        if ("hubPosition" in patch) {
+          if (hubPosition == null) {
+            delete next.hubPosition;
+          } else {
+            next.hubPosition = { x: hubPosition.x, y: hubPosition.y };
+          }
+        }
+        return next;
       }),
     }));
   },

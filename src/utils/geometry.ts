@@ -103,6 +103,19 @@ export function getFloatingTextBounds(
   };
 }
 
+/** Axis-aligned bounds of the character node body only (no labels / connect handle). */
+export function getCharacterShapeBounds(character: Character): Bounds {
+  const size = character.size || DEFAULT_CHARACTER_SIZE;
+  const { x, y } = character.position;
+  const extent = size + NODE_STROKE_MARGIN;
+  return {
+    x: x - extent,
+    y: y - extent,
+    width: extent * 2,
+    height: extent * 2,
+  };
+}
+
 export function getCharacterBounds(
   character: Character,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
@@ -112,11 +125,12 @@ export function getCharacterBounds(
   const includeConnectHandle = options?.includeConnectHandle !== false;
   const size = character.size || DEFAULT_CHARACTER_SIZE;
   const { x, y } = character.position;
+  const shape = getCharacterShapeBounds(character);
 
-  let minX = x - size - NODE_STROKE_MARGIN;
-  let maxX = x + size + NODE_STROKE_MARGIN;
-  let minY = y - size - NODE_STROKE_MARGIN;
-  let maxY = y + size + NODE_STROKE_MARGIN;
+  let minX = shape.x;
+  let maxX = shape.x + shape.width;
+  let minY = shape.y;
+  let maxY = shape.y + shape.height;
 
   if (includeConnectHandle) {
     const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
@@ -260,18 +274,15 @@ export function isPointContainedInBox(point: Point, box: Box): boolean {
   );
 }
 
-/** True when the character circle + labels are fully inside the box. */
+/** True when the character node body (circle/shape) is fully inside the box; labels are ignored. */
 export function isCharacterContainedInBox(
   character: Character,
   box: Box,
-  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  _fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
   const boxBounds = resolveBoxBounds(box);
   if (!boxBounds) return false;
-  const characterBounds = getCharacterBounds(character, fontFamily, 1, {
-    includeConnectHandle: false,
-  });
-  return isBoundsFullyInside(characterBounds, boxBounds);
+  return isBoundsFullyInside(getCharacterShapeBounds(character), boxBounds);
 }
 
 export function getCharactersContainedInBox(

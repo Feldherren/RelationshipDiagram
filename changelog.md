@@ -26,6 +26,7 @@
 	- Groups eye beside the list cycles three modes: all hubs+corridors, connected hubs only (no corridors), or fully hidden.
 - Box double-click now opens the details panel (same as other objects); collapse/expand via a chevron control on the box (or the panel button).
 - Characters are counted as inside a box based on their circle/shape only; labels hanging outside no longer prevent moving with the box.
+- UI theme and diagram theme files now export as .rd-ui-theme and .rd-diagram-theme, and filepickers for both accept these (they still accept older exported JSON files, too).
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

@@ -614,34 +614,90 @@ export function patchDiagramAppearance(
   return next;
 }
 
+/** Discriminator for diagram theme export/import JSON. */
+export const DIAGRAM_THEME_KIND = "diagramTheme" as const;
+export const DIAGRAM_THEME_FILE_EXTENSION = ".rd-diagram-theme";
+export type DiagramThemeKind = typeof DIAGRAM_THEME_KIND;
+
 /** Named diagram appearance theme (prefs / import-export JSON). */
 export interface DiagramThemeDocument {
   id: string;
   name: string;
   schemaVersion: 1;
+  kind: DiagramThemeKind;
   appearance: DiagramAppearance;
 }
+
+export type DiagramThemeDocumentParseResult =
+  | { ok: true; theme: DiagramThemeDocument }
+  | { ok: false; reason: "invalid" | "wrongKind" };
 
 /** Built-in default, or a custom theme id. */
 export type DiagramThemePreference = "default" | string;
 
+export function parseDiagramThemeDocument(
+  raw: unknown,
+): DiagramThemeDocumentParseResult {
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, reason: "invalid" };
+  }
+  const record = raw as Record<string, unknown>;
+  if (record.schemaVersion !== 1) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const kind = record.kind;
+  if (kind === "uiTheme") {
+    return { ok: false, reason: "wrongKind" };
+  }
+  if (kind !== undefined && kind !== DIAGRAM_THEME_KIND) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const hasAppearance =
+    typeof record.appearance === "object" && record.appearance !== null;
+  const hasTokensObject =
+    typeof record.tokens === "object" && record.tokens !== null;
+
+  // Legacy files omit kind; reject dual-payload and treat tokens-only as wrong kind.
+  if (kind === undefined) {
+    if (hasTokensObject && hasAppearance) {
+      return { ok: false, reason: "invalid" };
+    }
+    if (hasTokensObject && !hasAppearance) {
+      return { ok: false, reason: "wrongKind" };
+    }
+  } else if (hasTokensObject) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  if (typeof record.id !== "string" || !record.id.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (typeof record.name !== "string" || !record.name.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (!hasAppearance) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  return {
+    ok: true,
+    theme: {
+      id: record.id.trim(),
+      name: record.name.trim(),
+      schemaVersion: 1,
+      kind: DIAGRAM_THEME_KIND,
+      appearance: resolveDiagramAppearance(record.appearance),
+    },
+  };
+}
+
 export function validateDiagramThemeDocument(
   raw: unknown,
 ): DiagramThemeDocument | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const record = raw as Record<string, unknown>;
-  if (record.schemaVersion !== 1) return null;
-  if (typeof record.id !== "string" || !record.id.trim()) return null;
-  if (typeof record.name !== "string" || !record.name.trim()) return null;
-  if (typeof record.appearance !== "object" || record.appearance === null) {
-    return null;
-  }
-  return {
-    id: record.id.trim(),
-    name: record.name.trim(),
-    schemaVersion: 1,
-    appearance: resolveDiagramAppearance(record.appearance),
-  };
+  const result = parseDiagramThemeDocument(raw);
+  return result.ok ? result.theme : null;
 }
 
 export function diagramThemeDocumentToJson(
@@ -652,6 +708,7 @@ export function diagramThemeDocumentToJson(
       id: theme.id,
       name: theme.name,
       schemaVersion: 1,
+      kind: DIAGRAM_THEME_KIND,
       appearance: cloneDiagramAppearance(theme.appearance),
     },
     null,
@@ -668,6 +725,7 @@ export function createDiagramThemeDocument(
     id,
     name,
     schemaVersion: 1,
+    kind: DIAGRAM_THEME_KIND,
     appearance: cloneDiagramAppearance(appearance),
   };
 }

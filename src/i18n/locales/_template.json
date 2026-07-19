@@ -138,7 +138,8 @@
     "themeExportActiveName": "Active theme",
     "themeRemove": "Remove",
     "themeRemoveConfirm": "Remove custom theme “{{name}}”?",
-    "themeImportInvalid": "That file is not a valid theme (schemaVersion 1 with id, name, and tokens).",
+    "themeImportInvalid": "That file is not a valid theme (schemaVersion 1 with id, name, kind uiTheme, and tokens).",
+    "themeImportWrongKind": "That file is a diagram theme — import it under Diagram Themes.",
     "diagramTheme": "Diagram theme",
     "diagramThemeDefault": "Default",
     "diagramThemeHint": "Default colours for new diagrams. Edit named themes under Diagram Themes.",
@@ -149,7 +150,8 @@
     "diagramThemeExportActive": "Export active diagram theme…",
     "diagramThemeExportActiveName": "Active diagram theme",
     "diagramThemeRemoveConfirm": "Remove diagram theme “{{name}}”?",
-    "diagramThemeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, and appearance).",
+    "diagramThemeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, kind diagramTheme, and appearance).",
+    "diagramThemeImportWrongKind": "That file is a UI theme — import it under UI Themes.",
     "themeEditorSection": "UI Themes",
     "diagramDefaultsSection": "Diagram Themes",
     "themeEditorHint": "Edit a custom theme. Changes preview live in the interface. Light and Dark built-in themes cannot be overwritten — create a custom theme from them instead.",
@@ -303,7 +305,8 @@
     "themeImportedFeedback": "Imported theme “{{name}}”.",
     "themeRemovedFeedback": "Removed theme “{{name}}”.",
     "themeAppliedFeedback": "Applied theme to the current diagram.",
-    "themeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, and appearance)."
+    "themeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, kind diagramTheme, and appearance).",
+    "themeImportWrongKind": "That file is a UI theme — import it under UI Themes."
   },
   "selection": {
     "character": "Character",

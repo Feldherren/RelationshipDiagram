@@ -18,9 +18,10 @@ import { useDiagramStore } from "../../store/diagramStore";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
 import {
   UI_SCALE_OPTIONS,
+  UI_THEME_FILE_EXTENSION,
   createThemeFromCurrentTokens,
+  parseThemeDocument,
   themeDocumentToJson,
-  validateThemeDocument,
   type ThemePreference,
   type UiScale,
 } from "../../utils/uiTheme";
@@ -125,11 +126,18 @@ export function SettingsDialog({
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as unknown;
-      const theme = validateThemeDocument(parsed);
-      if (!theme) {
-        alert(t("appSettings.themeImportInvalid"));
+      const result = parseThemeDocument(parsed);
+      if (!result.ok) {
+        alert(
+          t(
+            result.reason === "wrongKind"
+              ? "appSettings.themeImportWrongKind"
+              : "appSettings.themeImportInvalid",
+          ),
+        );
         return;
       }
+      const theme = result.theme;
       const existing = prefs.customThemes.filter((entry) => entry.id !== theme.id);
       const customThemes = [...existing, theme];
       updatePrefs({
@@ -153,7 +161,10 @@ export function SettingsDialog({
         prefs.themePreference,
         prefs.customThemes,
       );
-    downloadJson(`${theme.id}.json`, themeDocumentToJson(theme));
+    downloadJson(
+      `${theme.id}${UI_THEME_FILE_EXTENSION}`,
+      themeDocumentToJson(theme),
+    );
   };
 
   const handleRemoveTheme = (themeId: string, themeName: string) => {

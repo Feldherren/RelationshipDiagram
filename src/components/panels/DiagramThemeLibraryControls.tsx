@@ -8,12 +8,13 @@ import {
 } from "../../utils/appPreferences";
 import { downloadJson } from "../../utils/downloadJson";
 import {
+  DIAGRAM_THEME_FILE_EXTENSION,
   cloneDiagramAppearance,
   createDiagramThemeDocument,
   diagramThemeDocumentToJson,
+  parseDiagramThemeDocument,
   resolveDiagramThemeAppearance,
   uniqueDiagramThemeId,
-  validateDiagramThemeDocument,
   type DiagramThemeDocument,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
@@ -215,7 +216,7 @@ export function DiagramThemeLibraryControls({
         appearance,
       );
     downloadJson(
-      `${theme.id}.json`,
+      `${theme.id}${DIAGRAM_THEME_FILE_EXTENSION}`,
       diagramThemeDocumentToJson({
         ...theme,
         name,
@@ -228,11 +229,18 @@ export function DiagramThemeLibraryControls({
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as unknown;
-      const theme = validateDiagramThemeDocument(parsed);
-      if (!theme) {
-        setStatus(t("diagramAppearance.themeImportInvalid"));
+      const result = parseDiagramThemeDocument(parsed);
+      if (!result.ok) {
+        setStatus(
+          t(
+            result.reason === "wrongKind"
+              ? "diagramAppearance.themeImportWrongKind"
+              : "diagramAppearance.themeImportInvalid",
+          ),
+        );
         return;
       }
+      const theme = result.theme;
       const prefs = readPrefs();
       const existing = prefs.customDiagramThemes.filter(
         (entry) => entry.id !== theme.id,
@@ -298,7 +306,10 @@ export function DiagramThemeLibraryControls({
       (entry) => entry.id === themeId,
     );
     if (!theme) return;
-    downloadJson(`${theme.id}.json`, diagramThemeDocumentToJson(theme));
+    downloadJson(
+      `${theme.id}${DIAGRAM_THEME_FILE_EXTENSION}`,
+      diagramThemeDocumentToJson(theme),
+    );
   };
 
   const prefs = readPrefs();
@@ -460,7 +471,7 @@ export function DiagramThemeLibraryControls({
         <input
           ref={importInputRef}
           type="file"
-          accept="application/json,.json"
+          accept={`application/json,.json,${DIAGRAM_THEME_FILE_EXTENSION}`}
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];

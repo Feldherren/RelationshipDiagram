@@ -20,7 +20,7 @@
 - Group improvements:
 	- Groups can now have a presence on the canvas beyond just the membership chips on members
 	- Spokes connect all members of a group, converging at a central point where the group badge sits.
-	- The group badge is a valid target for relationships.
+	- The group badge is a valid target for relationships (and for opening the group details window).
 	- Corridor colour and opacity can be tweaked per group (chip appearance dialog).
 	- If all of this is distracting, it can be hidden with a new eye-button near the Groups button.
 # v0.5.0

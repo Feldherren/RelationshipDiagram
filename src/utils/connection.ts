@@ -135,7 +135,19 @@ export function getBoxConnectHandlePosition(bounds: Bounds): Point {
   };
 }
 
+export function getBoxCollapseControlPosition(bounds: Bounds): Point {
+  return {
+    x: bounds.x + 10,
+    y: bounds.y + 14,
+  };
+}
+
 export function getCollapsedBoxConnectHandlePosition(size: number): Point {
   const offset = getConnectHandleOffset(size);
   return { x: offset.x, y: offset.y };
+}
+
+export function getCollapsedBoxCollapseControlPosition(size: number): Point {
+  const offset = getConnectHandleOffset(size);
+  return { x: -offset.x, y: offset.y };
 }

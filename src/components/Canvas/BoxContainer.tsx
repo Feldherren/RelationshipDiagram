@@ -28,9 +28,12 @@ import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 import { isIdInMultiSelection } from "../../utils/selectionMulti";
 import {
   getCollapsedBoxConnectHandlePosition,
+  getCollapsedBoxCollapseControlPosition,
   getBoxConnectHandlePosition,
+  getBoxCollapseControlPosition,
 } from "../../utils/connection";
 import { ConnectHandle } from "./ConnectHandle";
+import { BoxCollapseControl } from "./BoxCollapseControl";
 import {
   RoundedRectAura,
   RoundedRectSelectionPulse,
@@ -187,6 +190,7 @@ export function BoxContainer({
   const showAura = shouldShowAura(hovered, selected);
   const showPulse = selected && selectionPulseEnabled;
   const showConnectHandle = selected || hovered || isConnectSource;
+  const showCollapseControl = selected || hovered;
   const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
   const containedCount = getCharactersContainedInBox(
     box,
@@ -390,6 +394,7 @@ export function BoxContainer({
     const color = rgbToCss(box.borderColor);
     const size = COLLAPSED_BOX_SIZE;
     const connectHandlePos = getCollapsedBoxConnectHandlePosition(size);
+    const collapseControlPos = getCollapsedBoxCollapseControlPosition(size);
 
     return (
       <Group
@@ -399,15 +404,8 @@ export function BoxContainer({
         onMouseLeave={() => setHovered(false)}
         onClick={handleSelectClick}
         onTap={handleSelectClick}
-        onDblClick={(e) => {
-          e.cancelBubble = true;
-          if (e.evt.button !== 0) return;
-          onToggleCollapse();
-        }}
-        onDblTap={(e) => {
-          e.cancelBubble = true;
-          onToggleCollapse();
-        }}
+        onDblClick={handleOpenDetails}
+        onDblTap={handleOpenDetails}
         onContextMenu={handleOpenDetails}
         onMouseDown={(e) => beginMove(e)}
       >
@@ -462,6 +460,15 @@ export function BoxContainer({
           offsetY={11}
           listening={false}
         />
+        {showCollapseControl && (
+          <BoxCollapseControl
+            x={collapseControlPos.x}
+            y={collapseControlPos.y}
+            collapsed
+            viewportScale={viewportScale}
+            onToggle={onToggleCollapse}
+          />
+        )}
         {showConnectHandle && (
           <ConnectHandle
             x={connectHandlePos.x}
@@ -480,6 +487,7 @@ export function BoxContainer({
 
   const color = rgbToCss(box.borderColor);
   const connectHandlePos = getBoxConnectHandlePosition(bounds);
+  const collapseControlPos = getBoxCollapseControlPosition(bounds);
   const showBackground = part === "full" || part === "background";
   const showForeground = part === "full" || part === "foreground";
 
@@ -489,15 +497,8 @@ export function BoxContainer({
       onMouseLeave={() => setHovered(false)}
       onClick={handleSelectClick}
       onTap={handleSelectClick}
-      onDblClick={(e) => {
-        e.cancelBubble = true;
-        if (e.evt.button !== 0) return;
-        onToggleCollapse();
-      }}
-      onDblTap={(e) => {
-        e.cancelBubble = true;
-        onToggleCollapse();
-      }}
+      onDblClick={handleOpenDetails}
+      onDblTap={handleOpenDetails}
       onContextMenu={handleOpenDetails}
     >
       {showBackground && showAura && (
@@ -576,14 +577,8 @@ export function BoxContainer({
             }
           }}
           onMouseDown={beginMove}
-          onDblClick={(e) => {
-            e.cancelBubble = true;
-            onToggleCollapse();
-          }}
-          onDblTap={(e) => {
-            e.cancelBubble = true;
-            onToggleCollapse();
-          }}
+          onDblClick={handleOpenDetails}
+          onDblTap={handleOpenDetails}
         />
       )}
       {showForeground && (
@@ -596,6 +591,15 @@ export function BoxContainer({
           fill={rgbToCss(boxNameLabel.backgroundColor)}
           unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
           selected={selected}
+        />
+      )}
+      {showForeground && showCollapseControl && (
+        <BoxCollapseControl
+          x={collapseControlPos.x}
+          y={collapseControlPos.y}
+          collapsed={false}
+          viewportScale={viewportScale}
+          onToggle={onToggleCollapse}
         />
       )}
       {showForeground && showConnectHandle && (

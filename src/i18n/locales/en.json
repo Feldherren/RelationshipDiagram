@@ -335,7 +335,7 @@
     "containedCount": "{{count}} character(s) fully inside",
     "expandBox": "Expand box",
     "collapseBox": "Collapse box",
-    "collapseHint": "Double-click box on canvas to toggle collapse.",
+    "collapseHint": "Click the collapse control on the box to toggle.",
     "deleteBox": "Delete box",
     "textField": "Text",
     "textPlaceholder": "Text\nSecond line",

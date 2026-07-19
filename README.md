@@ -86,13 +86,13 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
 | Select an item | Single-click it (highlights without opening the panel) |
-| Edit properties | Double-click or right-click an item to open its floating panel (boxes: right-click, since double-click collapses); or select it and press **Enter** |
+| Edit properties | Double-click or right-click an item to open its floating panel; or select it and press **Enter** |
 | Browse groups | **Groups** in the lower left |
 | Assign group membership | **Groups** (lower left) → **Edit members**, or select a group → **Edit members on canvas** |
 | Highlight / edit group | Click a membership chip, or pick a group from **Groups** — members stay prominent; edit in the floating panel |
 | Customise group chip | Select a group → **Customise chip…** in the floating panel |
 | Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |
-| Collapse box | Double-click the box, or use **Collapse box** in the floating panel |
+| Collapse box | Click the collapse control on the box, or use **Collapse box** in the floating panel |
 | Delete | Select an item → **Delete** key |
 | Save / Open | **Save** / **Open** (`.rdiagram` JSON files) |
 | Export PNG | **Export** — auto content bounds or draw a custom region |

@@ -40,6 +40,8 @@ export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
 export const HOVER_AURA_NODE_NAME = "diagram-hover-aura";
 export const SELECTION_PILL_NODE_NAME = "diagram-selection-pill";
 export const EXPORT_CONNECT_HANDLE_NODE_NAME = "diagram-connect-handle";
+export const EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME =
+  "diagram-box-collapse-control";
 export const BACKGROUND_IMAGE_HANDLE_NODE_NAME =
   "diagram-background-image-handle";
 
@@ -66,6 +68,11 @@ function suppressExportUi(layer: KonvaLib.Layer): ExportUiRestoreState[] {
   }
 
   for (const node of layer.find(`.${EXPORT_CONNECT_HANDLE_NODE_NAME}`)) {
+    restored.push({ node, visible: node.visible() });
+    node.visible(false);
+  }
+
+  for (const node of layer.find(`.${EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME}`)) {
     restored.push({ node, visible: node.visible() });
     node.visible(false);
   }

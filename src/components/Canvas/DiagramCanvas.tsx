@@ -743,7 +743,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             visibility={groupVisibilityCtx}
             selectedGroupId={highlightedGroupId}
             onSelectGroup={(groupId) =>
-              setSelection({ type: "group", id: groupId })
+              setSelection({ type: "group", id: groupId }, { openDetails: false })
             }
             onOpenDetails={(groupId) =>
               setSelection(

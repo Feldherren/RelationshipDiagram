@@ -25,7 +25,6 @@ import {
   setMembershipChipTooltip,
 } from "../../utils/membershipChipTooltip";
 import { useDiagramStore } from "../../store/diagramStore";
-import { useClickWithoutDrag } from "../../hooks/useClickWithoutDrag";
 
 interface GroupHubLayerProps {
   groups: Group[];
@@ -193,8 +192,30 @@ function GroupHubNode({
   onOpenDetails: () => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }) {
-  const clickGuard = useClickWithoutDrag();
   const label = group.name.trim();
+  /** Manual double-click: first click may re-render (connect handle); Konva dblclick is unreliable. */
+  const lastClickAtRef = useRef(0);
+
+  const handleOpenDetails = (
+    e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => {
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    lastClickAtRef.current = 0;
+    onOpenDetails();
+  };
+
+  const handleClick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    e.cancelBubble = true;
+    if ("button" in e.evt && e.evt.button !== 0) return;
+    const now = performance.now();
+    if (now - lastClickAtRef.current < 400) {
+      handleOpenDetails(e);
+      return;
+    }
+    lastClickAtRef.current = now;
+    onSelect();
+  };
 
   return (
     <KonvaGroup>
@@ -225,24 +246,11 @@ function GroupHubNode({
             setMembershipChipTooltip(null);
           }
         }}
-        onMouseDown={clickGuard.onMouseDown}
-        onClick={(e) => {
-          e.cancelBubble = true;
-          if (!clickGuard.shouldCountAsClick()) return;
-          onSelect();
-        }}
-        onTap={(e) => {
-          e.cancelBubble = true;
-          onSelect();
-        }}
-        onDblClick={(e) => {
-          e.cancelBubble = true;
-          onOpenDetails();
-        }}
-        onDblTap={(e) => {
-          e.cancelBubble = true;
-          onOpenDetails();
-        }}
+        onClick={handleClick}
+        onTap={handleClick}
+        onDblClick={handleOpenDetails}
+        onDblTap={handleOpenDetails}
+        onContextMenu={handleOpenDetails}
       >
         <MembershipChip
           appearance={group.appearance}

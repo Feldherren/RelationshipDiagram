@@ -60,8 +60,9 @@
     "empty": "No groups yet.",
     "editMembersTooltip": "Add or remove members on canvas",
     "editMembersAria": "Add or remove members of {{name}}",
-    "showChrome": "Show group hubs and spokes",
-    "hideChrome": "Hide group hubs and spokes"
+    "canvasModeFull": "Show all group hubs and corridors",
+    "canvasModeConnected": "Connected hubs only (no corridors)",
+    "canvasModeHidden": "Hide group hubs"
   },
   "export": {
     "title": "Export diagram",

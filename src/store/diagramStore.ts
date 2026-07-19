@@ -92,6 +92,7 @@ import {
 import { computeDiagramBounds } from "../utils/diagramBounds";
 import { computeViewportForBounds } from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
+import type { GroupsCanvasMode } from "../utils/groupHub";
 
 interface HistoryOptions {
   recordHistory?: boolean;
@@ -106,8 +107,8 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
-  /** Whether group hubs, spokes, and group-linked lines show on the canvas. */
-  groupsVisible: boolean;
+  /** Group hub eye: full hubs+corridors, connected badges only, or hidden. */
+  groupsCanvasMode: GroupsCanvasMode;
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
@@ -165,7 +166,7 @@ interface DiagramState {
   ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
-  setGroupsVisible: (visible: boolean) => void;
+  setGroupsCanvasMode: (mode: GroupsCanvasMode) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
   setLineLabelContrastWithBackground: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
@@ -347,7 +348,7 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
-  groupsVisible: true,
+  groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
   selection: null,
@@ -710,7 +711,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       autosaveEnabled: prefs.autosaveEnabled,
       bookmarksVisible: prefs.bookmarksVisible,
-      groupsVisible: prefs.groupsVisible,
+      groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
     });
@@ -1264,9 +1265,9 @@ export const useDiagramStore = create<DiagramState>()(
     setAppPreferences({ bookmarksVisible: visible });
   },
 
-  setGroupsVisible: (visible) => {
-    set({ groupsVisible: visible });
-    setAppPreferences({ groupsVisible: visible });
+  setGroupsCanvasMode: (mode) => {
+    set({ groupsCanvasMode: mode });
+    setAppPreferences({ groupsCanvasMode: mode });
   },
 
   setSelectionPulseEnabled: (enabled) => {

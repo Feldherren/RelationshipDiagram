@@ -23,7 +23,7 @@
 	- The group badge is a valid target for relationships (and for opening the group details window).
 	- Corridor colour and opacity can be tweaked per group (chip appearance dialog).
 	- The hub badge can be dragged; corridors follow. Reset to member-centre from the group panel.
-	- If all of this is distracting, it can be hidden with a new eye-button near the Groups button.
+	- Groups eye beside the list cycles three modes: all hubs+corridors, connected hubs only (no corridors), or fully hidden.
 - Box double-click now opens the details panel (same as other objects); collapse/expand via a chevron control on the box (or the panel button).
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.

@@ -122,7 +122,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     toolMode,
     connectFrom,
     connectDrag,
-    groupsVisible,
+    groupsCanvasMode,
     showGrid,
     exportBounds,
     diagramBackgroundColor,
@@ -154,7 +154,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
       connectDrag: s.connectDrag,
-      groupsVisible: s.groupsVisible,
+      groupsCanvasMode: s.groupsCanvasMode,
       showGrid: s.showGrid,
       exportBounds: s.exportBounds,
       diagramBackgroundColor: s.diagramBackgroundColor,
@@ -282,7 +282,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const groupVisibilityCtx: GroupCanvasVisibilityContext = useMemo(
     () => ({
-      groupsVisible,
+      groupsCanvasMode,
       selectedGroupId: highlightedGroupId,
       toolMode,
       connectFrom,
@@ -290,7 +290,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       lines,
     }),
     [
-      groupsVisible,
+      groupsCanvasMode,
       highlightedGroupId,
       toolMode,
       connectFrom,

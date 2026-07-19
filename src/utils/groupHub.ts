@@ -106,8 +106,33 @@ export function lineInvolvesGroup(line: Line, groupId?: string): boolean {
   return line.from.kind === "group" || line.to.kind === "group";
 }
 
+/** Canvas eye for group hubs: all / connected-only / none. */
+export type GroupsCanvasMode = "full" | "connected" | "hidden";
+
+export function isGroupsCanvasMode(value: unknown): value is GroupsCanvasMode {
+  return value === "full" || value === "connected" || value === "hidden";
+}
+
+/** Migrate prefs: prefer `groupsCanvasMode`, else legacy `groupsVisible` boolean. */
+export function parseGroupsCanvasMode(
+  modeValue: unknown,
+  legacyVisible?: unknown,
+): GroupsCanvasMode {
+  if (isGroupsCanvasMode(modeValue)) return modeValue;
+  if (typeof legacyVisible === "boolean") {
+    return legacyVisible ? "full" : "hidden";
+  }
+  return "full";
+}
+
+export function cycleGroupsCanvasMode(mode: GroupsCanvasMode): GroupsCanvasMode {
+  if (mode === "full") return "connected";
+  if (mode === "connected") return "hidden";
+  return "full";
+}
+
 export interface GroupCanvasVisibilityContext {
-  groupsVisible: boolean;
+  groupsCanvasMode: GroupsCanvasMode;
   selectedGroupId: string | null;
   toolMode: string;
   connectFrom: NodeRef | null;
@@ -142,33 +167,53 @@ function isGroupForceVisible(
   return false;
 }
 
+function groupHasLines(groupId: string, lines: Line[]): boolean {
+  return lines.some((line) => lineInvolvesGroup(line, groupId));
+}
+
 /**
- * Centroid hub + spokes. Membership chips are not gated by `groupsVisible`.
- * Eye open: show hubs for every group that has members.
- * Eye closed: hide hubs except while selected/editing that group, or while
- * connecting (so group endpoints stay targetable).
+ * Corridor spokes. Full mode: all membered groups. Otherwise only force-visible
+ * / connecting exceptions (never in connected/hidden for idle groups).
  */
-export function shouldShowGroupHub(
+export function shouldShowGroupHubSpokes(
   groupId: string,
   ctx: GroupCanvasVisibilityContext & { hasMembers: boolean },
 ): boolean {
   if (!ctx.hasMembers) return false;
-  if (ctx.groupsVisible) return true;
+  if (ctx.groupsCanvasMode === "full") return true;
   if (isGroupForceVisible(groupId, ctx)) return true;
   return isConnecting(ctx);
 }
 
-/** Hide relationship lines that touch a group when group chrome is decluttered. */
+/**
+ * Hub badge. Full: all with members. Connected: only groups with lines.
+ * Hidden: force-visible / connecting only.
+ */
+export function shouldShowGroupHubBadge(
+  groupId: string,
+  ctx: GroupCanvasVisibilityContext & { hasMembers: boolean },
+): boolean {
+  if (!ctx.hasMembers) return false;
+  if (isGroupForceVisible(groupId, ctx)) return true;
+  if (isConnecting(ctx)) return true;
+  if (ctx.groupsCanvasMode === "full") return true;
+  if (ctx.groupsCanvasMode === "connected") {
+    return groupHasLines(groupId, ctx.lines);
+  }
+  return false;
+}
+
+/** Group-linked lines: hidden only in hidden mode (unless edit/connect exceptions). */
 export function shouldShowGroupLine(
   line: Line,
   ctx: GroupCanvasVisibilityContext,
 ): boolean {
   if (!lineInvolvesGroup(line)) return true;
-  if (ctx.groupsVisible) return true;
   const groupIds = [line.from, line.to]
     .filter((ref) => ref.kind === "group")
     .map((ref) => ref.id);
   if (groupIds.some((id) => isGroupForceVisible(id, ctx))) return true;
-  // While connecting, keep group lines visible so the graph stays coherent.
-  return isConnecting(ctx);
+  if (isConnecting(ctx)) return true;
+  if (ctx.groupsCanvasMode === "hidden") return false;
+  return true;
 }

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { rgbToCss } from "../../models/types";
-import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
+import {
+  EyeOpenIcon,
+  EyeHalfIcon,
+  EyeClosedIcon,
+} from "../icons/EyeIcon";
+import { cycleGroupsCanvasMode } from "../../utils/groupHub";
 
 export function GroupsListPopup() {
   const { t } = useTranslation();
@@ -10,8 +15,8 @@ export function GroupsListPopup() {
   const rootRef = useRef<HTMLDivElement>(null);
   const selection = useDiagramStore((s) => s.selection);
   const groups = useDiagramStore((s) => s.groups);
-  const groupsVisible = useDiagramStore((s) => s.groupsVisible);
-  const setGroupsVisible = useDiagramStore((s) => s.setGroupsVisible);
+  const groupsCanvasMode = useDiagramStore((s) => s.groupsCanvasMode);
+  const setGroupsCanvasMode = useDiagramStore((s) => s.setGroupsCanvasMode);
   const addGroup = useDiagramStore((s) => s.addGroup);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
@@ -59,6 +64,13 @@ export function GroupsListPopup() {
     setToolMode("editGroupMembers");
     setOpen(false);
   };
+
+  const modeLabel =
+    groupsCanvasMode === "full"
+      ? t("groups.canvasModeFull")
+      : groupsCanvasMode === "connected"
+        ? t("groups.canvasModeConnected")
+        : t("groups.canvasModeHidden");
 
   return (
     <div className="groups-list-anchor" ref={rootRef}>
@@ -148,21 +160,20 @@ export function GroupsListPopup() {
         <button
           type="button"
           className={
-            groupsVisible
+            groupsCanvasMode !== "hidden"
               ? "groups-visibility-toggle active"
               : "groups-visibility-toggle"
           }
-          title={
-            groupsVisible ? t("groups.hideChrome") : t("groups.showChrome")
+          title={modeLabel}
+          aria-label={modeLabel}
+          onClick={() =>
+            setGroupsCanvasMode(cycleGroupsCanvasMode(groupsCanvasMode))
           }
-          aria-label={
-            groupsVisible ? t("groups.hideChrome") : t("groups.showChrome")
-          }
-          aria-pressed={groupsVisible}
-          onClick={() => setGroupsVisible(!groupsVisible)}
         >
-          {groupsVisible ? (
+          {groupsCanvasMode === "full" ? (
             <EyeOpenIcon className="groups-visibility-icon" size={18} />
+          ) : groupsCanvasMode === "connected" ? (
+            <EyeHalfIcon className="groups-visibility-icon" size={18} />
           ) : (
             <EyeClosedIcon className="groups-visibility-icon" size={18} />
           )}

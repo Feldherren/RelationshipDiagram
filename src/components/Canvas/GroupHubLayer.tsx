@@ -17,7 +17,8 @@ import { getConnectHandleOffset } from "../../utils/connection";
 import {
   getGroupHubPosition,
   getGroupMemberAnchors,
-  shouldShowGroupHub,
+  shouldShowGroupHubBadge,
+  shouldShowGroupHubSpokes,
   spokeStrokeWidth,
   type GroupCanvasVisibilityContext,
 } from "../../utils/groupHub";
@@ -64,18 +65,15 @@ export function GroupHubLayer({
     <KonvaGroup listening>
       {groups.map((group) => {
         const members = getGroupMemberAnchors(group, characters, boxes);
-        if (
-          !shouldShowGroupHub(group.id, {
-            ...visibility,
-            lines,
-            hasMembers: members.length > 0,
-          })
-        ) {
-          return null;
-        }
+        const hasMembers = members.length > 0;
+        const vis = { ...visibility, lines, hasMembers };
+        const showBadge = shouldShowGroupHubBadge(group.id, vis);
+        if (!showBadge) return null;
+
         const hub = getGroupHubPosition(group, characters, boxes);
         if (!hub) return null;
 
+        const showSpokes = shouldShowGroupHubSpokes(group.id, vis);
         const selected = selectedGroupId === group.id;
         const connectSource = isConnectSource({
           id: group.id,
@@ -95,6 +93,7 @@ export function GroupHubLayer({
             group={group}
             members={members}
             hub={hub}
+            showSpokes={showSpokes}
             selected={selected}
             showConnect={showConnect}
             connectSource={connectSource}
@@ -173,6 +172,7 @@ function GroupHubNode({
   group,
   members,
   hub,
+  showSpokes,
   selected,
   showConnect,
   connectSource,
@@ -187,6 +187,7 @@ function GroupHubNode({
   group: Group;
   members: { character: Character; anchor: { x: number; y: number } }[];
   hub: Point;
+  showSpokes: boolean;
   selected: boolean;
   showConnect: boolean;
   connectSource: boolean;
@@ -232,14 +233,16 @@ function GroupHubNode({
 
   return (
     <KonvaGroup>
-      <GroupSpokeCorridors
-        groupId={group.id}
-        members={members}
-        hub={hubPos}
-        color={group.appearance.corridorColor}
-        opacity={group.appearance.corridorOpacity}
-        viewportScale={viewportScale}
-      />
+      {showSpokes && (
+        <GroupSpokeCorridors
+          groupId={group.id}
+          members={members}
+          hub={hubPos}
+          color={group.appearance.corridorColor}
+          opacity={group.appearance.corridorOpacity}
+          viewportScale={viewportScale}
+        />
+      )}
       <KonvaGroup
         x={hubPos.x}
         y={hubPos.y}

@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { getAppPreferences } from "../../utils/appPreferences";
 import {
+  BUILT_IN_DIAGRAM_THEME_IDS,
+  builtInDiagramThemeLabelKey,
   resolveDiagramThemeAppearance,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
@@ -118,9 +120,11 @@ export function DiagramPropertiesDialog({
               <option value="" disabled>
                 {t("diagramProperties.applyThemePlaceholder")}
               </option>
-              <option value="default">
-                {t("appSettings.diagramThemeDefault")}
-              </option>
+              {BUILT_IN_DIAGRAM_THEME_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {t(builtInDiagramThemeLabelKey(id))}
+                </option>
+              ))}
               {prefs.customDiagramThemes.map((theme) => (
                 <option key={theme.id} value={theme.id}>
                   {theme.name}

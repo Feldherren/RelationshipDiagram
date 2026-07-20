@@ -112,6 +112,80 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   diagramSubtitleLabel: defaultDiagramSubtitleLabel(),
 };
 
+/** Built-in Default (Dark) diagram appearance. */
+export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
+  backgroundMode: "grid",
+  backgroundColor: { r: 1, g: 28, b: 55 },
+  backgroundImageData: null,
+  backgroundImagePlacement: DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
+  backgroundImageOffset: { ...DEFAULT_BACKGROUND_IMAGE_OFFSET },
+  backgroundGridColor: { r: 5, g: 82, b: 158 },
+  defaultLineColor: { r: 255, g: 255, b: 255 },
+  defaultCharacterBorderColor: { r: 236, g: 229, b: 255 },
+  characterPlaceholderFill: { r: 51, g: 51, b: 82 },
+  characterInitialsColor: { r: 255, g: 255, b: 255 },
+  defaultBoxBorderColor: { r: 147, g: 199, b: 246 },
+  defaultFloatingTextColor: { r: 255, g: 255, b: 255 },
+  characterNameLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  characterSubtitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  lineLabel: {
+    textColor: { r: 31, g: 31, b: 31 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  boxNameLabel: {
+    textColor: { r: 31, g: 31, b: 31 },
+    backgroundColor: { r: 255, g: 255, b: 255 },
+    borderColor: { r: 208, g: 208, b: 208 },
+  },
+  diagramTitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  diagramSubtitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+};
+
+export const BUILT_IN_DIAGRAM_THEME_IDS = ["default", "default-dark"] as const;
+
+export type BuiltInDiagramThemeId = (typeof BUILT_IN_DIAGRAM_THEME_IDS)[number];
+
+export const BUILT_IN_DIAGRAM_THEMES: Record<
+  BuiltInDiagramThemeId,
+  DiagramAppearance
+> = {
+  default: DEFAULT_DIAGRAM_APPEARANCE,
+  "default-dark": DEFAULT_DARK_DIAGRAM_APPEARANCE,
+};
+
+export function isBuiltInDiagramThemeId(
+  value: string,
+): value is BuiltInDiagramThemeId {
+  return value === "default" || value === "default-dark";
+}
+
+/** i18n key for a built-in diagram theme’s display name. */
+export function builtInDiagramThemeLabelKey(
+  id: BuiltInDiagramThemeId,
+): "appSettings.diagramThemeDefault" | "appSettings.diagramThemeDefaultDark" {
+  return id === "default-dark"
+    ? "appSettings.diagramThemeDefaultDark"
+    : "appSettings.diagramThemeDefault";
+}
+
 function isRgb(value: unknown): value is RGB {
   if (!value || typeof value !== "object") return false;
   const color = value as RGB;
@@ -632,8 +706,8 @@ export type DiagramThemeDocumentParseResult =
   | { ok: true; theme: DiagramThemeDocument }
   | { ok: false; reason: "invalid" | "wrongKind" };
 
-/** Built-in default, or a custom theme id. */
-export type DiagramThemePreference = "default" | string;
+/** Built-in theme id, or a custom theme id. */
+export type DiagramThemePreference = BuiltInDiagramThemeId | string;
 
 export function parseDiagramThemeDocument(
   raw: unknown,
@@ -734,15 +808,15 @@ export function resolveDiagramThemeAppearance(
   preference: DiagramThemePreference,
   customThemes: readonly DiagramThemeDocument[],
 ): DiagramAppearance {
-  if (preference === "default") {
-    return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
+  if (isBuiltInDiagramThemeId(preference)) {
+    return cloneDiagramAppearance(BUILT_IN_DIAGRAM_THEMES[preference]);
   }
   const custom = customThemes.find((theme) => theme.id === preference);
   if (custom) return cloneDiagramAppearance(custom.appearance);
   return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
 }
 
-function slugifyDiagramThemeId(name: string): string {
+export function slugifyDiagramThemeId(name: string): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -756,9 +830,11 @@ export function uniqueDiagramThemeId(
 ): string {
   const base = slugifyDiagramThemeId(name);
   const used = new Set(existing.map((theme) => theme.id));
-  if (!used.has(base) && base !== "default") return base;
+  if (!used.has(base) && !isBuiltInDiagramThemeId(base)) return base;
   let n = 2;
-  while (used.has(`${base}-${n}`) || `${base}-${n}` === "default") n += 1;
+  while (used.has(`${base}-${n}`) || isBuiltInDiagramThemeId(`${base}-${n}`)) {
+    n += 1;
+  }
   return `${base}-${n}`;
 }
 

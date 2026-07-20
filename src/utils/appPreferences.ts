@@ -7,6 +7,7 @@ import {
 import {
   cloneDiagramAppearance,
   DEFAULT_DIAGRAM_APPEARANCE,
+  isBuiltInDiagramThemeId,
   resolveDiagramAppearance,
   validateDiagramThemeDocument,
   type DiagramThemeDocument,
@@ -148,7 +149,7 @@ function parseCustomDiagramThemes(value: unknown): DiagramThemeDocument[] {
   const seen = new Set<string>();
   for (const entry of value) {
     const theme = validateDiagramThemeDocument(entry);
-    if (!theme || theme.id === "default" || seen.has(theme.id)) continue;
+    if (!theme || isBuiltInDiagramThemeId(theme.id) || seen.has(theme.id)) continue;
     seen.add(theme.id);
     themes.push(theme);
   }
@@ -219,7 +220,7 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       : defaults.diagramThemePreference;
 
   if (
-    diagramThemePreference !== "default" &&
+    !isBuiltInDiagramThemeId(diagramThemePreference) &&
     !customDiagramThemes.some((theme) => theme.id === diagramThemePreference)
   ) {
     diagramThemePreference = defaults.diagramThemePreference;

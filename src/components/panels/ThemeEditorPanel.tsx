@@ -346,6 +346,26 @@ export function ThemeEditorPanel({
         />
       </label>
 
+      <div className="theme-editor-actions">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!dirty}
+          onClick={handleSave}
+        >
+          {t("appSettings.themeEditorSave")}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={!dirty}
+          onClick={handleRevert}
+        >
+          {t("appSettings.themeEditorRevert")}
+        </button>
+      </div>
+      {dirty && <p className="hint">{t("appSettings.themeEditorUnsaved")}</p>}
+
       <fieldset className="theme-editor-group">
         <legend>{t("appSettings.tokenGroupTypography")}</legend>
         <div className="field">
@@ -405,26 +425,6 @@ export function ThemeEditorPanel({
           </div>
         </fieldset>
       ))}
-
-      <div className="theme-editor-actions">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!dirty}
-          onClick={handleSave}
-        >
-          {t("appSettings.themeEditorSave")}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={!dirty}
-          onClick={handleRevert}
-        >
-          {t("appSettings.themeEditorRevert")}
-        </button>
-      </div>
-      {dirty && <p className="hint">{t("appSettings.themeEditorUnsaved")}</p>}
     </div>
   );
 }

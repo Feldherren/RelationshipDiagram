@@ -29,6 +29,7 @@
 - UI theme and diagram theme files now export as .rd-ui-theme and .rd-diagram-theme, and filepickers for both accept these (they still accept older exported JSON files, too).
 	- More consistent UI theme and diagram theme editors in Settings.
 	- Added default dark theme.
+	- On first launch (and only first launch), the application picks default (light) or default (dark) for default diagram theme, to match UI theme defaulting to matching system theme; you can change the default diagram theme immediately afterwards and it will behave normally afterwards.
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
 - Connections now indicate from which character to which character they extend.

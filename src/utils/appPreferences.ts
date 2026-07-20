@@ -5,15 +5,18 @@ import {
   type DiagramBackgroundMode,
 } from "./diagramBackground";
 import {
+  BUILT_IN_DIAGRAM_THEMES,
   cloneDiagramAppearance,
   DEFAULT_DIAGRAM_APPEARANCE,
   isBuiltInDiagramThemeId,
   resolveDiagramAppearance,
   validateDiagramThemeDocument,
+  type BuiltInDiagramThemeId,
   type DiagramThemeDocument,
   type DiagramThemePreference,
 } from "./diagramAppearance";
 import {
+  getSystemColorScheme,
   isUiScale,
   validateThemeDocument,
   type ThemeDocument,
@@ -410,16 +413,31 @@ function prefsHaveInlineWallpapers(prefs: AppPreferences): boolean {
   );
 }
 
+/** First-launch defaults: diagram theme matches current system light/dark once. */
+function createFirstLaunchPreferences(): AppPreferences {
+  const builtInId: BuiltInDiagramThemeId =
+    getSystemColorScheme() === "dark" ? "default-dark" : "default";
+  const diagramAppearance = cloneDiagramAppearance(
+    BUILT_IN_DIAGRAM_THEMES[builtInId],
+  );
+  return {
+    ...DEFAULT_APP_PREFERENCES,
+    customThemes: [],
+    customDiagramThemes: [],
+    diagramThemePreference: builtInId,
+    diagramAppearance,
+    defaultBackgroundMode: diagramAppearance.backgroundMode,
+    defaultBackgroundColor: diagramAppearance.backgroundColor,
+  };
+}
+
 function readStoredPreferences(): AppPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return {
-        ...DEFAULT_APP_PREFERENCES,
-        customThemes: [],
-        customDiagramThemes: [],
-        diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
-      };
+      const prefs = createFirstLaunchPreferences();
+      writeStoredPreferences(prefs);
+      return prefs;
     }
     return parseStoredPreferences(JSON.parse(raw));
   } catch {

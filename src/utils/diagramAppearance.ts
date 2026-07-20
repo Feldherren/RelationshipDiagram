@@ -121,12 +121,12 @@ export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
   backgroundImageOffset: { ...DEFAULT_BACKGROUND_IMAGE_OFFSET },
   backgroundGridColor: { r: 5, g: 82, b: 158 },
-  defaultLineColor: { r: 255, g: 255, b: 255 },
+  defaultLineColor: { r: 204, g: 230, b: 255 },
   defaultCharacterBorderColor: { r: 236, g: 229, b: 255 },
   characterPlaceholderFill: { r: 51, g: 51, b: 82 },
   characterInitialsColor: { r: 255, g: 255, b: 255 },
   defaultBoxBorderColor: { r: 147, g: 199, b: 246 },
-  defaultFloatingTextColor: { r: 255, g: 255, b: 255 },
+  defaultFloatingTextColor: { r: 204, g: 230, b: 255 },
   characterNameLabel: {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
@@ -143,8 +143,8 @@ export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
     borderColor: { r: 98, g: 98, b: 147 },
   },
   boxNameLabel: {
-    textColor: { r: 31, g: 31, b: 31 },
-    backgroundColor: { r: 255, g: 255, b: 255 },
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 208, g: 208, b: 208 },
   },
   diagramTitleLabel: {

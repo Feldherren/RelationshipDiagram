@@ -1,11 +1,18 @@
 import type Konva from "konva";
 import KonvaLib from "konva";
-import type { Bounds, GridStyle, RGB } from "../models/types";
+import type {
+  BackgroundImagePlacement,
+  Bounds,
+  Diagram,
+  GridStyle,
+  Point,
+  RGB,
+} from "../models/types";
 import { rgbToCss } from "../models/types";
 import { computeDiagramBounds } from "./diagramBounds";
-import type { Diagram } from "../models/types";
 import { expandBounds, mergeBounds } from "./geometry";
 import { resolveDiagramBackground } from "./diagramBackground";
+import { createBackgroundImageCanvas } from "./backgroundImageStyle";
 import {
   DIAGRAM_SUBTITLE_FONT_SIZE,
   DIAGRAM_TITLE_FONT_SIZE,
@@ -27,10 +34,23 @@ import {
 
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
+export const EXPORT_BACKGROUND_IMAGE_NODE_NAME =
+  "diagram-export-background-image";
 export const EXPORT_GRID_NODE_NAME = "diagram-export-grid";
 export const HOVER_AURA_NODE_NAME = "diagram-hover-aura";
 export const SELECTION_PILL_NODE_NAME = "diagram-selection-pill";
 export const EXPORT_CONNECT_HANDLE_NODE_NAME = "diagram-connect-handle";
+export const EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME =
+  "diagram-box-collapse-control";
+export const BACKGROUND_IMAGE_HANDLE_NODE_NAME =
+  "diagram-background-image-handle";
+
+const EXPORT_BOUNDS_SKIP_NAMES = new Set([
+  GRID_NODE_NAME,
+  EXPORT_BACKGROUND_NODE_NAME,
+  EXPORT_BACKGROUND_IMAGE_NODE_NAME,
+  EXPORT_GRID_NODE_NAME,
+]);
 
 interface ExportUiRestoreState {
   node: Konva.Node;
@@ -48,6 +68,11 @@ function suppressExportUi(layer: KonvaLib.Layer): ExportUiRestoreState[] {
   }
 
   for (const node of layer.find(`.${EXPORT_CONNECT_HANDLE_NODE_NAME}`)) {
+    restored.push({ node, visible: node.visible() });
+    node.visible(false);
+  }
+
+  for (const node of layer.find(`.${EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME}`)) {
     restored.push({ node, visible: node.visible() });
     node.visible(false);
   }
@@ -113,6 +138,11 @@ export interface ExportOptions {
   showGrid?: boolean;
   gridStyle?: GridStyle;
   gridColor?: RGB;
+  /** Wallpaper data URL when exporting an image-mode background. */
+  backgroundImageData?: string | null;
+  backgroundImagePlacement?: BackgroundImagePlacement;
+  backgroundImageScale?: number;
+  backgroundImageOffset?: Point;
   header?: ExportHeaderConfig;
   viewportScale?: number;
 }
@@ -140,7 +170,8 @@ export function getStageContentBounds(
   let result: Bounds | null = null;
 
   for (const child of layer.getChildren()) {
-    if (child.name() === GRID_NODE_NAME || !child.visible()) continue;
+    const name = child.name();
+    if (EXPORT_BOUNDS_SKIP_NAMES.has(name) || !child.visible()) continue;
 
     const rect = child.getClientRect({
       relativeTo: layer,
@@ -187,6 +218,10 @@ export async function exportStageToPng(
     showGrid,
     gridStyle = "lines",
     gridColor = DEFAULT_DIAGRAM_GRID_COLOR,
+    backgroundImageData,
+    backgroundImagePlacement,
+    backgroundImageScale,
+    backgroundImageOffset,
     header,
     viewportScale = 1,
   } = options;
@@ -214,11 +249,14 @@ export async function exportStageToPng(
   const layer = stage.getLayers()[0];
   const tempNodes: KonvaLib.Node[] = [];
   let backgroundRect: KonvaLib.Rect | null = null;
+  let backgroundImageNode: KonvaLib.Image | null = null;
   const existingGrid = layer?.findOne(
     (node: KonvaLib.Node) => node.name() === GRID_NODE_NAME,
   );
   const gridWasVisible = existingGrid?.visible() ?? true;
   let hiddenExportUi: ExportUiRestoreState[] = [];
+  const overlayLayers = stage.getLayers().slice(1);
+  const overlayVisibility = overlayLayers.map((overlay) => overlay.visible());
   const headerLayout =
     header && layer ? layoutExportHeader(crop, header, viewportScale) : null;
 
@@ -227,6 +265,10 @@ export async function exportStageToPng(
 
   if (existingGrid) {
     existingGrid.visible(false);
+  }
+
+  for (const overlay of overlayLayers) {
+    overlay.visible(false);
   }
 
   if (layer) {
@@ -246,6 +288,41 @@ export async function exportStageToPng(
     layer.add(backgroundRect);
     backgroundRect.moveToBottom();
     tempNodes.push(backgroundRect);
+  }
+
+  if (backgroundImageData && layer) {
+    try {
+      const wallpaperCanvas = await createBackgroundImageCanvas(
+        crop.width,
+        crop.height,
+        {
+          imageData: backgroundImageData,
+          placement: backgroundImagePlacement,
+          scale: backgroundImageScale,
+          offset: backgroundImageOffset,
+          worldOrigin: { x: crop.x, y: crop.y },
+        },
+      );
+      if (wallpaperCanvas) {
+        backgroundImageNode = new KonvaLib.Image({
+          x: crop.x,
+          y: crop.y,
+          width: crop.width,
+          height: crop.height,
+          image: wallpaperCanvas,
+          listening: false,
+          name: EXPORT_BACKGROUND_IMAGE_NODE_NAME,
+        });
+        layer.add(backgroundImageNode);
+        backgroundImageNode.moveToBottom();
+        if (backgroundRect) {
+          backgroundImageNode.moveUp();
+        }
+        tempNodes.push(backgroundImageNode);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   if (showGrid && layer) {
@@ -268,8 +345,11 @@ export async function exportStageToPng(
     });
     layer.add(exportGrid);
     exportGrid.moveToBottom();
-    if (backgroundRect) {
+    if (backgroundRect || backgroundImageNode) {
       exportGrid.moveUp();
+      if (backgroundRect && backgroundImageNode) {
+        exportGrid.moveUp();
+      }
     }
     tempNodes.push(exportGrid);
   }
@@ -293,6 +373,9 @@ export async function exportStageToPng(
     if (existingGrid) {
       existingGrid.visible(gridWasVisible);
     }
+    overlayLayers.forEach((overlay, index) => {
+      overlay.visible(overlayVisibility[index] ?? true);
+    });
     restoreExportUi(hiddenExportUi);
     stage.position(position);
     stage.scale(scale);

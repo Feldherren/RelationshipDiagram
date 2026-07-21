@@ -359,6 +359,41 @@ body,
   gap: 0.5rem;
 }
 
+.groups-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.groups-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  cursor: pointer;
+  box-shadow: 0 0.125rem 0.5rem var(--ui-shadow);
+}
+
+.groups-visibility-toggle:hover {
+  background: var(--ui-surface-hover);
+}
+
+.groups-visibility-toggle.active {
+  background: var(--ui-accent);
+  color: var(--ui-accent-text);
+  border-color: var(--ui-accent-hover);
+}
+
+.groups-visibility-icon {
+  display: block;
+}
+
 .viewport-controls-anchor {
   position: absolute;
   left: 0.75rem;
@@ -879,6 +914,22 @@ body,
   flex: 1;
 }
 
+.range-row input[type="number"] {
+  width: 2.5rem;
+  flex-shrink: 0;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.range-row input[type="number"]::-webkit-outer-spin-button,
+.range-row input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .range-end {
   font-size: 0.6875rem;
   color: var(--ui-text-subtle);
@@ -922,6 +973,10 @@ body,
 
 .background-mode-pickers .field:last-child {
   margin-bottom: 0;
+}
+
+.background-mode-pickers .field .btn-secondary {
+  margin-top: 0.5rem;
 }
 
 .background-pattern-preview {

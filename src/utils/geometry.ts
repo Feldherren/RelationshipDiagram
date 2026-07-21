@@ -16,6 +16,7 @@ import {
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   BOX_HEADER_HEIGHT,
   BOX_PADDING,
+  GROUP_HUB_BADGE_RADIUS,
   MIN_BOX_HEIGHT,
   MIN_BOX_WIDTH,
 } from "../models/types";
@@ -29,8 +30,9 @@ import {
   getFloatingTextSize,
   getPillLabelSize,
 } from "./labelMetrics";
-import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import { getGroupHubPosition } from "./groupHub";
 import { getConnectHandleOffset, CONNECT_HANDLE_SCREEN_RADIUS } from "./connection";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
 const PILL_STROKE_MARGIN = 2;
@@ -102,6 +104,19 @@ export function getFloatingTextBounds(
   };
 }
 
+/** Axis-aligned bounds of the character node body only (no labels / connect handle). */
+export function getCharacterShapeBounds(character: Character): Bounds {
+  const size = character.size || DEFAULT_CHARACTER_SIZE;
+  const { x, y } = character.position;
+  const extent = size + NODE_STROKE_MARGIN;
+  return {
+    x: x - extent,
+    y: y - extent,
+    width: extent * 2,
+    height: extent * 2,
+  };
+}
+
 export function getCharacterBounds(
   character: Character,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
@@ -111,11 +126,12 @@ export function getCharacterBounds(
   const includeConnectHandle = options?.includeConnectHandle !== false;
   const size = character.size || DEFAULT_CHARACTER_SIZE;
   const { x, y } = character.position;
+  const shape = getCharacterShapeBounds(character);
 
-  let minX = x - size - NODE_STROKE_MARGIN;
-  let maxX = x + size + NODE_STROKE_MARGIN;
-  let minY = y - size - NODE_STROKE_MARGIN;
-  let maxY = y + size + NODE_STROKE_MARGIN;
+  let minX = shape.x;
+  let maxX = shape.x + shape.width;
+  let minY = shape.y;
+  let maxY = shape.y + shape.height;
 
   if (includeConnectHandle) {
     const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
@@ -259,18 +275,15 @@ export function isPointContainedInBox(point: Point, box: Box): boolean {
   );
 }
 
-/** True when the character circle + labels are fully inside the box. */
+/** True when the character node body (circle/shape) is fully inside the box; labels are ignored. */
 export function isCharacterContainedInBox(
   character: Character,
   box: Box,
-  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  _fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
   const boxBounds = resolveBoxBounds(box);
   if (!boxBounds) return false;
-  const characterBounds = getCharacterBounds(character, fontFamily, 1, {
-    includeConnectHandle: false,
-  });
-  return isBoundsFullyInside(characterBounds, boxBounds);
+  return isBoundsFullyInside(getCharacterShapeBounds(character), boxBounds);
 }
 
 export function getCharactersContainedInBox(
@@ -372,13 +385,23 @@ export function getBoxCenter(box: Box): Point {
 }
 
 export function getNodeCenter(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.position ?? { x: 0, y: 0 };
+  }
+  if (kind === "group") {
+    const group = diagram.groups?.find((g) => g.id === id);
+    if (!group) return { x: 0, y: 0 };
+    return (
+      getGroupHubPosition(group, diagram.characters, diagram.boxes) ?? {
+        x: 0,
+        y: 0,
+      }
+    );
   }
   const box = getBoxById(diagram, id);
   if (!box) return { x: 0, y: 0 };
@@ -386,13 +409,16 @@ export function getNodeCenter(
 }
 
 export function getNodeRadius(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): number {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     return character?.size ?? DEFAULT_CHARACTER_SIZE;
+  }
+  if (kind === "group") {
+    return GROUP_HUB_BADGE_RADIUS;
   }
   const box = getBoxById(diagram, id);
   if (!box) return COLLAPSED_BOX_SIZE;
@@ -495,15 +521,19 @@ export function getBoxEdgePoint(box: Box, toward: Point): Point {
 }
 
 export function getNodeEdgePoint(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
   toward: Point,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): Point {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
     if (!character) return toward;
     return getCharacterEdgePoint(character, toward);
+  }
+  if (kind === "group") {
+    const center = getNodeCenter("group", id, diagram);
+    return circleEdgePoint(center, GROUP_HUB_BADGE_RADIUS, toward);
   }
   const box = getBoxById(diagram, id);
   if (!box) return toward;
@@ -531,10 +561,10 @@ function pointInRegularPolygon(
 }
 
 export function isPointInsideNode(
-  kind: "character" | "box",
+  kind: "character" | "box" | "group",
   id: string,
   point: Point,
-  diagram: Pick<Diagram, "characters" | "boxes">,
+  diagram: Pick<Diagram, "characters" | "boxes" | "groups" | "fontFamily">,
 ): boolean {
   if (kind === "character") {
     const character = getCharacterById(diagram, id);
@@ -553,6 +583,14 @@ export function isPointInsideNode(
       default:
         return Math.hypot(dx, dy) <= size;
     }
+  }
+
+  if (kind === "group") {
+    const center = getNodeCenter("group", id, diagram);
+    return (
+      Math.hypot(point.x - center.x, point.y - center.y) <=
+      GROUP_HUB_BADGE_RADIUS
+    );
   }
 
   const box = getBoxById(diagram, id);

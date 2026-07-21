@@ -1,12 +1,26 @@
-import type { GridStyle, RGB } from "../models/types";
+import type { BackgroundImagePlacement, GridStyle, RGB } from "../models/types";
 import { colorsEqual, rgbToCss, rgbToHex } from "../models/types";
 
 export const DEFAULT_DIAGRAM_BACKGROUND: RGB = { r: 250, g: 251, b: 252 };
 
 export type DiagramBackgroundColor = RGB | null;
 
-/** Canvas background appearance: solid, transparent, or grid overlay variants. */
-export type DiagramBackgroundMode = "plain" | "blank" | "grid" | "dots";
+/** Canvas background appearance: solid, transparent, grid overlay, or image. */
+export type DiagramBackgroundMode =
+  | "plain"
+  | "blank"
+  | "grid"
+  | "dots"
+  | "image";
+
+export const DEFAULT_BACKGROUND_IMAGE_PLACEMENT: BackgroundImagePlacement =
+  "center";
+export const DEFAULT_BACKGROUND_IMAGE_SCALE = 1;
+export const DEFAULT_BACKGROUND_IMAGE_OFFSET = { x: 0, y: 0 };
+export const BACKGROUND_IMAGE_SCALE_MIN = 0.1;
+export const BACKGROUND_IMAGE_SCALE_MAX = 4;
+/** Soft cap for wallpaper uploads (keeps memory / decode cost reasonable). */
+export const BACKGROUND_IMAGE_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Canvas fill presets — paler analogues of GRID_COLOR_PALETTE, plus transparent. */
 export const BACKGROUND_PRESETS: {
@@ -76,6 +90,19 @@ export function getDiagramBackgroundMode(
   return "plain";
 }
 
+/**
+ * Prefer an explicit image mode from appearance; otherwise derive from canvas flags.
+ */
+export function syncBackgroundModeFromCanvasState(
+  preferredMode: DiagramBackgroundMode,
+  showGrid: boolean,
+  gridStyle: GridStyle,
+  backgroundColor: DiagramBackgroundColor,
+): DiagramBackgroundMode {
+  if (preferredMode === "image") return "image";
+  return getDiagramBackgroundMode(showGrid, gridStyle, backgroundColor);
+}
+
 export function applyDiagramBackgroundMode(
   mode: DiagramBackgroundMode,
   currentBackground: DiagramBackgroundColor,
@@ -105,6 +132,12 @@ export function applyDiagramBackgroundMode(
         gridStyle: "dots",
         backgroundColor: currentBackground ?? DEFAULT_DIAGRAM_BACKGROUND,
       };
+    case "image":
+      return {
+        showGrid: false,
+        gridStyle: "lines",
+        backgroundColor: currentBackground ?? DEFAULT_DIAGRAM_BACKGROUND,
+      };
   }
 }
 
@@ -116,4 +149,22 @@ export function backgroundModeUsesGridColour(
   mode: DiagramBackgroundMode,
 ): boolean {
   return mode === "grid" || mode === "dots";
+}
+
+export function backgroundModeUsesImage(mode: DiagramBackgroundMode): boolean {
+  return mode === "image";
+}
+
+export function clampBackgroundImageScale(scale: number): number {
+  if (!Number.isFinite(scale)) return DEFAULT_BACKGROUND_IMAGE_SCALE;
+  return Math.min(
+    BACKGROUND_IMAGE_SCALE_MAX,
+    Math.max(BACKGROUND_IMAGE_SCALE_MIN, scale),
+  );
+}
+
+export function isBackgroundImagePlacement(
+  value: unknown,
+): value is BackgroundImagePlacement {
+  return value === "tile" || value === "center";
 }

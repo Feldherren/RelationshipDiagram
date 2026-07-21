@@ -9,13 +9,20 @@
  *   "id": "my-slate",
  *   "name": "Slate",
  *   "schemaVersion": 1,
+ *   "kind": "uiTheme",
  *   "tokens": {
  *     "--ui-bg": "#1a1d22",
  *     "--ui-surface": "#242830",
  *     "--ui-text": "#eceff4"
  *   }
  * }
+ *
+ * Export extension: `.rd-ui-theme` (legacy `.json` still accepted on import).
  */
+
+export const UI_THEME_KIND = "uiTheme" as const;
+export const UI_THEME_FILE_EXTENSION = ".rd-ui-theme";
+export type UiThemeKind = typeof UI_THEME_KIND;
 
 /** Default chrome font stack (matches previous App.css). */
 export const DEFAULT_UI_FONT =
@@ -68,8 +75,13 @@ export interface ThemeDocument {
   id: string;
   name: string;
   schemaVersion: 1;
+  kind: UiThemeKind;
   tokens: Partial<UiTokenMap>;
 }
+
+export type ThemeDocumentParseResult =
+  | { ok: true; theme: ThemeDocument }
+  | { ok: false; reason: "invalid" | "wrongKind" };
 
 export const LIGHT_THEME_TOKENS: UiTokenMap = {
   "--ui-font-family": DEFAULT_UI_FONT,
@@ -211,25 +223,72 @@ export function applyAppearance(
   root.dataset.uiThemePreference = preference;
 }
 
-export function validateThemeDocument(raw: unknown): ThemeDocument | null {
-  if (typeof raw !== "object" || raw === null) return null;
+export function parseThemeDocument(raw: unknown): ThemeDocumentParseResult {
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, reason: "invalid" };
+  }
   const record = raw as Record<string, unknown>;
-  if (record.schemaVersion !== 1) return null;
-  if (typeof record.id !== "string" || !record.id.trim()) return null;
-  if (typeof record.name !== "string" || !record.name.trim()) return null;
-  if (typeof record.tokens !== "object" || record.tokens === null) return null;
+  if (record.schemaVersion !== 1) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const kind = record.kind;
+  if (kind === "diagramTheme") {
+    return { ok: false, reason: "wrongKind" };
+  }
+  if (kind !== undefined && kind !== UI_THEME_KIND) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const hasAppearance =
+    typeof record.appearance === "object" && record.appearance !== null;
+  const hasTokensObject =
+    typeof record.tokens === "object" && record.tokens !== null;
+
+  // Legacy files omit kind; reject dual-payload and treat appearance-only as wrong kind.
+  if (kind === undefined) {
+    if (hasAppearance && hasTokensObject) {
+      return { ok: false, reason: "invalid" };
+    }
+    if (hasAppearance && !hasTokensObject) {
+      return { ok: false, reason: "wrongKind" };
+    }
+  } else if (hasAppearance) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  if (typeof record.id !== "string" || !record.id.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (typeof record.name !== "string" || !record.name.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (!hasTokensObject) {
+    return { ok: false, reason: "invalid" };
+  }
 
   const tokens = normalizeTokenPartial(
     record.tokens as Partial<UiTokenMap>,
   );
-  if (Object.keys(tokens).length === 0) return null;
+  if (Object.keys(tokens).length === 0) {
+    return { ok: false, reason: "invalid" };
+  }
 
   return {
-    id: record.id.trim(),
-    name: record.name.trim(),
-    schemaVersion: 1,
-    tokens,
+    ok: true,
+    theme: {
+      id: record.id.trim(),
+      name: record.name.trim(),
+      schemaVersion: 1,
+      kind: UI_THEME_KIND,
+      tokens,
+    },
   };
+}
+
+export function validateThemeDocument(raw: unknown): ThemeDocument | null {
+  const result = parseThemeDocument(raw);
+  return result.ok ? result.theme : null;
 }
 
 export function themeDocumentToJson(theme: ThemeDocument): string {
@@ -238,6 +297,7 @@ export function themeDocumentToJson(theme: ThemeDocument): string {
       id: theme.id,
       name: theme.name,
       schemaVersion: 1,
+      kind: UI_THEME_KIND,
       tokens: theme.tokens,
     },
     null,
@@ -256,6 +316,7 @@ export function createThemeFromCurrentTokens(
     id,
     name,
     schemaVersion: 1,
+    kind: UI_THEME_KIND,
     tokens: { ...tokens },
   };
 }

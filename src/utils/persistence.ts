@@ -18,6 +18,7 @@ import type {
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MAX_FLOATING_TEXT_FONT_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
   normalizeMembershipAppearance,
 } from "../models/types";
@@ -50,7 +51,8 @@ interface LegacyV1Diagram {
   viewport?: Diagram["viewport"];
 }
 
-function migrateNodeRef(ref: NodeRef | { id: string; kind: string }): NodeRef {
+function migrateV1NodeRef(ref: NodeRef | { id: string; kind: string }): NodeRef {
+  // Legacy v1 "group" endpoints referred to spatial boxes (same id).
   if (ref.kind === "group") {
     return { id: ref.id, kind: "box" };
   }
@@ -60,11 +62,26 @@ function migrateNodeRef(ref: NodeRef | { id: string; kind: string }): NodeRef {
   return { id: ref.id, kind: "character" };
 }
 
-function migrateLines(lines: Line[]): Line[] {
+function normalizeNodeRef(ref: NodeRef | { id: string; kind: string }): NodeRef {
+  if (ref.kind === "character" || ref.kind === "box" || ref.kind === "group") {
+    return { id: ref.id, kind: ref.kind };
+  }
+  return { id: ref.id, kind: "character" };
+}
+
+function migrateV1Lines(lines: Line[]): Line[] {
   return lines.map((line) => ({
     ...line,
-    from: migrateNodeRef(line.from),
-    to: migrateNodeRef(line.to),
+    from: migrateV1NodeRef(line.from),
+    to: migrateV1NodeRef(line.to),
+  }));
+}
+
+function normalizeLines(lines: Line[]): Line[] {
+  return lines.map((line) => ({
+    ...line,
+    from: normalizeNodeRef(line.from),
+    to: normalizeNodeRef(line.to),
   }));
 }
 
@@ -93,20 +110,20 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
     });
   }
 
-  return {
-    schemaVersion: 2,
+  return normalizeDiagram({
+    schemaVersion: 3,
     title: data.title,
     subtitle: data.subtitle,
     showHeader: data.showHeader,
     fontFamily: data.fontFamily,
     backgroundColor: data.backgroundColor,
     characters: data.characters,
-    lines: migrateLines(data.lines ?? []),
+    lines: migrateV1Lines(data.lines ?? []),
     groups,
     boxes,
     floatingTexts: [],
     viewport: data.viewport,
-  };
+  });
 }
 
 function normalizeFloatingTexts(
@@ -119,7 +136,10 @@ function normalizeFloatingTexts(
     };
     const fontSize =
       typeof partial.fontSize === "number" && Number.isFinite(partial.fontSize)
-        ? Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize))
+        ? Math.min(
+            MAX_FLOATING_TEXT_FONT_SIZE,
+            Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize)),
+          )
         : DEFAULT_FLOATING_TEXT_FONT_SIZE;
     return {
       id: partial.id,
@@ -133,12 +153,15 @@ function normalizeFloatingTexts(
   });
 }
 
-function normalizeV2(data: Diagram): Diagram {
+/** Normalize any supported diagram payload to the current schema (v3). */
+function normalizeDiagram(
+  data: Omit<Diagram, "schemaVersion"> & { schemaVersion?: number },
+): Diagram {
   return {
     ...data,
-    schemaVersion: 2,
+    schemaVersion: 3,
     characters: data.characters,
-    lines: migrateLines(data.lines ?? []),
+    lines: normalizeLines(data.lines ?? []),
     groups: (data.groups ?? []).map((g) => ({
       id: g.id,
       name: g.name,
@@ -147,6 +170,11 @@ function normalizeV2(data: Diagram): Diagram {
         g.appearance as Partial<MembershipAppearance> | undefined,
         { r: 100, g: 140, b: 100 },
       ),
+      ...(g.hubPosition &&
+      typeof g.hubPosition.x === "number" &&
+      typeof g.hubPosition.y === "number"
+        ? { hubPosition: { x: g.hubPosition.x, y: g.hubPosition.y } }
+        : {}),
     })),
     boxes: (data.boxes ?? []).map((b) => ({
       id: b.id,
@@ -180,17 +208,17 @@ export function parseDiagram(json: string): Diagram {
     return migrateV1ToV2(v1);
   }
 
-  if (data.schemaVersion === 2) {
-    const v2 = data as Diagram;
+  if (data.schemaVersion === 2 || data.schemaVersion === 3) {
+    const diagram = data as Diagram;
     if (
-      !Array.isArray(v2.characters) ||
-      !Array.isArray(v2.lines) ||
-      !Array.isArray(v2.groups) ||
-      !Array.isArray(v2.boxes)
+      !Array.isArray(diagram.characters) ||
+      !Array.isArray(diagram.lines) ||
+      !Array.isArray(diagram.groups) ||
+      !Array.isArray(diagram.boxes)
     ) {
       throw new Error("Invalid diagram file format");
     }
-    return normalizeV2(v2);
+    return normalizeDiagram(diagram);
   }
 
   throw new Error(`Unsupported schema version: ${data.schemaVersion}`);

@@ -6,7 +6,7 @@ export interface RGB {
 
 export type BorderShape = "circle" | "square" | "pentagon" | "hexagon";
 export type LineStyle = "straight" | "wavy" | "dotted" | "jagged";
-export type NodeKind = "character" | "box";
+export type NodeKind = "character" | "box" | "group";
 export type ToolMode = "select" | "exportBounds" | "editGroupMembers";
 
 export interface ConnectDrag {
@@ -72,15 +72,23 @@ export type MembershipSymbol =
   | "rock"
   | "plant"
   | "sparkle"
-  | "skull";
+  | "skull"
+  | "question";
 
-/** Visual identity for a membership group chip. */
+/** Visual identity for a membership group chip and hub corridors. */
 export interface MembershipAppearance {
   backgroundColor: RGB;
   symbol: MembershipSymbol;
   symbolColor: RGB;
   borderColor: RGB;
+  /** Corridor / spoke colour (defaults to backgroundColour). */
+  corridorColor: RGB;
+  /** Corridor opacity 0–1 (applied once to the whole spoke group). */
+  corridorOpacity: number;
 }
+
+/** Default translucent corridor strength when none is stored. */
+export const DEFAULT_GROUP_CORRIDOR_OPACITY = 0.18;
 
 export const MEMBERSHIP_SYMBOLS: MembershipSymbol[] = [
   "none",
@@ -105,6 +113,7 @@ export const MEMBERSHIP_SYMBOLS: MembershipSymbol[] = [
   "plant",
   "sparkle",
   "skull",
+  "question",
 ];
 
 export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
@@ -117,12 +126,20 @@ export function isMembershipSymbol(value: unknown): value is MembershipSymbol {
 export function defaultMembershipAppearance(
   backgroundColor: RGB = { r: 100, g: 140, b: 100 },
 ): MembershipAppearance {
+  const bg = { ...backgroundColor };
   return {
-    backgroundColor: { ...backgroundColor },
+    backgroundColor: bg,
     symbol: "none",
     symbolColor: { r: 255, g: 255, b: 255 },
     borderColor: { r: 51, g: 51, b: 51 },
+    corridorColor: { ...bg },
+    corridorOpacity: DEFAULT_GROUP_CORRIDOR_OPACITY,
   };
+}
+
+function clampCorridorOpacity(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(1, Math.max(0, value));
 }
 
 export function normalizeMembershipAppearance(
@@ -130,10 +147,11 @@ export function normalizeMembershipAppearance(
   fallbackBackground: RGB = { r: 100, g: 140, b: 100 },
 ): MembershipAppearance {
   const defaults = defaultMembershipAppearance(fallbackBackground);
+  const backgroundColor = appearance?.backgroundColor
+    ? { ...appearance.backgroundColor }
+    : defaults.backgroundColor;
   return {
-    backgroundColor: appearance?.backgroundColor
-      ? { ...appearance.backgroundColor }
-      : defaults.backgroundColor,
+    backgroundColor,
     symbol: isMembershipSymbol(appearance?.symbol)
       ? appearance.symbol
       : defaults.symbol,
@@ -143,15 +161,27 @@ export function normalizeMembershipAppearance(
     borderColor: appearance?.borderColor
       ? { ...appearance.borderColor }
       : defaults.borderColor,
+    corridorColor: appearance?.corridorColor
+      ? { ...appearance.corridorColor }
+      : { ...backgroundColor },
+    corridorOpacity:
+      clampCorridorOpacity(appearance?.corridorOpacity) ??
+      defaults.corridorOpacity,
   };
 }
 
-/** Semantic membership group — chips / highlight only; not a canvas connect target. */
+/**
+ * Semantic membership group — chips on members plus a connectable centroid hub
+ * (badge + pale spokes). Line endpoints may use `kind: "group"`.
+ * Optional `hubPosition` overrides the auto member-centroid for the badge.
+ */
 export interface Group {
   id: string;
   name: string;
   memberCharacterIds: string[];
   appearance: MembershipAppearance;
+  /** Manual hub badge position; omit to follow the members’ centroid. */
+  hubPosition?: Point;
 }
 
 /** Organisational region — labelled box, geometric containment, collapse. */
@@ -177,6 +207,7 @@ export interface FloatingText {
 export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
 export const DEFAULT_FLOATING_TEXT_FONT_SIZE = 15;
 export const MIN_FLOATING_TEXT_FONT_SIZE = 10;
+export const MAX_FLOATING_TEXT_FONT_SIZE = 72;
 
 export interface Viewport {
   x: number;
@@ -204,15 +235,29 @@ export interface LabelChrome {
   borderColor: RGB;
 }
 
+/** How a diagram wallpaper image is placed within the viewport / export crop. */
+export type BackgroundImagePlacement = "tile" | "center";
+
 /**
  * Diagram canvas appearance: creation defaults for new entities, plus
  * shared label chrome applied live to all matching pills, plus canvas background.
  */
 export interface DiagramAppearance {
-  /** Canvas background mode (plain / blank / grid / dots). */
-  backgroundMode: "plain" | "blank" | "grid" | "dots";
-  /** Canvas fill; null means transparent (blank). */
+  /** Canvas background mode (plain / blank / grid / dots / image). */
+  backgroundMode: "plain" | "blank" | "grid" | "dots" | "image";
+  /** Canvas fill; null means transparent (blank). Underlay when mode is image. */
   backgroundColor: RGB | null;
+  /** Data URL wallpaper when using image mode; null when unset. */
+  backgroundImageData: string | null;
+  /** Tile or centre the wallpaper within the fill rect. */
+  backgroundImagePlacement: BackgroundImagePlacement;
+  /** Scale relative to the image's natural pixel size; 1 = 100%. */
+  backgroundImageScale: number;
+  /**
+   * World-space anchor for the wallpaper: centre point in centre mode,
+   * tile-grid origin in tile mode. Default is the world origin.
+   */
+  backgroundImageOffset: Point;
   /** Grid line or dot colour when background mode is grid or dots. */
   backgroundGridColor: RGB;
   defaultLineColor: RGB;
@@ -234,7 +279,7 @@ export interface DiagramAppearance {
 }
 
 export interface Diagram {
-  schemaVersion: 2;
+  schemaVersion: 3;
   title?: string;
   subtitle?: string;
   /** Title text colour; omit for default export-matching dark grey. */
@@ -287,6 +332,8 @@ export interface Point {
 }
 
 export const DEFAULT_CHARACTER_SIZE = 40;
+export const MIN_CHARACTER_SIZE = 24;
+export const MAX_CHARACTER_SIZE = 80;
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
 export const BOX_PADDING = 48;
 export const BOX_HEADER_HEIGHT = 28;
@@ -296,6 +343,8 @@ export const MIN_BOX_HEIGHT = BOX_HEADER_HEIGHT + 32;
 export const BOX_RESIZE_HANDLE_SCREEN_SIZE = 8;
 export const MEMBERSHIP_CHIP_MAX_VISIBLE = 4;
 export const MEMBERSHIP_CHIP_RADIUS = 11;
+/** Larger chip used as the group centroid hub badge on the canvas. */
+export const GROUP_HUB_BADGE_RADIUS = 18;
 
 export type BoxResizeEdge =
   | "n"

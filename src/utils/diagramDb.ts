@@ -1,8 +1,10 @@
 export const DB_NAME = "RelationshipDiagram";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 export const FONT_STORE = "fonts";
 export const AUTOSAVE_STORE = "autosave";
 export const AUTOSAVE_KEY = "latest";
+/** Preference / theme wallpaper data URLs (keyed by string). */
+export const WALLPAPERS_STORE = "wallpapers";
 
 export function openDiagramDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -16,6 +18,9 @@ export function openDiagramDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(AUTOSAVE_STORE)) {
         db.createObjectStore(AUTOSAVE_STORE);
+      }
+      if (!db.objectStoreNames.contains(WALLPAPERS_STORE)) {
+        db.createObjectStore(WALLPAPERS_STORE);
       }
     };
   });

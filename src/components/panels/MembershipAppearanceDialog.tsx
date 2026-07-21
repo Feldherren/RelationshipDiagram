@@ -26,6 +26,14 @@ export function MembershipAppearanceDialog({
   if (!open || !group) return null;
 
   const previewSize = (MEMBERSHIP_CHIP_RADIUS + 4) * 2;
+  const opacityPercent = Math.round(group.appearance.corridorOpacity * 100);
+
+  const setCorridorOpacity = (rawPercent: number) => {
+    const clamped = Math.min(100, Math.max(0, Math.round(rawPercent)));
+    updateGroup(group.id, {
+      appearance: { corridorOpacity: clamped / 100 },
+    });
+  };
 
   return (
     <div className="dialog-overlay" onClick={onClose}>
@@ -73,6 +81,42 @@ export function MembershipAppearanceDialog({
             updateGroup(group.id, { appearance: { borderColor } })
           }
         />
+
+        <p className="hint">{t("chipAppearance.corridorHint")}</p>
+        <RgbPicker
+          label={t("chipAppearance.corridorColour")}
+          value={group.appearance.corridorColor}
+          onChange={(corridorColor) =>
+            updateGroup(group.id, { appearance: { corridorColor } })
+          }
+        />
+        <label className="field">
+          <span>{t("chipAppearance.corridorOpacity")}</span>
+          <div className="range-row">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={opacityPercent}
+              aria-label={t("chipAppearance.corridorOpacity")}
+              onChange={(e) => {
+                if (e.target.value.trim() === "") return;
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                setCorridorOpacity(parsed);
+              }}
+            />
+            <span aria-hidden>%</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opacityPercent}
+              onChange={(e) => setCorridorOpacity(Number(e.target.value))}
+            />
+          </div>
+        </label>
 
         <div className="dialog-actions">
           <button type="button" className="btn-primary" onClick={onClose}>

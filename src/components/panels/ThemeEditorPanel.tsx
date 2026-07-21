@@ -5,6 +5,8 @@ import type { ThemeDocument, UiTokenKey, UiTokenMap } from "../../utils/uiTheme"
 import {
   BUILT_IN_THEMES,
   DEFAULT_UI_FONT,
+  UI_THEME_FILE_EXTENSION,
+  UI_THEME_KIND,
   UI_TOKEN_GROUPS,
   UI_TOKEN_LABEL_KEYS,
   applyThemeTokens,
@@ -76,7 +78,7 @@ function ThemeLibraryActions({
         <input
           ref={importInputRef}
           type="file"
-          accept="application/json,.json"
+          accept={`application/json,.json,${UI_THEME_FILE_EXTENSION}`}
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -207,6 +209,7 @@ export function ThemeEditorPanel({
       id,
       name,
       schemaVersion: 1,
+      kind: UI_THEME_KIND,
       tokens: resolveCreateBaseTokens(createBase, customThemes),
     };
     onThemesChange([...customThemes, theme], id);
@@ -343,6 +346,26 @@ export function ThemeEditorPanel({
         />
       </label>
 
+      <div className="theme-editor-actions">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!dirty}
+          onClick={handleSave}
+        >
+          {t("appSettings.themeEditorSave")}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={!dirty}
+          onClick={handleRevert}
+        >
+          {t("appSettings.themeEditorRevert")}
+        </button>
+      </div>
+      {dirty && <p className="hint">{t("appSettings.themeEditorUnsaved")}</p>}
+
       <fieldset className="theme-editor-group">
         <legend>{t("appSettings.tokenGroupTypography")}</legend>
         <div className="field">
@@ -402,26 +425,6 @@ export function ThemeEditorPanel({
           </div>
         </fieldset>
       ))}
-
-      <div className="theme-editor-actions">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!dirty}
-          onClick={handleSave}
-        >
-          {t("appSettings.themeEditorSave")}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={!dirty}
-          onClick={handleRevert}
-        >
-          {t("appSettings.themeEditorRevert")}
-        </button>
-      </div>
-      {dirty && <p className="hint">{t("appSettings.themeEditorUnsaved")}</p>}
     </div>
   );
 }

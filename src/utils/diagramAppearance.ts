@@ -1,11 +1,22 @@
-import type { DiagramAppearance, LabelChrome, RGB } from "../models/types";
+import type {
+  BackgroundImagePlacement,
+  DiagramAppearance,
+  LabelChrome,
+  Point,
+  RGB,
+} from "../models/types";
 import {
   colorsEqual,
   DEFAULT_FLOATING_TEXT_COLOR,
   defaultRgb,
 } from "../models/types";
 import {
+  DEFAULT_BACKGROUND_IMAGE_OFFSET,
+  DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  DEFAULT_BACKGROUND_IMAGE_SCALE,
   DEFAULT_DIAGRAM_BACKGROUND,
+  clampBackgroundImageScale,
+  isBackgroundImagePlacement,
   type DiagramBackgroundMode,
   type DiagramBackgroundColor,
 } from "./diagramBackground";
@@ -82,6 +93,10 @@ function defaultDiagramSubtitleLabel(): LabelChrome {
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
+  backgroundImageData: null,
+  backgroundImagePlacement: DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
+  backgroundImageOffset: { ...DEFAULT_BACKGROUND_IMAGE_OFFSET },
   backgroundGridColor: cloneRgb(DEFAULT_DIAGRAM_GRID_COLOR),
   defaultLineColor: cloneRgb(DEFAULT_LINE_COLOR),
   defaultCharacterBorderColor: defaultRgb(),
@@ -96,6 +111,80 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   diagramTitleLabel: defaultDiagramTitleLabel(),
   diagramSubtitleLabel: defaultDiagramSubtitleLabel(),
 };
+
+/** Built-in Default (Dark) diagram appearance. */
+export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
+  backgroundMode: "grid",
+  backgroundColor: { r: 1, g: 28, b: 55 },
+  backgroundImageData: null,
+  backgroundImagePlacement: DEFAULT_BACKGROUND_IMAGE_PLACEMENT,
+  backgroundImageScale: DEFAULT_BACKGROUND_IMAGE_SCALE,
+  backgroundImageOffset: { ...DEFAULT_BACKGROUND_IMAGE_OFFSET },
+  backgroundGridColor: { r: 5, g: 82, b: 158 },
+  defaultLineColor: { r: 204, g: 230, b: 255 },
+  defaultCharacterBorderColor: { r: 236, g: 229, b: 255 },
+  characterPlaceholderFill: { r: 51, g: 51, b: 82 },
+  characterInitialsColor: { r: 255, g: 255, b: 255 },
+  defaultBoxBorderColor: { r: 147, g: 199, b: 246 },
+  defaultFloatingTextColor: { r: 204, g: 230, b: 255 },
+  characterNameLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  characterSubtitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  lineLabel: {
+    textColor: { r: 31, g: 31, b: 31 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  boxNameLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 208, g: 208, b: 208 },
+  },
+  diagramTitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+  diagramSubtitleLabel: {
+    textColor: { r: 204, g: 230, b: 255 },
+    backgroundColor: { r: 51, g: 51, b: 82 },
+    borderColor: { r: 98, g: 98, b: 147 },
+  },
+};
+
+export const BUILT_IN_DIAGRAM_THEME_IDS = ["default", "default-dark"] as const;
+
+export type BuiltInDiagramThemeId = (typeof BUILT_IN_DIAGRAM_THEME_IDS)[number];
+
+export const BUILT_IN_DIAGRAM_THEMES: Record<
+  BuiltInDiagramThemeId,
+  DiagramAppearance
+> = {
+  default: DEFAULT_DIAGRAM_APPEARANCE,
+  "default-dark": DEFAULT_DARK_DIAGRAM_APPEARANCE,
+};
+
+export function isBuiltInDiagramThemeId(
+  value: string,
+): value is BuiltInDiagramThemeId {
+  return value === "default" || value === "default-dark";
+}
+
+/** i18n key for a built-in diagram theme’s display name. */
+export function builtInDiagramThemeLabelKey(
+  id: BuiltInDiagramThemeId,
+): "appSettings.diagramThemeDefault" | "appSettings.diagramThemeDefaultDark" {
+  return id === "default-dark"
+    ? "appSettings.diagramThemeDefaultDark"
+    : "appSettings.diagramThemeDefault";
+}
 
 function isRgb(value: unknown): value is RGB {
   if (!value || typeof value !== "object") return false;
@@ -132,8 +221,50 @@ function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
     value === "plain" ||
     value === "blank" ||
     value === "grid" ||
-    value === "dots"
+    value === "dots" ||
+    value === "image"
   );
+}
+
+function resolveBackgroundImageData(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string" || !value.startsWith("data:image/")) {
+    return null;
+  }
+  return value;
+}
+
+function resolveBackgroundImagePlacement(
+  value: unknown,
+  fallback: BackgroundImagePlacement,
+): BackgroundImagePlacement {
+  return isBackgroundImagePlacement(value) ? value : fallback;
+}
+
+function resolveBackgroundImageScale(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return clampBackgroundImageScale(fallback);
+  }
+  return clampBackgroundImageScale(value);
+}
+
+function clonePoint(point: Point): Point {
+  return { x: point.x, y: point.y };
+}
+
+function resolveBackgroundImageOffset(
+  value: unknown,
+  fallback: Point,
+): Point {
+  if (!value || typeof value !== "object") return clonePoint(fallback);
+  const point = value as Partial<Point>;
+  const x = typeof point.x === "number" && Number.isFinite(point.x) ? point.x : fallback.x;
+  const y = typeof point.y === "number" && Number.isFinite(point.y) ? point.y : fallback.y;
+  return { x, y };
+}
+
+function pointsEqual(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y;
 }
 
 function resolveBackgroundColor(
@@ -160,6 +291,10 @@ export function cloneDiagramAppearance(
   return {
     backgroundMode: appearance.backgroundMode,
     backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
+    backgroundImageData: appearance.backgroundImageData,
+    backgroundImagePlacement: appearance.backgroundImagePlacement,
+    backgroundImageScale: appearance.backgroundImageScale,
+    backgroundImageOffset: clonePoint(appearance.backgroundImageOffset),
     backgroundGridColor: cloneRgb(appearance.backgroundGridColor),
     defaultLineColor: cloneRgb(appearance.defaultLineColor),
     defaultCharacterBorderColor: cloneRgb(
@@ -194,6 +329,21 @@ export function resolveDiagramAppearance(
     backgroundColor: resolveBackgroundColor(
       partial.backgroundColor,
       defaults.backgroundColor,
+    ),
+    backgroundImageData: resolveBackgroundImageData(
+      partial.backgroundImageData,
+    ),
+    backgroundImagePlacement: resolveBackgroundImagePlacement(
+      partial.backgroundImagePlacement,
+      defaults.backgroundImagePlacement,
+    ),
+    backgroundImageScale: resolveBackgroundImageScale(
+      partial.backgroundImageScale,
+      defaults.backgroundImageScale,
+    ),
+    backgroundImageOffset: resolveBackgroundImageOffset(
+      partial.backgroundImageOffset,
+      defaults.backgroundImageOffset,
     ),
     backgroundGridColor: resolveRgb(
       partial.backgroundGridColor,
@@ -311,6 +461,26 @@ export function serializeDiagramAppearance(
     )
   ) {
     out.backgroundColor = cloneBackgroundColor(appearance.backgroundColor);
+  }
+
+  if (appearance.backgroundImageData) {
+    out.backgroundImageData = appearance.backgroundImageData;
+  }
+  if (
+    appearance.backgroundImagePlacement !== defaults.backgroundImagePlacement
+  ) {
+    out.backgroundImagePlacement = appearance.backgroundImagePlacement;
+  }
+  if (appearance.backgroundImageScale !== defaults.backgroundImageScale) {
+    out.backgroundImageScale = appearance.backgroundImageScale;
+  }
+  if (
+    !pointsEqual(
+      appearance.backgroundImageOffset,
+      defaults.backgroundImageOffset,
+    )
+  ) {
+    out.backgroundImageOffset = clonePoint(appearance.backgroundImageOffset);
   }
 
   if (
@@ -439,6 +609,29 @@ export function patchDiagramAppearance(
   if (patch.backgroundColor !== undefined) {
     next.backgroundColor = cloneBackgroundColor(patch.backgroundColor);
   }
+  if (patch.backgroundImageData !== undefined) {
+    next.backgroundImageData = resolveBackgroundImageData(
+      patch.backgroundImageData,
+    );
+  }
+  if (patch.backgroundImagePlacement !== undefined) {
+    next.backgroundImagePlacement = resolveBackgroundImagePlacement(
+      patch.backgroundImagePlacement,
+      next.backgroundImagePlacement,
+    );
+  }
+  if (patch.backgroundImageScale !== undefined) {
+    next.backgroundImageScale = resolveBackgroundImageScale(
+      patch.backgroundImageScale,
+      next.backgroundImageScale,
+    );
+  }
+  if (patch.backgroundImageOffset !== undefined) {
+    next.backgroundImageOffset = resolveBackgroundImageOffset(
+      patch.backgroundImageOffset,
+      next.backgroundImageOffset,
+    );
+  }
   if (patch.backgroundGridColor) {
     next.backgroundGridColor = cloneRgb(patch.backgroundGridColor);
   }
@@ -495,34 +688,90 @@ export function patchDiagramAppearance(
   return next;
 }
 
+/** Discriminator for diagram theme export/import JSON. */
+export const DIAGRAM_THEME_KIND = "diagramTheme" as const;
+export const DIAGRAM_THEME_FILE_EXTENSION = ".rd-diagram-theme";
+export type DiagramThemeKind = typeof DIAGRAM_THEME_KIND;
+
 /** Named diagram appearance theme (prefs / import-export JSON). */
 export interface DiagramThemeDocument {
   id: string;
   name: string;
   schemaVersion: 1;
+  kind: DiagramThemeKind;
   appearance: DiagramAppearance;
 }
 
-/** Built-in default, or a custom theme id. */
-export type DiagramThemePreference = "default" | string;
+export type DiagramThemeDocumentParseResult =
+  | { ok: true; theme: DiagramThemeDocument }
+  | { ok: false; reason: "invalid" | "wrongKind" };
+
+/** Built-in theme id, or a custom theme id. */
+export type DiagramThemePreference = BuiltInDiagramThemeId | string;
+
+export function parseDiagramThemeDocument(
+  raw: unknown,
+): DiagramThemeDocumentParseResult {
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, reason: "invalid" };
+  }
+  const record = raw as Record<string, unknown>;
+  if (record.schemaVersion !== 1) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const kind = record.kind;
+  if (kind === "uiTheme") {
+    return { ok: false, reason: "wrongKind" };
+  }
+  if (kind !== undefined && kind !== DIAGRAM_THEME_KIND) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const hasAppearance =
+    typeof record.appearance === "object" && record.appearance !== null;
+  const hasTokensObject =
+    typeof record.tokens === "object" && record.tokens !== null;
+
+  // Legacy files omit kind; reject dual-payload and treat tokens-only as wrong kind.
+  if (kind === undefined) {
+    if (hasTokensObject && hasAppearance) {
+      return { ok: false, reason: "invalid" };
+    }
+    if (hasTokensObject && !hasAppearance) {
+      return { ok: false, reason: "wrongKind" };
+    }
+  } else if (hasTokensObject) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  if (typeof record.id !== "string" || !record.id.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (typeof record.name !== "string" || !record.name.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (!hasAppearance) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  return {
+    ok: true,
+    theme: {
+      id: record.id.trim(),
+      name: record.name.trim(),
+      schemaVersion: 1,
+      kind: DIAGRAM_THEME_KIND,
+      appearance: resolveDiagramAppearance(record.appearance),
+    },
+  };
+}
 
 export function validateDiagramThemeDocument(
   raw: unknown,
 ): DiagramThemeDocument | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const record = raw as Record<string, unknown>;
-  if (record.schemaVersion !== 1) return null;
-  if (typeof record.id !== "string" || !record.id.trim()) return null;
-  if (typeof record.name !== "string" || !record.name.trim()) return null;
-  if (typeof record.appearance !== "object" || record.appearance === null) {
-    return null;
-  }
-  return {
-    id: record.id.trim(),
-    name: record.name.trim(),
-    schemaVersion: 1,
-    appearance: resolveDiagramAppearance(record.appearance),
-  };
+  const result = parseDiagramThemeDocument(raw);
+  return result.ok ? result.theme : null;
 }
 
 export function diagramThemeDocumentToJson(
@@ -533,6 +782,7 @@ export function diagramThemeDocumentToJson(
       id: theme.id,
       name: theme.name,
       schemaVersion: 1,
+      kind: DIAGRAM_THEME_KIND,
       appearance: cloneDiagramAppearance(theme.appearance),
     },
     null,
@@ -549,6 +799,7 @@ export function createDiagramThemeDocument(
     id,
     name,
     schemaVersion: 1,
+    kind: DIAGRAM_THEME_KIND,
     appearance: cloneDiagramAppearance(appearance),
   };
 }
@@ -557,15 +808,15 @@ export function resolveDiagramThemeAppearance(
   preference: DiagramThemePreference,
   customThemes: readonly DiagramThemeDocument[],
 ): DiagramAppearance {
-  if (preference === "default") {
-    return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
+  if (isBuiltInDiagramThemeId(preference)) {
+    return cloneDiagramAppearance(BUILT_IN_DIAGRAM_THEMES[preference]);
   }
   const custom = customThemes.find((theme) => theme.id === preference);
   if (custom) return cloneDiagramAppearance(custom.appearance);
   return cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE);
 }
 
-function slugifyDiagramThemeId(name: string): string {
+export function slugifyDiagramThemeId(name: string): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -579,9 +830,11 @@ export function uniqueDiagramThemeId(
 ): string {
   const base = slugifyDiagramThemeId(name);
   const used = new Set(existing.map((theme) => theme.id));
-  if (!used.has(base) && base !== "default") return base;
+  if (!used.has(base) && !isBuiltInDiagramThemeId(base)) return base;
   let n = 2;
-  while (used.has(`${base}-${n}`) || `${base}-${n}` === "default") n += 1;
+  while (used.has(`${base}-${n}`) || isBuiltInDiagramThemeId(`${base}-${n}`)) {
+    n += 1;
+  }
   return `${base}-${n}`;
 }
 

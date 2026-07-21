@@ -18,14 +18,19 @@ import { useDiagramStore } from "../../store/diagramStore";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
 import {
   UI_SCALE_OPTIONS,
+  UI_THEME_FILE_EXTENSION,
   createThemeFromCurrentTokens,
+  parseThemeDocument,
+  slugifyThemeId,
   themeDocumentToJson,
-  validateThemeDocument,
   type ThemePreference,
   type UiScale,
 } from "../../utils/uiTheme";
 import {
+  BUILT_IN_DIAGRAM_THEME_IDS,
+  builtInDiagramThemeLabelKey,
   createDiagramThemeDocument,
+  isBuiltInDiagramThemeId,
   patchDiagramAppearance,
   resolveDiagramThemeAppearance,
   uniqueDiagramThemeId,
@@ -125,11 +130,18 @@ export function SettingsDialog({
     try {
       const text = await file.text();
       const parsed = JSON.parse(text) as unknown;
-      const theme = validateThemeDocument(parsed);
-      if (!theme) {
-        alert(t("appSettings.themeImportInvalid"));
+      const result = parseThemeDocument(parsed);
+      if (!result.ok) {
+        alert(
+          t(
+            result.reason === "wrongKind"
+              ? "appSettings.themeImportWrongKind"
+              : "appSettings.themeImportInvalid",
+          ),
+        );
         return;
       }
+      const theme = result.theme;
       const existing = prefs.customThemes.filter((entry) => entry.id !== theme.id);
       const customThemes = [...existing, theme];
       updatePrefs({
@@ -153,7 +165,10 @@ export function SettingsDialog({
         prefs.themePreference,
         prefs.customThemes,
       );
-    downloadJson(`${theme.id}.json`, themeDocumentToJson(theme));
+    downloadJson(
+      `${slugifyThemeId(theme.name)}${UI_THEME_FILE_EXTENSION}`,
+      themeDocumentToJson(theme),
+    );
   };
 
   const handleRemoveTheme = (themeId: string, themeName: string) => {
@@ -211,7 +226,7 @@ export function SettingsDialog({
           }
         : {};
 
-    if (current.diagramThemePreference === "default") {
+    if (isBuiltInDiagramThemeId(current.diagramThemePreference)) {
       setForkPendingAppearance(diagramAppearance);
       setForkDialogOpen(true);
       return;
@@ -308,9 +323,11 @@ export function SettingsDialog({
                 selectDiagramTheme(e.target.value as DiagramThemePreference)
               }
             >
-              <option value="default">
-                {t("appSettings.diagramThemeDefault")}
-              </option>
+              {BUILT_IN_DIAGRAM_THEME_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {t(builtInDiagramThemeLabelKey(id))}
+                </option>
+              ))}
               {prefs.customDiagramThemes.map((theme) => (
                 <option key={theme.id} value={theme.id}>
                   {theme.name}

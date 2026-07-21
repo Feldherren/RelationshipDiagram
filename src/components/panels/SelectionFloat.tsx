@@ -4,11 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
-import type { LineStyle } from "../../models/types";
+import type { LineStyle, Selection, Viewport } from "../../models/types";
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  MAX_CHARACTER_SIZE,
+  MAX_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
+  MIN_CHARACTER_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
 } from "../../models/types";
 import {
@@ -44,6 +47,73 @@ import {
   nextRouteIndex,
   resolveLineBend,
 } from "../../utils/lineRouting";
+
+/** Connector only — keeps viewport subscription off the detached panel body. */
+function SelectionFloatConnector({
+  selection,
+  left,
+  top,
+  panelHeight,
+  stageWidth,
+  stageHeight,
+}: {
+  selection: NonNullable<Selection>;
+  left: number;
+  top: number;
+  panelHeight: number;
+  stageWidth: number;
+  stageHeight: number;
+}) {
+  const viewport = useDiagramStore((s) => s.viewport);
+  const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagram = getDiagram();
+  const panelBounds = {
+    x: left,
+    y: top,
+    width: SELECTION_FLOAT_WIDTH,
+    height: panelHeight,
+  };
+  const panelCenterScreen = {
+    x: left + SELECTION_FLOAT_WIDTH / 2,
+    y: top + panelHeight / 2,
+  };
+  const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
+    selection,
+    diagram,
+    screenToWorld(panelCenterScreen, viewport),
+    viewport.scale,
+  );
+  if (!connectorAnchorWorld) return null;
+  const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
+  if (!shouldShowFloatConnector(panelBounds, anchorScreen)) return null;
+  const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+  return (
+    <svg
+      className="selection-float-connector"
+      width={stageWidth}
+      height={stageHeight}
+      aria-hidden
+    >
+      <line
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        className="selection-float-connector-line"
+      />
+      <circle
+        cx={from.x}
+        cy={from.y}
+        r={3}
+        className="selection-float-connector-dot"
+      />
+    </svg>
+  );
+}
+
+function liveViewport(tracked: Viewport | null): Viewport {
+  return tracked ?? useDiagramStore.getState().viewport;
+}
 
 const LINE_STYLES: LineStyle[] = ["straight", "wavy", "dotted", "jagged"];
 
@@ -134,7 +204,7 @@ export function SelectionFloat() {
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
-  const viewport = useDiagramStore((s) => s.viewport);
+  const bookmarks = useDiagramStore((s) => s.bookmarks);
   const stageSize = useDiagramStore((s) => s.stageSize);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const updateCharacter = useDiagramStore((s) => s.updateCharacter);
@@ -142,6 +212,9 @@ export function SelectionFloat() {
   const updateGroup = useDiagramStore((s) => s.updateGroup);
   const updateBox = useDiagramStore((s) => s.updateBox);
   const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
+  const updateBookmark = useDiagramStore((s) => s.updateBookmark);
+  const updateBookmarkView = useDiagramStore((s) => s.updateBookmarkView);
+  const deleteBookmark = useDiagramStore((s) => s.deleteBookmark);
   const toggleBoxCollapse = useDiagramStore((s) => s.toggleBoxCollapse);
   const toolMode = useDiagramStore((s) => s.toolMode);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
@@ -152,6 +225,19 @@ export function SelectionFloat() {
   const placementKey = selection
     ? selectionFloatPlacementKey(selection)
     : null;
+  const placementDetached = Boolean(
+    placementKey &&
+      floatPlacement?.key === placementKey &&
+      floatPlacement.detached,
+  );
+  const trackViewport =
+    Boolean(selectionDetailsOpen) &&
+    selection != null &&
+    selection.type !== "multi" &&
+    !placementDetached;
+  const viewport = useDiagramStore((s) =>
+    trackViewport ? s.viewport : null,
+  );
 
   useEffect(() => {
     setChipAppearanceOpen(false);
@@ -171,7 +257,16 @@ export function SelectionFloat() {
     if (height > 0 && Math.abs(height - panelHeight) > 1) {
       setPanelHeight(height);
     }
-  }, [selection, characters, lines, groups, boxes, floatingTexts, panelHeight]);
+  }, [
+    selection,
+    characters,
+    lines,
+    groups,
+    boxes,
+    floatingTexts,
+    bookmarks,
+    panelHeight,
+  ]);
 
   // Groups freeze in screen space as soon as they open (detached).
   useLayoutEffect(() => {
@@ -183,9 +278,10 @@ export function SelectionFloat() {
       selection.anchorCharacterId,
       diagram,
     );
+    const vp = liveViewport(viewport);
     const placed = placeSelectionFloat({
       anchorScreen: chipAnchor
-        ? worldToScreen(chipAnchor, viewport)
+        ? worldToScreen(chipAnchor, vp)
         : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
       stageWidth: stageSize.width,
       stageHeight: stageSize.height,
@@ -216,13 +312,14 @@ export function SelectionFloat() {
     return null;
   }
 
-  // Canvas bookmark / multi-select: highlight only (no float panel).
-  if (selection.type === "bookmark" || selection.type === "multi") {
+  // Multi-select: highlight only (no float panel).
+  if (selection.type === "multi") {
     return null;
   }
 
   const diagram = getDiagram();
   const isGroupSelection = selection.type === "group";
+  const vp = liveViewport(viewport);
 
   let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
   if (selection.type === "line") {
@@ -230,7 +327,7 @@ export function SelectionFloat() {
     if (line) {
       avoidScreen = worldBoundsToScreen(
         getLineSelectionAvoidBounds(line, diagram),
-        viewport,
+        vp,
       );
     }
   }
@@ -259,7 +356,7 @@ export function SelectionFloat() {
     );
     ({ left, top } = placeSelectionFloat({
       anchorScreen: chipAnchor
-        ? worldToScreen(chipAnchor, viewport)
+        ? worldToScreen(chipAnchor, vp)
         : defaultFloatAnchorScreen(stageSize.width, stageSize.height),
       stageWidth: stageSize.width,
       stageHeight: stageSize.height,
@@ -269,7 +366,7 @@ export function SelectionFloat() {
   } else {
     const anchorWorld = getSelectionAnchorWorld(selection, diagram);
     const anchorScreen = anchorWorld
-      ? worldToScreen(anchorWorld, viewport)
+      ? worldToScreen(anchorWorld, vp)
       : defaultFloatAnchorScreen(stageSize.width, stageSize.height);
     ({ left, top } = placeSelectionFloat({
       anchorScreen,
@@ -280,6 +377,17 @@ export function SelectionFloat() {
       avoidScreen,
     }));
   }
+
+  /** Keep the panel fixed while size sliders change object bounds under the cursor. */
+  const freezeFloatPlacement = () => {
+    if (!placementKey || isDetached) return;
+    setFloatPlacement({
+      key: placementKey,
+      left,
+      top,
+      detached: true,
+    });
+  };
 
   const endFloatDrag = (pointerId: number) => {
     const drag = floatDragRef.current;
@@ -381,6 +489,19 @@ export function SelectionFloat() {
       }
     };
 
+    const commitSize = (raw: string) => {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) {
+        return;
+      }
+      updateCharacter(character.id, {
+        size: Math.min(
+          MAX_CHARACTER_SIZE,
+          Math.max(MIN_CHARACTER_SIZE, Math.round(parsed)),
+        ),
+      });
+    };
+
     body = (
       <>
         <h2>{t("selection.character")}</h2>
@@ -454,17 +575,45 @@ export function SelectionFloat() {
         />
         <label className="field">
           <span>{t("selection.size")}</span>
-          <input
-            type="range"
-            min={24}
-            max={80}
-            value={character.size}
-            onChange={(e) =>
-              updateCharacter(character.id, {
-                size: Number(e.target.value),
-              })
-            }
-          />
+          <div className="range-row">
+            <input
+              type="number"
+              min={MIN_CHARACTER_SIZE}
+              max={MAX_CHARACTER_SIZE}
+              step={1}
+              value={character.size}
+              aria-label={t("selection.size")}
+              onChange={(e) => {
+                if (e.target.value.trim() === "") return;
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                updateCharacter(character.id, {
+                  size: Math.round(parsed),
+                });
+              }}
+              onBlur={(e) => commitSize(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitSize((e.target as HTMLInputElement).value);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+            <input
+              type="range"
+              min={MIN_CHARACTER_SIZE}
+              max={MAX_CHARACTER_SIZE}
+              value={character.size}
+              onPointerDown={freezeFloatPlacement}
+              onFocus={freezeFloatPlacement}
+              onChange={(e) =>
+                updateCharacter(character.id, {
+                  size: Number(e.target.value),
+                })
+              }
+            />
+          </div>
         </label>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           {t("selection.deleteCharacter")}
@@ -480,6 +629,11 @@ export function SelectionFloat() {
         const character = getCharacterById({ characters }, ref.id);
         const name = character?.name.trim();
         return name || t("selection.nameless");
+      }
+      if (ref.kind === "group") {
+        const group = getGroupById({ groups }, ref.id);
+        const name = group?.name.trim();
+        return name || t("selection.group");
       }
       const box = getBoxById({ boxes }, ref.id);
       const name = box?.name.trim();
@@ -650,7 +804,10 @@ export function SelectionFloat() {
         return;
       }
       updateFloatingText(floatingText.id, {
-        fontSize: Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(parsed)),
+        fontSize: Math.min(
+          MAX_FLOATING_TEXT_FONT_SIZE,
+          Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(parsed)),
+        ),
       });
     };
 
@@ -677,28 +834,45 @@ export function SelectionFloat() {
         />
         <label className="field">
           <span>{t("selection.fontSize")}</span>
-          <input
-            type="number"
-            min={MIN_FLOATING_TEXT_FONT_SIZE}
-            step={1}
-            value={fontSize}
-            onChange={(e) => {
-              if (e.target.value.trim() === "") return;
-              const parsed = Number(e.target.value);
-              if (!Number.isFinite(parsed)) return;
-              updateFloatingText(floatingText.id, {
-                fontSize: Math.round(parsed),
-              });
-            }}
-            onBlur={(e) => commitFontSize(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitFontSize((e.target as HTMLInputElement).value);
-                (e.target as HTMLInputElement).blur();
+          <div className="range-row">
+            <input
+              type="number"
+              min={MIN_FLOATING_TEXT_FONT_SIZE}
+              max={MAX_FLOATING_TEXT_FONT_SIZE}
+              step={1}
+              value={fontSize}
+              aria-label={t("selection.fontSize")}
+              onChange={(e) => {
+                if (e.target.value.trim() === "") return;
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                updateFloatingText(floatingText.id, {
+                  fontSize: Math.round(parsed),
+                });
+              }}
+              onBlur={(e) => commitFontSize(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitFontSize((e.target as HTMLInputElement).value);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+            <input
+              type="range"
+              min={MIN_FLOATING_TEXT_FONT_SIZE}
+              max={MAX_FLOATING_TEXT_FONT_SIZE}
+              value={fontSize}
+              onPointerDown={freezeFloatPlacement}
+              onFocus={freezeFloatPlacement}
+              onChange={(e) =>
+                updateFloatingText(floatingText.id, {
+                  fontSize: Number(e.target.value),
+                })
               }
-            }}
-          />
+            />
+          </div>
         </label>
         <button type="button" className="btn-danger" onClick={deleteSelected}>
           {t("selection.deleteText")}
@@ -781,6 +955,16 @@ export function SelectionFloat() {
             </>
           )}
         </div>
+        {group.hubPosition != null && (
+          <button
+            type="button"
+            className="btn-secondary"
+            title={t("selection.resetHubPositionHint")}
+            onClick={() => updateGroup(group.id, { hubPosition: null })}
+          >
+            {t("selection.resetHubPosition")}
+          </button>
+        )}
         <button
           type="button"
           className="btn-danger"
@@ -799,6 +983,46 @@ export function SelectionFloat() {
         onClose={() => setChipAppearanceOpen(false)}
       />
     );
+  } else if (selection.type === "bookmark") {
+    const bookmark = bookmarks.find((b) => b.id === selection.id);
+    if (!bookmark) return null;
+
+    body = (
+      <>
+        <h2>{t("bookmarks.editTitle")}</h2>
+        <label className="field">
+          <span>{t("bookmarks.nameLabel")}</span>
+          <input
+            type="text"
+            value={bookmark.name}
+            onChange={(e) =>
+              updateBookmark(bookmark.id, { name: e.target.value })
+            }
+            maxLength={80}
+            autoFocus
+          />
+        </label>
+        <RgbPicker
+          label={t("bookmarks.colourLabel")}
+          value={bookmark.color}
+          onChange={(color) => updateBookmark(bookmark.id, { color })}
+        />
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => updateBookmarkView(bookmark.id)}
+        >
+          {t("bookmarks.updateView")}
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => deleteBookmark(bookmark.id)}
+        >
+          {t("bookmarks.delete")}
+        </button>
+      </>
+    );
   }
 
   if (!body) return null;
@@ -813,49 +1037,16 @@ export function SelectionFloat() {
 
   let connector: ReactNode = null;
   if (isDetached) {
-    const panelBounds = {
-      x: left,
-      y: top,
-      width: SELECTION_FLOAT_WIDTH,
-      height: panelHeight,
-    };
-    const panelCenterScreen = {
-      x: left + SELECTION_FLOAT_WIDTH / 2,
-      y: top + panelHeight / 2,
-    };
-    const connectorAnchorWorld = getSelectionConnectorAnchorWorld(
-      selection,
-      diagram,
-      screenToWorld(panelCenterScreen, viewport),
+    connector = (
+      <SelectionFloatConnector
+        selection={selection}
+        left={left}
+        top={top}
+        panelHeight={panelHeight}
+        stageWidth={stageSize.width}
+        stageHeight={stageSize.height}
+      />
     );
-    if (connectorAnchorWorld) {
-      const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
-      if (shouldShowFloatConnector(panelBounds, anchorScreen)) {
-        const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
-        connector = (
-          <svg
-            className="selection-float-connector"
-            width={stageSize.width}
-            height={stageSize.height}
-            aria-hidden
-          >
-            <line
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              className="selection-float-connector-line"
-            />
-            <circle
-              cx={from.x}
-              cy={from.y}
-              r={3}
-              className="selection-float-connector-dot"
-            />
-          </svg>
-        );
-      }
-    }
   }
 
   return (

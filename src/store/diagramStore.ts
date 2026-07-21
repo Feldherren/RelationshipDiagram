@@ -74,6 +74,7 @@ import {
   type DiagramBackgroundMode,
   resolveDiagramBackground,
   serializeDiagramBackground,
+  syncBackgroundModeFromCanvasState,
 } from "../utils/diagramBackground";
 import {
   cloneDiagramAppearance,
@@ -85,11 +86,13 @@ import {
 } from "../utils/diagramAppearance";
 import {
   getAppPreferences,
+  hydrateAppPreferenceWallpapers,
   setAppPreferences,
 } from "../utils/appPreferences";
 import { computeDiagramBounds } from "../utils/diagramBounds";
 import { computeViewportForBounds } from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
+import type { GroupsCanvasMode } from "../utils/groupHub";
 
 interface HistoryOptions {
   recordHistory?: boolean;
@@ -104,8 +107,8 @@ interface DiagramState {
   viewport: Viewport;
   bookmarks: ViewBookmark[];
   bookmarksVisible: boolean;
-  /** When set, the bookmark edit dialog is open for this id. */
-  editingBookmarkId: string | null;
+  /** Group hub eye: full hubs+corridors, connected badges only, or hidden. */
+  groupsCanvasMode: GroupsCanvasMode;
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
@@ -157,9 +160,13 @@ interface DiagramState {
   setShowDiagramHeader: (show: boolean) => void;
   setDiagramBackgroundColor: (color: RGB | null) => void;
   setDiagramFontFamily: (fontFamily: string) => Promise<void>;
-  setDiagramAppearance: (patch: Partial<DiagramAppearance>) => void;
+  setDiagramAppearance: (
+    patch: Partial<DiagramAppearance>,
+    options?: HistoryOptions,
+  ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
   setBookmarksVisible: (visible: boolean) => void;
+  setGroupsCanvasMode: (mode: GroupsCanvasMode) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
   setLineLabelContrastWithBackground: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
@@ -203,9 +210,12 @@ interface DiagramState {
   addGroup: (name?: string) => void;
   updateGroup: (
     id: string,
-    patch: Partial<Omit<Group, "appearance">> & {
+    patch: Partial<Omit<Group, "appearance" | "hubPosition">> & {
       appearance?: Partial<Group["appearance"]>;
+      /** Pass `null` to clear a manual hub and return to member centroid. */
+      hubPosition?: Group["hubPosition"] | null;
     },
+    options?: HistoryOptions,
   ) => void;
   deleteGroup: (id: string) => void;
   addCharacterToGroup: (characterId: string, groupId: string) => void;
@@ -321,7 +331,6 @@ function restoreHistorySnapshot(
     viewport,
     selection: null,
     selectionDetailsOpen: false,
-    editingBookmarkId: null,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -339,7 +348,7 @@ export const useDiagramStore = create<DiagramState>()(
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
   bookmarksVisible: true,
-  editingBookmarkId: null,
+  groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
   selection: null,
@@ -528,11 +537,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
   openSelectionDetails: () => {
     const { selection } = get();
-    if (
-      !selection ||
-      selection.type === "bookmark" ||
-      selection.type === "multi"
-    ) {
+    if (!selection || selection.type === "multi") {
       return;
     }
     set({ selectionDetailsOpen: true });
@@ -544,6 +549,7 @@ export const useDiagramStore = create<DiagramState>()(
         showGrid: show,
         diagramAppearance: {
           ...s.diagramAppearance,
+          // Leaving image mode when the user explicitly toggles the grid.
           backgroundMode: getDiagramBackgroundMode(
             show,
             s.gridStyle,
@@ -558,6 +564,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle: style,
       diagramAppearance: {
         ...s.diagramAppearance,
+        // Leaving image mode when the user explicitly changes grid style.
         backgroundMode: getDiagramBackgroundMode(
           s.showGrid,
           style,
@@ -608,8 +615,8 @@ export const useDiagramStore = create<DiagramState>()(
     });
   },
 
-  setDiagramAppearance: (patch) => {
-    get().captureHistory();
+  setDiagramAppearance: (patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => {
       const diagramAppearance = patchDiagramAppearance(
         s.diagramAppearance,
@@ -628,7 +635,8 @@ export const useDiagramStore = create<DiagramState>()(
       return {
         diagramAppearance: {
           ...diagramAppearance,
-          backgroundMode: getDiagramBackgroundMode(
+          backgroundMode: syncBackgroundModeFromCanvasState(
+            diagramAppearance.backgroundMode,
             background.showGrid,
             background.gridStyle,
             background.backgroundColor,
@@ -652,7 +660,8 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       diagramAppearance: {
         ...diagramAppearance,
-        backgroundMode: getDiagramBackgroundMode(
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          diagramAppearance.backgroundMode,
           background.showGrid,
           background.gridStyle,
           background.backgroundColor,
@@ -683,6 +692,7 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   bootstrapApp: async () => {
+    await hydrateAppPreferenceWallpapers();
     const prefs = getAppPreferences();
     cancelScheduledAutosave();
     set({ autosaveEnabled: false });
@@ -701,6 +711,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       autosaveEnabled: prefs.autosaveEnabled,
       bookmarksVisible: prefs.bookmarksVisible,
+      groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
     });
@@ -742,7 +753,8 @@ export const useDiagramStore = create<DiagramState>()(
         : prefs.defaultDiagramFont,
       appearance: serializeDiagramAppearance({
         ...appearance,
-        backgroundMode: getDiagramBackgroundMode(
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          appearance.backgroundMode,
           background.showGrid,
           background.gridStyle,
           background.backgroundColor,
@@ -886,19 +898,27 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  updateGroup: (id, patch) => {
-    get().captureHistory();
+  updateGroup: (id, patch, options) => {
+    if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       groups: s.groups.map((g) => {
         if (g.id !== id) return g;
-        const { appearance: appearancePatch, ...rest } = patch;
-        return {
+        const { appearance: appearancePatch, hubPosition, ...rest } = patch;
+        const next: Group = {
           ...g,
           ...rest,
           appearance: appearancePatch
             ? { ...g.appearance, ...appearancePatch }
             : g.appearance,
         };
+        if ("hubPosition" in patch) {
+          if (hubPosition == null) {
+            delete next.hubPosition;
+          } else {
+            next.hubPosition = { x: hubPosition.x, y: hubPosition.y };
+          }
+        }
+        return next;
       }),
     }));
   },
@@ -910,12 +930,24 @@ export const useDiagramStore = create<DiagramState>()(
         s.toolMode === "editGroupMembers" &&
         s.selection?.type === "group" &&
         s.selection.id === id;
+      const lines = s.lines.filter(
+        (l) =>
+          !(l.from.kind === "group" && l.from.id === id) &&
+          !(l.to.kind === "group" && l.to.id === id),
+      );
+      let selection = s.selection;
+      if (selection?.type === "group" && selection.id === id) {
+        selection = null;
+      } else if (selection?.type === "line") {
+        const selectedLineId = selection.id;
+        if (!lines.some((l) => l.id === selectedLineId)) {
+          selection = null;
+        }
+      }
       return {
         groups: s.groups.filter((g) => g.id !== id),
-        selection:
-          s.selection?.type === "group" && s.selection.id === id
-            ? null
-            : s.selection,
+        lines,
+        selection,
         ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
       };
     });
@@ -1142,11 +1174,17 @@ export const useDiagramStore = create<DiagramState>()(
         get().toggleCharacterInGroup(ref.id, selection.id);
         return;
       }
+      if (ref.kind === "group") {
+        get().setSelection({ type: "group", id: ref.id }, { openDetails });
+        return;
+      }
       get().setSelection({ type: "box", id: ref.id });
       return;
     }
     if (ref.kind === "character") {
       get().setSelection({ type: "character", id: ref.id }, { openDetails });
+    } else if (ref.kind === "group") {
+      get().setSelection({ type: "group", id: ref.id }, { openDetails });
     } else {
       get().setSelection({ type: "box", id: ref.id }, { openDetails });
     }
@@ -1174,14 +1212,19 @@ export const useDiagramStore = create<DiagramState>()(
     ),
 
   endConnectDrag: (point) => {
-    const { connectDrag, characters, boxes } = get();
+    const { connectDrag, characters, boxes, groups } = get();
     if (!connectDrag) return;
 
     const moved = Math.hypot(
       point.x - connectDrag.startX,
       point.y - connectDrag.startY,
     );
-    const target = findConnectionTargetAt(point, characters, boxes);
+    const target = findConnectionTargetAt(
+      point,
+      characters,
+      boxes,
+      groups,
+    );
 
     if (target) {
       if (sameNodeRef(connectDrag.from, target)) {
@@ -1208,18 +1251,23 @@ export const useDiagramStore = create<DiagramState>()(
   cancelConnect: () => set({ connectFrom: null, connectDrag: null }),
 
   setBookmarksVisible: (visible) => {
-    const { selection, editingBookmarkId } = get();
-    // Keep selection while editing so the flag and extents stay visible
-    // even when other bookmark markers are hidden.
+    const { selection, selectionDetailsOpen } = get();
+    // Keep selection while the bookmark float is open so the flag and extents
+    // stay visible even when other bookmark markers are hidden.
     const clearBookmarkSelection =
       visible === false &&
       selection?.type === "bookmark" &&
-      editingBookmarkId !== selection.id;
+      !selectionDetailsOpen;
     set({
       bookmarksVisible: visible,
       ...(clearBookmarkSelection ? { selection: null } : {}),
     });
     setAppPreferences({ bookmarksVisible: visible });
+  },
+
+  setGroupsCanvasMode: (mode) => {
+    set({ groupsCanvasMode: mode });
+    setAppPreferences({ groupsCanvasMode: mode });
   },
 
   setSelectionPulseEnabled: (enabled) => {
@@ -1235,20 +1283,17 @@ export const useDiagramStore = create<DiagramState>()(
   openBookmarkEdit: (id) => {
     if (!get().bookmarks.some((b) => b.id === id)) return;
     set({
-      editingBookmarkId: id,
       selection: { type: "bookmark", id },
-      selectionDetailsOpen: false,
+      selectionDetailsOpen: true,
     });
   },
 
   closeBookmarkEdit: () => {
-    const { selection, editingBookmarkId } = get();
+    const { selection, selectionDetailsOpen } = get();
+    if (selection?.type !== "bookmark" || !selectionDetailsOpen) return;
     set({
-      editingBookmarkId: null,
-      ...(selection?.type === "bookmark" &&
-      selection.id === editingBookmarkId
-        ? { selection: null }
-        : {}),
+      selectionDetailsOpen: false,
+      selection: null,
     });
   },
 
@@ -1321,9 +1366,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       bookmarks: s.bookmarks.filter((b) => b.id !== id),
       ...(s.selection?.type === "bookmark" && s.selection.id === id
-        ? { selection: null }
+        ? { selection: null, selectionDetailsOpen: false }
         : {}),
-      ...(s.editingBookmarkId === id ? { editingBookmarkId: null } : {}),
     }));
   },
 
@@ -1412,6 +1456,9 @@ export const useDiagramStore = create<DiagramState>()(
       diagram.titleColor,
       diagram.subtitleColor,
     );
+    const isImageBackground = resolvedAppearance.backgroundMode === "image";
+    const liveShowGrid = isImageBackground ? false : showGrid;
+    const liveGridStyle = isImageBackground ? "lines" : gridStyle;
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -1428,16 +1475,18 @@ export const useDiagramStore = create<DiagramState>()(
       diagramBackgroundColor,
       diagramAppearance: {
         ...resolvedAppearance,
-        // Keep open-diagram background as source of truth for the live canvas.
-        backgroundMode: getDiagramBackgroundMode(
-          showGrid,
-          gridStyle,
+        // Keep open-diagram background as source of truth for the live canvas,
+        // but preserve explicit image mode from appearance.
+        backgroundMode: syncBackgroundModeFromCanvasState(
+          resolvedAppearance.backgroundMode,
+          liveShowGrid,
+          liveGridStyle,
           diagramBackgroundColor,
         ),
         backgroundColor: diagramBackgroundColor,
       },
-      showGrid,
-      gridStyle,
+      showGrid: liveShowGrid,
+      gridStyle: liveGridStyle,
       selection: null,
       selectionDetailsOpen: false,
       connectFrom: null,
@@ -1472,7 +1521,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle,
     } = get();
     return {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,

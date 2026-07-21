@@ -1,0 +1,85 @@
+# v0.6.0
+- Added numerical field to character size slider.
+- Added slider to floating text font size field.
+- Added user-supplied image as a background option.
+	- Upload an image for use as background.
+	- Tile or centre the image, zoom in or out.
+	- Drag (via hidden handle, similar to bookmark markers) to reposition.
+	- Background included in export.
+	- Background images are stored in indexedDB, and saved in .rdiagram files and themes in base64.
+- Minor assorted improvements for group membership chips
+	- Added question mark symbol for group icons.
+	- Group chips now show their name on mouse-over.
+- Canvas performance pass (smoother panning)
+	- Diagram no longer re-renders the full scene on every pan frame.
+	- Faster membership-chip and relationship-line updates.
+	- Detached selection panels stay lighter while panning.
+- Bookmark marker improvements:
+	- Double-click (or double-tap) a bookmark marker to open its edit window, same as right-click.
+	- Bookmark edit window now anchors next to the marker like other detail panels (drag away for a dotted connector).
+- Group improvements:
+	- Groups can now have a presence on the canvas beyond just the membership chips on members
+	- Spokes connect all members of a group, converging at a central point where the group badge sits.
+	- The group badge is a valid target for relationships (and for opening the group details window).
+	- Corridor colour and opacity can be tweaked per group (chip appearance dialog).
+	- The hub badge can be dragged; corridors follow. Reset to member-centre from the group panel.
+	- Groups eye beside the list cycles three modes: all hubs+corridors, connected hubs only (no corridors), or fully hidden.
+- Box double-click now opens the details panel (same as other objects); collapse/expand via a chevron control on the box (or the panel button).
+- Characters are counted as inside a box based on their circle/shape only; labels hanging outside no longer prevent moving with the box.
+- UI theme and diagram theme files now export as .rd-ui-theme and .rd-diagram-theme, and filepickers for both accept these (they still accept older exported JSON files, too).
+	- More consistent UI theme and diagram theme editors in Settings.
+	- Added default (dark) theme for diagrams.
+	- On first launch (and only first launch), the application picks default (light) or default (dark) for default diagram theme, to match UI theme defaulting to matching system theme; you can change the default diagram theme immediately afterwards and it will behave normally afterwards.
+# v0.5.0
+- Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.
+- Connections now indicate from which character to which character they extend.
+- Connections can now be reversed via a button.
+- Replaced 'arrow at start' and 'arrow at end' checkboxes with two buttons displaying arrows, and moved those just beneath the character indicator. Mouseover text still says they're 'arrow at start' and 'arrow at end'.
+- Button for moving the viewport to diagram extents.
+- Bookmarks!
+	- The upper-left bookmark icon pops open your list of bookmarks. The + Bookmark icon creates a bookmark centred in the current viewpoint, and at the current zoom. Bookmarks will be created with a random colour and generic name, but both can be edited.
+	- Right-click a bookmark for access to its edit window.
+	- The closed/open eye button hides/reveals bookmark indicators on the diagram; mousing-over one of these will show you its name. You can drag the bookmark to reposition it, and selecting it will show you the boundaries of the bookmark, which can be resized by clicking-and-dragging.
+- Undo/redo functionality.
+- Group detail window now floats rather than being anchored next to a character that belongs to that group, and can be dragged around the screen.
+- Relationship line, box and character interfaces can now be dragged away from their element, at which point they start floating, too.
+- Multi-object selection - shift+left mouse drag to start selecting items.
+- Right-click object creation interface improved; you now get a fan of buttons, and a pulsing dot indicates where the item is going to be created.
+	- Pulsing behaviour can be disabled in Settings > Accessibility.
+- New selection effect for characters, boxes, lines; pulsing.
+	- Also disabled from Settings > Accessibility; static aura highlight applies when the setting is disabled.
+- Removed options from Settings > Accessibility when they're available elsewhere.
+- Moved UI scaling to Settings > Accessibility.
+- Slightly reworked Diagram properties > Appearance to duplicate less of Settings > Appearance > Diagram Themes.
+- Some alternative palettes for things like background.
+# v0.4.0
+- Fixed diagram title/subtitle obeying UI theme colours, but exporting with light colours regardless; they're now subject to diagram properties colour settings (and have their own customisation options).
+- Diagram default theme editor!
+- Diagram-specific theme editor! (I know this means the UI is duplicated in two places, but I'll work out if this is fixable gracefully later)
+- Improvements to the diagram theme editors! (sorted things by element, added text explaining when you're just tweaking the default colour of new elements, other QoL stuff)
+- Changed Settings > Diagram Themes to display colour picker elements even whilst in the default theme; it now prompts to save a new theme if the user changes anything, as the default theme can't be changed.
+- Zoom indicator.
+- Changed export zoom selection from a dropdown to 100%/200% buttons, plus a number field for custom zoom. (Settings > Export also does the same for defaults).
+- Can now customise placeholder background colour (for characters without an image), and the colour of the initial text used.
+	- If there's anything diagram-wide that you'd prefer to be editable per-object, let me know.
+- User can set default save/load location, default export location... in the Tauri desktop app. Browsers won't let webpages do this sort of thing, for security reasons.
+# v0.3.0
+- Fixed group add/remove button being slightly different height from group buttons in the Group list interface.
+- Replaced scuffed pencil icon for editing group membership from the Group list interface with a +- symbol.
+- i18n! ...but no languages for it besides English. Contributions welcome.
+- Split current Settings into Settings (app-wide) and Diagram Properties (diagram-specific); these have further been divided into panes to avoid a lot of scrolling.
+- Added a bunch of thing to Settings - app version, new diagram defaults, autosave, language, export defaults, clearing data.
+- Added UI scaling (accessibility).
+- Added themes (light/dark/system).
+- Added user-defined themes (with an in-app theme editor with live preview under Settings, and you can export/import themes to share them).
+# v0.2.0
+- Floating text now respect boxes; text within boxes moves along with the box when it's moved, and condenses into the box when it's condensed.
+- Boxes now only capture objects (when resizing, moving) when mouse button is released, not the moment they overlap an object.
+- Boxes now only capture objects when they completely overlap an object, rather than its midpoint.
+- Dragging boxes and text now doesn't open the floating UI element either during drag or on drop; users need to intentionally click an object without dragging to open the UI for it.
+- Selected image name should now be retained for characters in the UI - previously it was lost as soon as you closed the UI after selecting an image.
+- Floating text improvements; now supports linebreaks and multiple lines.
+# v0.1.1
+- Fixed issue where desktop app wasn't popping up a file dialog on export; it worked, but just dumped the image into downloads.
+# v0.1.0
+- Initial release of the Character Relationship Diagram Editor (I suck at names).

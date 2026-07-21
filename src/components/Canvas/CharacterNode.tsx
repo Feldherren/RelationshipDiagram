@@ -285,6 +285,8 @@ export function CharacterNode({
         groups={membershipGroups}
         characterSize={size}
         borderShape={character.borderShape}
+        characterX={character.position.x}
+        characterY={character.position.y}
         highlightedGroupId={highlightedGroupId}
         onChipClick={onSelectGroup}
       />

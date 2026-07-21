@@ -115,6 +115,28 @@ export const SKULL_LAYOUT = {
   unitScale: 0.068,
 } as const;
 
+/**
+ * Question-mark hook in unit space (±1), stroke-only.
+ * Pair with a filled dot at (QUESTION_MARK_OFFSET_X, QUESTION_MARK_DOT_Y).
+ * Offset pulls the right-weighted bowl toward chip centre.
+ */
+export const QUESTION_MARK_PATH =
+  "M -0.32 -0.42 C -0.32 -0.95 0.55 -1 0.55 -0.42 C 0.55 -0.08 0.06 0.02 0 0.3 L 0 0.42";
+
+/** Horizontal nudge (unit space) so the glyph reads centred on the chip. */
+export const QUESTION_MARK_OFFSET_X = -0.12;
+
+/** Vertical centre of the question-mark terminal dot (unit space). */
+export const QUESTION_MARK_DOT_Y = 0.78;
+
+/** Scale every number in an SVG path (unit space → chip/glyph space). */
+export function scaleSvgPath(data: string, scale: number): string {
+  return data.replace(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi, (match) => {
+    const scaled = Number(match) * scale;
+    return Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(3);
+  });
+}
+
 /** Flat list of x,y pairs for a regular polygon (vertex at top). */
 export function regularPolygonPoints(
   sides: number,

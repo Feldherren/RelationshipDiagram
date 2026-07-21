@@ -104,12 +104,24 @@ export function DiagramAppearancePanel({
             mode={value.backgroundMode}
             backgroundColor={value.backgroundColor}
             gridColor={value.backgroundGridColor}
+            backgroundImageData={value.backgroundImageData}
+            backgroundImagePlacement={value.backgroundImagePlacement}
+            backgroundImageScale={value.backgroundImageScale}
             onModeChange={setBackgroundMode}
             onBackgroundColorChange={(backgroundColor) =>
               onChange({ backgroundColor })
             }
             onGridColorChange={(backgroundGridColor) =>
               onChange({ backgroundGridColor })
+            }
+            onBackgroundImageDataChange={(backgroundImageData) =>
+              onChange({ backgroundImageData })
+            }
+            onBackgroundImagePlacementChange={(backgroundImagePlacement) =>
+              onChange({ backgroundImagePlacement })
+            }
+            onBackgroundImageScaleChange={(backgroundImageScale) =>
+              onChange({ backgroundImageScale })
             }
             colourLabel={
               settingsLabels

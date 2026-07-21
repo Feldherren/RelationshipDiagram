@@ -1,7 +1,11 @@
 import type { Point } from "../models/types";
-import type { Bounds, Box, Character, NodeRef } from "../models/types";
+import type { Bounds, Box, Character, Group, NodeRef } from "../models/types";
 import { resolveBoxBounds, getCollapsedBoxSquareBounds } from "./geometry";
 import { getCollapsedBoxForCharacter } from "./lineEndpoints";
+import {
+  getGroupHubPosition,
+  getGroupHubHitRadius,
+} from "./groupHub";
 
 /** Matches RoundedRectAura outer padding in HoverAura.tsx */
 const BOX_CONNECTION_HIT_PADDING = 20;
@@ -48,6 +52,7 @@ export function findConnectionTargetAt(
   point: Point,
   characters: Character[],
   boxes: Box[],
+  groups: Group[] = [],
 ): NodeRef | null {
   let bestCharacter: { ref: NodeRef; dist: number } | null = null;
 
@@ -65,6 +70,21 @@ export function findConnectionTargetAt(
 
   if (bestCharacter) {
     return bestCharacter.ref;
+  }
+
+  let bestGroup: { ref: NodeRef; dist: number } | null = null;
+  const hubHitRadius = getGroupHubHitRadius();
+  for (const group of groups) {
+    const hub = getGroupHubPosition(group, characters, boxes);
+    if (!hub) continue;
+    const dist = Math.hypot(point.x - hub.x, point.y - hub.y);
+    if (dist <= hubHitRadius && (!bestGroup || dist < bestGroup.dist)) {
+      bestGroup = { ref: { id: group.id, kind: "group" }, dist };
+    }
+  }
+
+  if (bestGroup) {
+    return bestGroup.ref;
   }
 
   let bestBox: { ref: NodeRef; dist: number } | null = null;
@@ -115,7 +135,19 @@ export function getBoxConnectHandlePosition(bounds: Bounds): Point {
   };
 }
 
+export function getBoxCollapseControlPosition(bounds: Bounds): Point {
+  return {
+    x: bounds.x + 10,
+    y: bounds.y + 14,
+  };
+}
+
 export function getCollapsedBoxConnectHandlePosition(size: number): Point {
   const offset = getConnectHandleOffset(size);
   return { x: offset.x, y: offset.y };
+}
+
+export function getCollapsedBoxCollapseControlPosition(size: number): Point {
+  const offset = getConnectHandleOffset(size);
+  return { x: -offset.x, y: offset.y };
 }

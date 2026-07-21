@@ -5,14 +5,18 @@ import {
   type DiagramBackgroundMode,
 } from "./diagramBackground";
 import {
+  BUILT_IN_DIAGRAM_THEMES,
   cloneDiagramAppearance,
   DEFAULT_DIAGRAM_APPEARANCE,
+  isBuiltInDiagramThemeId,
   resolveDiagramAppearance,
   validateDiagramThemeDocument,
+  type BuiltInDiagramThemeId,
   type DiagramThemeDocument,
   type DiagramThemePreference,
 } from "./diagramAppearance";
 import {
+  getSystemColorScheme,
   isUiScale,
   validateThemeDocument,
   type ThemeDocument,
@@ -20,8 +24,24 @@ import {
   type UiScale,
 } from "./uiTheme";
 import { exportZoomRatioFromPercent } from "./exportZoom";
+import {
+  parseGroupsCanvasMode,
+  type GroupsCanvasMode,
+} from "./groupHub";
+import {
+  APPEARANCE_WALLPAPER_KEY,
+  loadAllWallpapers,
+  syncWallpapers,
+  themeWallpaperKey,
+} from "./wallpaperImageStorage";
 
 const STORAGE_KEY = "appPreferences";
+
+/** In-memory wallpaper data URLs; localStorage keeps prefs without image payloads. */
+const wallpaperCache = new Map<string, string>();
+let wallpaperPersistChain: Promise<void> = Promise.resolve();
+let wallpaperHydratePromise: Promise<void> | null = null;
+let wallpapersHydrated = false;
 
 export type ExportBoundsMode = "auto" | "custom";
 
@@ -48,6 +68,11 @@ export interface AppPreferences {
   customThemes: ThemeDocument[];
   /** Whether bookmark flags are shown on the canvas. */
   bookmarksVisible: boolean;
+  /**
+   * Group hub canvas eye: all hubs+corridors, connected badges only, or none.
+   * Legacy prefs may still store `groupsVisible` boolean (migrated on load).
+   */
+  groupsCanvasMode: GroupsCanvasMode;
   /** Whether selected canvas items show a pulsing highlight. */
   selectionPulseEnabled: boolean;
   /**
@@ -76,6 +101,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiScale: 1,
   customThemes: [],
   bookmarksVisible: true,
+  groupsCanvasMode: "full",
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
 };
@@ -126,7 +152,7 @@ function parseCustomDiagramThemes(value: unknown): DiagramThemeDocument[] {
   const seen = new Set<string>();
   for (const entry of value) {
     const theme = validateDiagramThemeDocument(entry);
-    if (!theme || theme.id === "default" || seen.has(theme.id)) continue;
+    if (!theme || isBuiltInDiagramThemeId(theme.id) || seen.has(theme.id)) continue;
     seen.add(theme.id);
     themes.push(theme);
   }
@@ -197,7 +223,7 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       : defaults.diagramThemePreference;
 
   if (
-    diagramThemePreference !== "default" &&
+    !isBuiltInDiagramThemeId(diagramThemePreference) &&
     !customDiagramThemes.some((theme) => theme.id === diagramThemePreference)
   ) {
     diagramThemePreference = defaults.diagramThemePreference;
@@ -269,6 +295,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.bookmarksVisible === "boolean"
         ? stored.bookmarksVisible
         : defaults.bookmarksVisible,
+    groupsCanvasMode: parseGroupsCanvasMode(
+      stored.groupsCanvasMode,
+      stored.groupsVisible,
+    ),
     selectionPulseEnabled:
       typeof stored.selectionPulseEnabled === "boolean"
         ? stored.selectionPulseEnabled
@@ -280,16 +310,134 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
   };
 }
 
-export function getAppPreferences(): AppPreferences {
+function collectWallpaperMap(
+  prefs: AppPreferences,
+): Map<string, string | null> {
+  const desired = new Map<string, string | null>();
+  desired.set(
+    APPEARANCE_WALLPAPER_KEY,
+    prefs.diagramAppearance.backgroundImageData,
+  );
+  for (const theme of prefs.customDiagramThemes) {
+    desired.set(
+      themeWallpaperKey(theme.id),
+      theme.appearance.backgroundImageData,
+    );
+  }
+  return desired;
+}
+
+function updateWallpaperCache(prefs: AppPreferences): void {
+  const desired = collectWallpaperMap(prefs);
+  const keep = new Set<string>();
+  for (const [key, dataUrl] of desired) {
+    if (dataUrl) {
+      wallpaperCache.set(key, dataUrl);
+      keep.add(key);
+    } else {
+      wallpaperCache.delete(key);
+    }
+  }
+  for (const key of [...wallpaperCache.keys()]) {
+    if (!keep.has(key)) {
+      wallpaperCache.delete(key);
+    }
+  }
+}
+
+function stripWallpapersForStorage(prefs: AppPreferences): AppPreferences {
+  return {
+    ...prefs,
+    diagramAppearance: {
+      ...cloneDiagramAppearance(prefs.diagramAppearance),
+      backgroundImageData: null,
+    },
+    customDiagramThemes: prefs.customDiagramThemes.map((theme) => ({
+      ...theme,
+      appearance: {
+        ...cloneDiagramAppearance(theme.appearance),
+        backgroundImageData: null,
+      },
+    })),
+  };
+}
+
+function applyWallpaperCache(prefs: AppPreferences): AppPreferences {
+  // After hydrate, IndexedDB/cache is authoritative (localStorage is stripped).
+  // Before hydrate, fall back to any legacy inline data URLs still in localStorage.
+  if (wallpapersHydrated) {
+    return {
+      ...prefs,
+      diagramAppearance: {
+        ...prefs.diagramAppearance,
+        backgroundImageData:
+          wallpaperCache.get(APPEARANCE_WALLPAPER_KEY) ?? null,
+      },
+      customDiagramThemes: prefs.customDiagramThemes.map((theme) => ({
+        ...theme,
+        appearance: {
+          ...theme.appearance,
+          backgroundImageData:
+            wallpaperCache.get(themeWallpaperKey(theme.id)) ?? null,
+        },
+      })),
+    };
+  }
+
+  const appearanceFromCache = wallpaperCache.get(APPEARANCE_WALLPAPER_KEY);
+  return {
+    ...prefs,
+    diagramAppearance: {
+      ...prefs.diagramAppearance,
+      backgroundImageData:
+        appearanceFromCache ?? prefs.diagramAppearance.backgroundImageData,
+    },
+    customDiagramThemes: prefs.customDiagramThemes.map((theme) => {
+      const fromCache = wallpaperCache.get(themeWallpaperKey(theme.id));
+      return {
+        ...theme,
+        appearance: {
+          ...theme.appearance,
+          backgroundImageData:
+            fromCache ?? theme.appearance.backgroundImageData,
+        },
+      };
+    }),
+  };
+}
+
+function prefsHaveInlineWallpapers(prefs: AppPreferences): boolean {
+  if (prefs.diagramAppearance.backgroundImageData) return true;
+  return prefs.customDiagramThemes.some(
+    (theme) => Boolean(theme.appearance.backgroundImageData),
+  );
+}
+
+/** First-launch defaults: diagram theme matches current system light/dark once. */
+function createFirstLaunchPreferences(): AppPreferences {
+  const builtInId: BuiltInDiagramThemeId =
+    getSystemColorScheme() === "dark" ? "default-dark" : "default";
+  const diagramAppearance = cloneDiagramAppearance(
+    BUILT_IN_DIAGRAM_THEMES[builtInId],
+  );
+  return {
+    ...DEFAULT_APP_PREFERENCES,
+    customThemes: [],
+    customDiagramThemes: [],
+    diagramThemePreference: builtInId,
+    diagramAppearance,
+    defaultBackgroundMode: diagramAppearance.backgroundMode,
+    defaultBackgroundColor: diagramAppearance.backgroundColor,
+  };
+}
+
+function readStoredPreferences(): AppPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return {
-        ...DEFAULT_APP_PREFERENCES,
-        customThemes: [],
-        customDiagramThemes: [],
-        diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
-      };
+      const prefs = createFirstLaunchPreferences();
+      writeStoredPreferences(prefs);
+      return prefs;
     }
     return parseStoredPreferences(JSON.parse(raw));
   } catch {
@@ -300,6 +448,103 @@ export function getAppPreferences(): AppPreferences {
       diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
     };
   }
+}
+
+function writeStoredPreferences(prefs: AppPreferences): void {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(stripWallpapersForStorage(prefs)),
+    );
+  } catch {
+    // localStorage may be unavailable or over quota
+  }
+}
+
+function enqueueWallpaperPersist(prefs: AppPreferences): void {
+  const desired = collectWallpaperMap(prefs);
+  wallpaperPersistChain = wallpaperPersistChain
+    .then(() => syncWallpapers(desired))
+    .catch((err) => {
+      console.error("Failed to persist wallpaper images:", err);
+    });
+}
+
+/**
+ * Load wallpaper payloads from IndexedDB (and migrate any still embedded in
+ * localStorage). Safe to call multiple times; subsequent calls are no-ops.
+ */
+export async function hydrateAppPreferenceWallpapers(): Promise<void> {
+  if (wallpapersHydrated) return;
+  if (wallpaperHydratePromise) {
+    await wallpaperHydratePromise;
+    return;
+  }
+
+  wallpaperHydratePromise = (async () => {
+    try {
+      // Finish any early preference writes before reading IndexedDB.
+      await wallpaperPersistChain;
+
+      const stored = await loadAllWallpapers();
+      for (const [key, dataUrl] of stored) {
+        // IndexedDB wins on key conflicts; keep any cache entries not yet saved.
+        wallpaperCache.set(key, dataUrl);
+      }
+
+      const fromLocal = readStoredPreferences();
+      if (prefsHaveInlineWallpapers(fromLocal)) {
+        // Fill gaps only — do not overwrite cache/IDB entries.
+        if (
+          fromLocal.diagramAppearance.backgroundImageData &&
+          !wallpaperCache.has(APPEARANCE_WALLPAPER_KEY)
+        ) {
+          wallpaperCache.set(
+            APPEARANCE_WALLPAPER_KEY,
+            fromLocal.diagramAppearance.backgroundImageData,
+          );
+        }
+        for (const theme of fromLocal.customDiagramThemes) {
+          const key = themeWallpaperKey(theme.id);
+          if (
+            theme.appearance.backgroundImageData &&
+            !wallpaperCache.has(key)
+          ) {
+            wallpaperCache.set(key, theme.appearance.backgroundImageData);
+          }
+        }
+        const merged: AppPreferences = {
+          ...fromLocal,
+          diagramAppearance: {
+            ...fromLocal.diagramAppearance,
+            backgroundImageData:
+              wallpaperCache.get(APPEARANCE_WALLPAPER_KEY) ?? null,
+          },
+          customDiagramThemes: fromLocal.customDiagramThemes.map((theme) => ({
+            ...theme,
+            appearance: {
+              ...theme.appearance,
+              backgroundImageData:
+                wallpaperCache.get(themeWallpaperKey(theme.id)) ?? null,
+            },
+          })),
+        };
+        // Drop inline payloads from localStorage now that IndexedDB holds them.
+        writeStoredPreferences(merged);
+        await syncWallpapers(collectWallpaperMap(merged));
+      }
+    } catch (err) {
+      console.error("Failed to hydrate wallpaper images:", err);
+    } finally {
+      wallpapersHydrated = true;
+    }
+  })();
+
+  await wallpaperHydratePromise;
+}
+
+export function getAppPreferences(): AppPreferences {
+  return applyWallpaperCache(readStoredPreferences());
 }
 
 export function setAppPreferences(patch: Partial<AppPreferences>): AppPreferences {
@@ -321,10 +566,8 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
         ? exportZoomRatioFromPercent(patch.defaultExportPixelRatio * 100)
         : current.defaultExportPixelRatio,
   };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // localStorage may be unavailable
-  }
+  updateWallpaperCache(next);
+  writeStoredPreferences(next);
+  enqueueWallpaperPersist(next);
   return next;
 }

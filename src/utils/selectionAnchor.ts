@@ -8,6 +8,7 @@ import type {
 } from "../models/types";
 import {
   COLLAPSED_BOX_SIZE,
+  GROUP_HUB_BADGE_RADIUS,
 } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
@@ -20,6 +21,7 @@ import {
   getFloatingTextById,
   resolveBoxBounds,
 } from "./geometry";
+import { getGroupHubPosition } from "./groupHub";
 import { getPillLabelSize } from "./labelMetrics";
 import { getLineDisplayLabel } from "./lineEndpoints";
 import { routeLine } from "./lineRouting";
@@ -79,7 +81,6 @@ export function isSelectionFloatInteractiveTarget(
 export function selectionFloatPlacementKey(
   selection: NonNullable<Selection>,
 ): string | null {
-  if (selection.type === "bookmark") return null;
   if (selection.type === "multi") {
     return `multi:${selection.items.map((i) => `${i.type}:${i.id}`).join(",")}`;
   }
@@ -171,6 +172,8 @@ export function getSelectionConnectorAnchorWorld(
   selection: NonNullable<Selection>,
   diagram: Diagram,
   towardWorld: Point,
+  /** Needed for screen-sized markers (bookmarks). */
+  viewportScale: number = 1,
 ): Point | null {
   if (selection.type === "character") {
     const character = getCharacterById(diagram, selection.id);
@@ -206,13 +209,62 @@ export function getSelectionConnectorAnchorWorld(
   }
 
   if (selection.type === "group") {
+    const group = diagram.groups.find((g) => g.id === selection.id);
+    if (!group) return null;
+    const hub = getGroupHubPosition(
+      group,
+      diagram.characters,
+      diagram.boxes,
+    );
+    if (hub) {
+      const dx = towardWorld.x - hub.x;
+      const dy = towardWorld.y - hub.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: hub.x + (dx / len) * GROUP_HUB_BADGE_RADIUS,
+        y: hub.y + (dy / len) * GROUP_HUB_BADGE_RADIUS,
+      };
+    }
     if (!selection.anchorCharacterId) return null;
     const character = getCharacterById(diagram, selection.anchorCharacterId);
     if (!character) return null;
     return getCharacterEdgePoint(character, towardWorld);
   }
 
+  if (selection.type === "bookmark") {
+    const bookmark = diagram.bookmarks?.find((b) => b.id === selection.id);
+    if (!bookmark) return null;
+    return boundsEdgePoint(
+      getBookmarkMarkerWorldBounds(bookmark.anchor, viewportScale),
+      towardWorld,
+    );
+  }
+
   return null;
+}
+
+/**
+ * World bounds of the canvas bookmark ribbon.
+ * Sized to match BookmarkFlag (screen-pixel icon scaled into world space),
+ * expanded to the outer edge of the selected stroke.
+ */
+function getBookmarkMarkerWorldBounds(
+  anchor: Point,
+  viewportScale: number,
+): Bounds {
+  // Keep in sync with BookmarkFlag: RIBBON_PX=30, path ~x5–17/y3–21, tip at bottom.
+  const inv = 1 / Math.max(0.01, viewportScale);
+  const iconScale = (30 / 18) * inv;
+  const halfWidth = 7 * iconScale;
+  const height = 18 * iconScale;
+  // Selected stroke is 1.5 screen-px, centered on the path — use the outer rim.
+  const strokeOutset = (1.5 / 2) * inv;
+  return {
+    x: anchor.x - halfWidth - strokeOutset,
+    y: anchor.y - height - strokeOutset,
+    width: 2 * (halfWidth + strokeOutset),
+    height: height + 2 * strokeOutset,
+  };
 }
 
 const LINE_LABEL_FONT_SIZE = 12;

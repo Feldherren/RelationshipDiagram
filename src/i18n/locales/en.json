@@ -34,7 +34,8 @@
     "zoomAria": "Zoom level {{percent}} percent",
     "zoomTitle": "Current diagram zoom",
     "fitToContent": "Zoom to extents",
-    "fitToContentTitle": "Zoom to extents"
+    "fitToContentTitle": "Zoom to extents",
+    "backgroundImageHandle": "Background"
   },
   "bookmarks": {
     "title": "Bookmarks",
@@ -48,8 +49,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "updateView": "Update to current view",
-    "showFlags": "Show bookmark flags",
-    "hideFlags": "Hide bookmark flags",
+    "showFlags": "Show markers",
+    "hideFlags": "Hide markers",
     "editTitle": "Edit bookmark"
   },
   "groups": {
@@ -58,7 +59,10 @@
     "add": "Add group",
     "empty": "No groups yet.",
     "editMembersTooltip": "Add or remove members on canvas",
-    "editMembersAria": "Add or remove members of {{name}}"
+    "editMembersAria": "Add or remove members of {{name}}",
+    "canvasModeFull": "Show all group hubs and corridors",
+    "canvasModeConnected": "Connected hubs only (no corridors)",
+    "canvasModeHidden": "Hide group hubs"
   },
   "export": {
     "title": "Export diagram",
@@ -103,7 +107,17 @@
     "backgroundBlank": "Transparent",
     "backgroundGrid": "Grid",
     "backgroundDots": "Dots",
+    "backgroundImage": "Image",
     "backgroundColour": "Background colour",
+    "backgroundImageUnderlay": "Underlay colour",
+    "backgroundImageFile": "Background image",
+    "backgroundImageClear": "Remove image",
+    "backgroundImagePlacement": "Image placement",
+    "backgroundImageCenter": "Centre",
+    "backgroundImageTile": "Tile",
+    "backgroundImageScale": "Image scale ({{percent}}%)",
+    "backgroundImageTooLarge": "Image is too large (max about 10 MB).",
+    "backgroundImageInvalid": "Could not use that image file.",
     "diagramFont": "Diagram font",
     "fontMissing": "The font “{{font}}” is not available on this device. Choose it from installed fonts above. Diagram files only store the font name, not the font file itself.",
     "customFontHint": "Custom fonts must be installed on this device. They are not saved inside diagram files.",
@@ -127,18 +141,21 @@
     "themeExportActiveName": "Active theme",
     "themeRemove": "Remove",
     "themeRemoveConfirm": "Remove custom theme “{{name}}”?",
-    "themeImportInvalid": "That file is not a valid theme (schemaVersion 1 with id, name, and tokens).",
+    "themeImportInvalid": "That file is not a valid theme (schemaVersion 1 with id, name, kind uiTheme, and tokens).",
+    "themeImportWrongKind": "That file is a diagram theme — import it under Diagram Themes.",
     "diagramTheme": "Diagram theme",
-    "diagramThemeDefault": "Default",
+    "diagramThemeDefault": "Default (Light)",
+    "diagramThemeDefaultDark": "Default (Dark)",
     "diagramThemeHint": "Default colours for new diagrams. Edit named themes under Diagram Themes.",
     "diagramThemeApply": "Apply to current diagram…",
     "diagramThemeApplyConfirm": "Apply the selected diagram theme to the current diagram? This overwrites the current appearance settings.",
-    "diagramThemesLibraryHint": "Create and edit named diagram themes. Colour editors below always show the selected theme (including Default). Changing Default saves your edits as a new custom theme.",
+    "diagramThemesLibraryHint": "Create and edit named diagram themes. Colour editors below always show the selected theme (including built-ins). Changing a built-in theme saves your edits as a new custom theme.",
     "diagramThemeImport": "Import diagram theme…",
     "diagramThemeExportActive": "Export active diagram theme…",
     "diagramThemeExportActiveName": "Active diagram theme",
     "diagramThemeRemoveConfirm": "Remove diagram theme “{{name}}”?",
-    "diagramThemeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, and appearance).",
+    "diagramThemeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, kind diagramTheme, and appearance).",
+    "diagramThemeImportWrongKind": "That file is a UI theme — import it under UI Themes.",
     "themeEditorSection": "UI Themes",
     "diagramDefaultsSection": "Diagram Themes",
     "themeEditorHint": "Edit a custom theme. Changes preview live in the interface. Light and Dark built-in themes cannot be overwritten — create a custom theme from them instead.",
@@ -278,10 +295,10 @@
     "themeCreate": "Create theme",
     "themeSelected": "Selected theme",
     "themeSelectedBadge": "Selected",
-    "themeSelectedDefaultHint": "Default itself cannot be overwritten. You can inspect its colours below; the first change will save your edits as a new custom theme.",
+    "themeSelectedDefaultHint": "Built-in themes cannot be overwritten. You can inspect their colours below; the first change will save your edits as a new custom theme.",
     "themeSelectedCustomHint": "Editing “{{name}}”. Colour changes below update the draft; Save theme to keep them.",
     "themeForkFromDefaultTitle": "Save as new theme",
-    "themeForkFromDefaultHint": "Default cannot be overwritten. Name a custom theme to keep these colour changes.",
+    "themeForkFromDefaultHint": "Built-in themes cannot be overwritten. Name a custom theme to keep these colour changes.",
     "themeForkFromDefaultCreate": "Create theme",
     "themeForkFromDefaultCancel": "Cancel",
     "themeSave": "Save theme",
@@ -292,7 +309,8 @@
     "themeImportedFeedback": "Imported theme “{{name}}”.",
     "themeRemovedFeedback": "Removed theme “{{name}}”.",
     "themeAppliedFeedback": "Applied theme to the current diagram.",
-    "themeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, and appearance)."
+    "themeImportInvalid": "That file is not a valid diagram theme (schemaVersion 1 with id, name, kind diagramTheme, and appearance).",
+    "themeImportWrongKind": "That file is a UI theme — import it under UI Themes."
   },
   "selection": {
     "character": "Character",
@@ -322,14 +340,14 @@
     "containedCount": "{{count}} character(s) fully inside",
     "expandBox": "Expand box",
     "collapseBox": "Collapse box",
-    "collapseHint": "Double-click box on canvas to toggle collapse.",
+    "collapseHint": "Click the collapse control on the box to toggle.",
     "deleteBox": "Delete box",
     "textField": "Text",
     "textPlaceholder": "Text\nSecond line",
     "colour": "Colour",
     "fontSize": "Font size",
     "deleteText": "Delete text",
-    "groupHint": "Membership chips appear on characters. Selecting a group highlights its members.",
+    "groupHint": "Membership chips appear on characters. The hub badge is the connect target for group relationships — drag it to reposition.",
     "chip": "Chip",
     "customiseChip": "Customise chip…",
     "members": "Members ({{count}})",
@@ -338,6 +356,8 @@
     "doneEditingMembers": "Done editing members",
     "membersHintIdle": "Enter edit mode, then click characters on the canvas to toggle membership.",
     "membersHintActive": "Click characters on the canvas to add or remove them.",
+    "resetHubPosition": "Reset hub to centre",
+    "resetHubPositionHint": "Return the badge to the average position of group members.",
     "deleteGroup": "Delete group"
   },
   "help": {
@@ -387,11 +407,14 @@
   },
   "chipAppearance": {
     "title": "Chip appearance",
-    "hint": "How this group looks on member characters.",
+    "hint": "How this group looks on member characters and hub corridors.",
     "preview": "Preview",
     "backgroundColour": "Background colour",
     "symbolColour": "Symbol colour",
     "borderColour": "Border colour",
+    "corridorHint": "Corridors run from members to the group hub.",
+    "corridorColour": "Corridor colour",
+    "corridorOpacity": "Corridor opacity",
     "done": "Done"
   },
   "imageFocus": {
@@ -454,7 +477,8 @@
     "rock": "Rock",
     "plant": "Plant",
     "sparkle": "Sparkle",
-    "skull": "Skull"
+    "skull": "Skull",
+    "question": "Question mark"
   },
   "colour": {
     "white": "White",

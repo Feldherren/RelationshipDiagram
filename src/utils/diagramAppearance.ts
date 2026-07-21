@@ -93,6 +93,7 @@ function defaultDiagramSubtitleLabel(): LabelChrome {
 
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   fontFamily: DEFAULT_DIAGRAM_FONT,
+  showHeader: true,
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
   backgroundImageData: null,
@@ -117,6 +118,7 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
 /** Built-in Default (Dark) diagram appearance. */
 export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
   fontFamily: DEFAULT_DIAGRAM_FONT,
+  showHeader: true,
   backgroundMode: "grid",
   backgroundColor: { r: 1, g: 28, b: 55 },
   backgroundImageData: null,
@@ -302,6 +304,7 @@ export function cloneDiagramAppearance(
 ): DiagramAppearance {
   return {
     fontFamily: appearance.fontFamily,
+    showHeader: appearance.showHeader,
     backgroundMode: appearance.backgroundMode,
     backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
     backgroundImageData: appearance.backgroundImageData,
@@ -337,6 +340,10 @@ export function resolveDiagramAppearance(
   const partial = value as Partial<DiagramAppearance>;
   return {
     fontFamily: resolveFontFamily(partial.fontFamily, defaults.fontFamily),
+    showHeader:
+      typeof partial.showHeader === "boolean"
+        ? partial.showHeader
+        : defaults.showHeader,
     backgroundMode: isBackgroundMode(partial.backgroundMode)
       ? partial.backgroundMode
       : defaults.backgroundMode,
@@ -467,6 +474,9 @@ export function serializeDiagramAppearance(
 
   if (appearance.fontFamily !== defaults.fontFamily) {
     out.fontFamily = appearance.fontFamily;
+  }
+  if (appearance.showHeader !== defaults.showHeader) {
+    out.showHeader = appearance.showHeader;
   }
 
   if (appearance.backgroundMode !== defaults.backgroundMode) {
@@ -623,6 +633,9 @@ export function patchDiagramAppearance(
   const next = cloneDiagramAppearance(current);
   if (patch.fontFamily !== undefined) {
     next.fontFamily = resolveFontFamily(patch.fontFamily, next.fontFamily);
+  }
+  if (patch.showHeader !== undefined) {
+    next.showHeader = Boolean(patch.showHeader);
   }
   if (patch.backgroundMode !== undefined) {
     next.backgroundMode = patch.backgroundMode;

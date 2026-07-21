@@ -265,6 +265,20 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     };
   }
 
+  const appearanceHadShowHeader =
+    storedAppearance !== null &&
+    typeof storedAppearance.showHeader === "boolean";
+  const legacyShowHeader =
+    typeof stored.defaultShowHeader === "boolean"
+      ? stored.defaultShowHeader
+      : null;
+  if (!appearanceHadShowHeader && legacyShowHeader !== null) {
+    diagramAppearance = {
+      ...diagramAppearance,
+      showHeader: legacyShowHeader,
+    };
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -275,10 +289,7 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
     defaultBackgroundMode: diagramAppearance.backgroundMode,
-    defaultShowHeader:
-      typeof stored.defaultShowHeader === "boolean"
-        ? stored.defaultShowHeader
-        : defaults.defaultShowHeader,
+    defaultShowHeader: diagramAppearance.showHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,
     defaultDiagramFont: diagramAppearance.fontFamily,
     diagramAppearance,
@@ -566,12 +577,20 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
     ? cloneDiagramAppearance(patch.diagramAppearance)
     : current.diagramAppearance;
 
-  // Keep legacy defaultDiagramFont in sync with theme appearance font.
-  if (!patch.diagramAppearance && patch.defaultDiagramFont !== undefined) {
-    diagramAppearance = {
-      ...diagramAppearance,
-      fontFamily: patch.defaultDiagramFont.trim() || DEFAULT_DIAGRAM_FONT,
-    };
+  // Keep legacy prefs in sync with theme appearance.
+  if (!patch.diagramAppearance) {
+    if (patch.defaultDiagramFont !== undefined) {
+      diagramAppearance = {
+        ...diagramAppearance,
+        fontFamily: patch.defaultDiagramFont.trim() || DEFAULT_DIAGRAM_FONT,
+      };
+    }
+    if (patch.defaultShowHeader !== undefined) {
+      diagramAppearance = {
+        ...diagramAppearance,
+        showHeader: patch.defaultShowHeader,
+      };
+    }
   }
 
   const next: AppPreferences = {
@@ -579,6 +598,7 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
     ...patch,
     diagramAppearance,
     defaultDiagramFont: diagramAppearance.fontFamily,
+    defaultShowHeader: diagramAppearance.showHeader,
     customDiagramThemes: patch.customDiagramThemes
       ? patch.customDiagramThemes.map((theme) => ({
           ...theme,

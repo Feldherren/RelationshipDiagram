@@ -245,6 +245,8 @@ export type BackgroundImagePlacement = "tile" | "center";
 export interface DiagramAppearance {
   /** Diagram-wide font family (labels, floating text, header). */
   fontFamily: string;
+  /** Whether the diagram title/subtitle header is shown. */
+  showHeader: boolean;
   /** Canvas background mode (plain / blank / grid / dots / image). */
   backgroundMode: "plain" | "blank" | "grid" | "dots" | "image";
   /** Canvas fill; null means transparent (blank). Underlay when mode is image. */

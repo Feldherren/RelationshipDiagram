@@ -378,10 +378,7 @@ export function SettingsDialog({
             canvasSetup={{
               diagramFont:
                 (forkPendingAppearance ?? prefs.diagramAppearance).fontFamily,
-              showHeader: prefs.defaultShowHeader,
               settingsLabels: true,
-              onShowHeaderChange: (show) =>
-                updatePrefs({ defaultShowHeader: show }),
               onDiagramFontChange: (fontFamily) =>
                 handleDiagramAppearanceChange({ fontFamily }),
             }}

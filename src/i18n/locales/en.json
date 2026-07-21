@@ -148,8 +148,8 @@
     "diagramThemeDefaultDark": "Default (Dark)",
     "diagramThemeHint": "Default appearance (including font) for new diagrams. Edit named themes under Diagram Themes.",
     "diagramThemeApply": "Apply to current diagram…",
-    "diagramThemeApplyConfirm": "Apply the selected diagram theme to the current diagram? This overwrites the current appearance and font.",
-    "diagramThemesLibraryHint": "Create and edit named diagram themes (colours, background, and font). Colour editors below always show the selected theme (including built-ins). Changing a built-in theme saves your edits as a new custom theme.",
+    "diagramThemeApplyConfirm": "Apply the selected diagram theme to the current diagram? This overwrites the current appearance, font, and header visibility.",
+    "diagramThemesLibraryHint": "Create and edit named diagram themes (colours, background, font, and header visibility). Colour editors below always show the selected theme (including built-ins). Changing a built-in theme saves your edits as a new custom theme.",
     "diagramThemeImport": "Import diagram theme…",
     "diagramThemeExportActive": "Export active diagram theme…",
     "diagramThemeExportActiveName": "Active diagram theme",
@@ -242,7 +242,7 @@
     "done": "Done"
   },
   "diagramAppearance": {
-    "canvasSetupHint": "Background and font are part of the selected diagram theme. The header default below applies when you create a new diagram.",
+    "canvasSetupHint": "Edits below update the selected diagram theme, including background, font, and header visibility.",
     "groupHeaderColours": "Header colours",
     "groupHeader": "Header",
     "headerChromeHint": "Header pill colours apply to the diagram title and subtitle on this diagram immediately.",

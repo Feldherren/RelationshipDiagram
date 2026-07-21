@@ -591,7 +591,13 @@ export const useDiagramStore = create<DiagramState>()(
 
   setShowDiagramHeader: (show) => {
     get().captureHistory();
-    set({ showDiagramHeader: show });
+    set((s) => ({
+      showDiagramHeader: show,
+      diagramAppearance: {
+        ...s.diagramAppearance,
+        showHeader: show,
+      },
+    }));
   },
 
   setDiagramBackgroundColor: (color) => {
@@ -630,11 +636,15 @@ export const useDiagramStore = create<DiagramState>()(
         s.diagramAppearance,
         patch,
       );
+      const headerPatch =
+        patch.showHeader !== undefined
+          ? { showDiagramHeader: diagramAppearance.showHeader }
+          : {};
       if (
         patch.backgroundMode === undefined &&
         patch.backgroundColor === undefined
       ) {
-        return { diagramAppearance };
+        return { diagramAppearance, ...headerPatch };
       }
       const background = applyDiagramBackgroundMode(
         diagramAppearance.backgroundMode,
@@ -654,6 +664,7 @@ export const useDiagramStore = create<DiagramState>()(
         showGrid: background.showGrid,
         gridStyle: background.gridStyle,
         diagramBackgroundColor: background.backgroundColor,
+        ...headerPatch,
       };
     });
   },
@@ -687,6 +698,7 @@ export const useDiagramStore = create<DiagramState>()(
       diagramBackgroundColor: background.backgroundColor,
       diagramFontFamily: fontFamily,
       fontMissing: false,
+      showDiagramHeader: syncedAppearance.showHeader,
     });
 
     if (isDefaultDiagramFont(fontFamily)) return;
@@ -777,7 +789,7 @@ export const useDiagramStore = create<DiagramState>()(
       ...EMPTY_DIAGRAM,
       showGrid: background.showGrid,
       gridStyle: background.gridStyle,
-      showHeader: prefs.defaultShowHeader ? undefined : false,
+      showHeader: appearance.showHeader ? undefined : false,
       backgroundColor: serializeDiagramBackground(background.backgroundColor),
       fontFamily: isDefaultDiagramFont(appearance.fontFamily)
         ? undefined
@@ -1492,6 +1504,8 @@ export const useDiagramStore = create<DiagramState>()(
     const liveShowGrid = isImageBackground ? false : showGrid;
     const liveGridStyle = isImageBackground ? "lines" : gridStyle;
     const liveFontFamily = resolvedFamily ?? fontFamily;
+    const liveShowHeader =
+      diagram.showHeader ?? resolvedAppearance.showHeader ?? true;
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -1502,13 +1516,14 @@ export const useDiagramStore = create<DiagramState>()(
       bookmarks: normalizeBookmarks(diagram.bookmarks),
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
-      showDiagramHeader: diagram.showHeader ?? true,
+      showDiagramHeader: liveShowHeader,
       diagramFontFamily: liveFontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       diagramBackgroundColor,
       diagramAppearance: {
         ...resolvedAppearance,
         fontFamily: liveFontFamily,
+        showHeader: liveShowHeader,
         // Keep open-diagram background as source of truth for the live canvas,
         // but preserve explicit image mode from appearance.
         backgroundMode: syncBackgroundModeFromCanvasState(

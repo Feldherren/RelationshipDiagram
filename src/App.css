@@ -1491,10 +1491,32 @@ body,
 }
 
 /* Fixed preview column so colour pickers align across element groups. */
-.diagram-appearance-element > .diagram-appearance-preview {
+.diagram-appearance-element > .diagram-appearance-preview,
+.diagram-appearance-element > .diagram-appearance-preview-column {
   flex: 0 0 9rem;
   width: 9rem;
   box-sizing: border-box;
+}
+
+.diagram-appearance-preview-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.diagram-appearance-preview-column > .diagram-appearance-preview {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.diagram-appearance-header-visibility {
+  margin: 0;
+  align-items: flex-start;
+}
+
+.diagram-appearance-header-visibility span {
+  line-height: 1.25;
 }
 
 .diagram-appearance-element-controls {

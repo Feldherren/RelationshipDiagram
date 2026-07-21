@@ -1,5 +1,5 @@
 # v0.6.1
-- Diagram themes now include font; applying a theme updates the current diagram's font as well as colours/background.
+- Diagram themes now include font and header visibility; applying a theme updates those on the current diagram as well as colours/background.
 # v0.6.0
 - Added numerical field to character size slider.
 - Added slider to floating text font size field.

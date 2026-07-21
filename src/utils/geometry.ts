@@ -32,6 +32,7 @@ import {
 } from "./labelMetrics";
 import { getGroupHubPosition } from "./groupHub";
 import { getConnectHandleOffset, CONNECT_HANDLE_SCREEN_RADIUS } from "./connection";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
 const PILL_STROKE_MARGIN = 2;

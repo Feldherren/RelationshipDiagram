@@ -938,11 +938,11 @@ export const useDiagramStore = create<DiagramState>()(
       let selection = s.selection;
       if (selection?.type === "group" && selection.id === id) {
         selection = null;
-      } else if (
-        selection?.type === "line" &&
-        !lines.some((l) => l.id === selection.id)
-      ) {
-        selection = null;
+      } else if (selection?.type === "line") {
+        const selectedLineId = selection.id;
+        if (!lines.some((l) => l.id === selectedLineId)) {
+          selection = null;
+        }
       }
       return {
         groups: s.groups.filter((g) => g.id !== id),

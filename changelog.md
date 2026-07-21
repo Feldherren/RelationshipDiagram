@@ -1,4 +1,4 @@
-# v0.6.0-dev
+# v0.6.0
 - Added numerical field to character size slider.
 - Added slider to floating text font size field.
 - Added user-supplied image as a background option.
@@ -28,7 +28,7 @@
 - Characters are counted as inside a box based on their circle/shape only; labels hanging outside no longer prevent moving with the box.
 - UI theme and diagram theme files now export as .rd-ui-theme and .rd-diagram-theme, and filepickers for both accept these (they still accept older exported JSON files, too).
 	- More consistent UI theme and diagram theme editors in Settings.
-	- Added default dark theme.
+	- Added default (dark) theme for diagrams.
 	- On first launch (and only first launch), the application picks default (light) or default (dark) for default diagram theme, to match UI theme defaulting to matching system theme; you can change the default diagram theme immediately afterwards and it will behave normally afterwards.
 # v0.5.0
 - Symbol buttons in the group chip appearance editor now render the symbols light or dark to contrast with the UI theme colour, hopefully ensuring visiblity.

@@ -30,7 +30,7 @@ interface CanvasSetupProps {
 interface DiagramAppearancePanelProps {
   value: DiagramAppearance;
   onChange: (patch: Partial<DiagramAppearance>) => void;
-  /** Font / optional show-header controls (not part of diagram themes). */
+  /** Font / optional show-header controls. Font is part of the theme; header default is not. */
   canvasSetup?: CanvasSetupProps;
   /** When false, hide colour pickers but keep element previews. */
   showAppearanceColours?: boolean;
@@ -157,7 +157,7 @@ export function DiagramAppearancePanel({
             <div className="field">
               <span>
                 {settingsLabels
-                  ? t("appSettings.defaultDiagramFont")
+                  ? t("diagramAppearance.groupFont")
                   : t("diagramProperties.diagramFont")}
               </span>
               <FontPicker

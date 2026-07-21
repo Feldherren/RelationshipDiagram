@@ -601,18 +601,26 @@ export const useDiagramStore = create<DiagramState>()(
   setDiagramFontFamily: async (fontFamily) => {
     get().captureHistory();
     if (isDefaultDiagramFont(fontFamily) || isDeprecatedFontFamily(fontFamily)) {
-      set({
+      set((s) => ({
         diagramFontFamily: DEFAULT_DIAGRAM_FONT,
         fontMissing: false,
-      });
+        diagramAppearance: {
+          ...s.diagramAppearance,
+          fontFamily: DEFAULT_DIAGRAM_FONT,
+        },
+      }));
       return;
     }
 
     const resolvedFamily = await ensureFontLoaded(fontFamily);
-    set({
+    set((s) => ({
       diagramFontFamily: resolvedFamily ?? fontFamily,
       fontMissing: !resolvedFamily,
-    });
+      diagramAppearance: {
+        ...s.diagramAppearance,
+        fontFamily: resolvedFamily ?? fontFamily,
+      },
+    }));
   },
 
   setDiagramAppearance: (patch, options) => {
@@ -657,20 +665,43 @@ export const useDiagramStore = create<DiagramState>()(
       diagramAppearance.backgroundMode,
       diagramAppearance.backgroundColor,
     );
+    let fontFamily = diagramAppearance.fontFamily || DEFAULT_DIAGRAM_FONT;
+    if (isDeprecatedFontFamily(fontFamily)) {
+      fontFamily = DEFAULT_DIAGRAM_FONT;
+    }
+    const syncedAppearance = {
+      ...diagramAppearance,
+      fontFamily,
+      backgroundMode: syncBackgroundModeFromCanvasState(
+        diagramAppearance.backgroundMode,
+        background.showGrid,
+        background.gridStyle,
+        background.backgroundColor,
+      ),
+      backgroundColor: background.backgroundColor,
+    };
     set({
-      diagramAppearance: {
-        ...diagramAppearance,
-        backgroundMode: syncBackgroundModeFromCanvasState(
-          diagramAppearance.backgroundMode,
-          background.showGrid,
-          background.gridStyle,
-          background.backgroundColor,
-        ),
-        backgroundColor: background.backgroundColor,
-      },
+      diagramAppearance: syncedAppearance,
       showGrid: background.showGrid,
       gridStyle: background.gridStyle,
       diagramBackgroundColor: background.backgroundColor,
+      diagramFontFamily: fontFamily,
+      fontMissing: false,
+    });
+
+    if (isDefaultDiagramFont(fontFamily)) return;
+
+    void ensureFontLoaded(fontFamily).then((resolvedFamily) => {
+      const current = get().diagramAppearance;
+      if (current.fontFamily !== fontFamily) return;
+      set({
+        diagramFontFamily: resolvedFamily ?? fontFamily,
+        fontMissing: !resolvedFamily,
+        diagramAppearance: {
+          ...current,
+          fontFamily: resolvedFamily ?? fontFamily,
+        },
+      });
     });
   },
 
@@ -748,9 +779,9 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle: background.gridStyle,
       showHeader: prefs.defaultShowHeader ? undefined : false,
       backgroundColor: serializeDiagramBackground(background.backgroundColor),
-      fontFamily: isDefaultDiagramFont(prefs.defaultDiagramFont)
+      fontFamily: isDefaultDiagramFont(appearance.fontFamily)
         ? undefined
-        : prefs.defaultDiagramFont,
+        : appearance.fontFamily,
       appearance: serializeDiagramAppearance({
         ...appearance,
         backgroundMode: syncBackgroundModeFromCanvasState(
@@ -1440,7 +1471,13 @@ export const useDiagramStore = create<DiagramState>()(
     cancelScheduledAutosave();
     await cleanupDeprecatedFonts();
 
-    let fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+    const resolvedAppearance = mergeLegacyHeaderColors(
+      resolveDiagramAppearance(diagram.appearance),
+      diagram.titleColor,
+      diagram.subtitleColor,
+    );
+    let fontFamily =
+      diagram.fontFamily ?? resolvedAppearance.fontFamily ?? DEFAULT_DIAGRAM_FONT;
     if (isDeprecatedFontFamily(fontFamily)) {
       fontFamily = DEFAULT_DIAGRAM_FONT;
     }
@@ -1451,14 +1488,10 @@ export const useDiagramStore = create<DiagramState>()(
     );
     const showGrid = diagram.showGrid ?? true;
     const gridStyle = diagram.gridStyle === "dots" ? "dots" : "lines";
-    const resolvedAppearance = mergeLegacyHeaderColors(
-      resolveDiagramAppearance(diagram.appearance),
-      diagram.titleColor,
-      diagram.subtitleColor,
-    );
     const isImageBackground = resolvedAppearance.backgroundMode === "image";
     const liveShowGrid = isImageBackground ? false : showGrid;
     const liveGridStyle = isImageBackground ? "lines" : gridStyle;
+    const liveFontFamily = resolvedFamily ?? fontFamily;
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -1470,11 +1503,12 @@ export const useDiagramStore = create<DiagramState>()(
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: diagram.showHeader ?? true,
-      diagramFontFamily: resolvedFamily ?? fontFamily,
+      diagramFontFamily: liveFontFamily,
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
       diagramBackgroundColor,
       diagramAppearance: {
         ...resolvedAppearance,
+        fontFamily: liveFontFamily,
         // Keep open-diagram background as source of truth for the live canvas,
         // but preserve explicit image mode from appearance.
         backgroundMode: syncBackgroundModeFromCanvasState(

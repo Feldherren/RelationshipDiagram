@@ -248,6 +248,23 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     };
   }
 
+  const appearanceHadFont =
+    storedAppearance !== null &&
+    typeof storedAppearance.fontFamily === "string" &&
+    storedAppearance.fontFamily.trim().length > 0;
+  const legacyDefaultFont =
+    typeof stored.defaultDiagramFont === "string" &&
+    stored.defaultDiagramFont.trim()
+      ? stored.defaultDiagramFont.trim()
+      : null;
+  // Themes that predate fontFamily inherit the legacy defaultDiagramFont pref.
+  if (!appearanceHadFont && legacyDefaultFont) {
+    diagramAppearance = {
+      ...diagramAppearance,
+      fontFamily: legacyDefaultFont,
+    };
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -263,11 +280,7 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
         ? stored.defaultShowHeader
         : defaults.defaultShowHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,
-    defaultDiagramFont:
-      typeof stored.defaultDiagramFont === "string" &&
-      stored.defaultDiagramFont.trim()
-        ? stored.defaultDiagramFont
-        : defaults.defaultDiagramFont,
+    defaultDiagramFont: diagramAppearance.fontFamily,
     diagramAppearance,
     diagramThemePreference,
     customDiagramThemes,
@@ -549,12 +562,23 @@ export function getAppPreferences(): AppPreferences {
 
 export function setAppPreferences(patch: Partial<AppPreferences>): AppPreferences {
   const current = getAppPreferences();
+  let diagramAppearance = patch.diagramAppearance
+    ? cloneDiagramAppearance(patch.diagramAppearance)
+    : current.diagramAppearance;
+
+  // Keep legacy defaultDiagramFont in sync with theme appearance font.
+  if (!patch.diagramAppearance && patch.defaultDiagramFont !== undefined) {
+    diagramAppearance = {
+      ...diagramAppearance,
+      fontFamily: patch.defaultDiagramFont.trim() || DEFAULT_DIAGRAM_FONT,
+    };
+  }
+
   const next: AppPreferences = {
     ...current,
     ...patch,
-    diagramAppearance: patch.diagramAppearance
-      ? cloneDiagramAppearance(patch.diagramAppearance)
-      : current.diagramAppearance,
+    diagramAppearance,
+    defaultDiagramFont: diagramAppearance.fontFamily,
     customDiagramThemes: patch.customDiagramThemes
       ? patch.customDiagramThemes.map((theme) => ({
           ...theme,

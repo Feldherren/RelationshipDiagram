@@ -243,6 +243,8 @@ export type BackgroundImagePlacement = "tile" | "center";
  * shared label chrome applied live to all matching pills, plus canvas background.
  */
 export interface DiagramAppearance {
+  /** Diagram-wide font family (labels, floating text, header). */
+  fontFamily: string;
   /** Canvas background mode (plain / blank / grid / dots / image). */
   backgroundMode: "plain" | "blank" | "grid" | "dots" | "image";
   /** Canvas fill; null means transparent (blank). Underlay when mode is image. */

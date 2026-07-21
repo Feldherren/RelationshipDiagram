@@ -19,8 +19,6 @@ import { FontPicker } from "./FontPicker";
 interface CanvasSetupProps {
   diagramFont: string;
   onDiagramFontChange: (fontFamily: string) => void;
-  showHeader?: boolean;
-  onShowHeaderChange?: (show: boolean) => void;
   /** Use Settings labels for defaults vs Diagram properties labels. */
   settingsLabels?: boolean;
   fontMissing?: boolean;
@@ -30,7 +28,7 @@ interface CanvasSetupProps {
 interface DiagramAppearancePanelProps {
   value: DiagramAppearance;
   onChange: (patch: Partial<DiagramAppearance>) => void;
-  /** Font / optional show-header controls (not part of diagram themes). */
+  /** Font controls (font is part of the diagram theme). */
   canvasSetup?: CanvasSetupProps;
   /** When false, hide colour pickers but keep element previews. */
   showAppearanceColours?: boolean;
@@ -133,66 +131,56 @@ export function DiagramAppearancePanel({
       )}
 
       {canvasSetup && (
-        <>
-          {canvasSetup.onShowHeaderChange != null &&
-            canvasSetup.showHeader !== undefined && (
-              <label className="field checkbox">
-                <input
-                  type="checkbox"
-                  checked={canvasSetup.showHeader}
-                  onChange={(e) =>
-                    canvasSetup.onShowHeaderChange?.(e.target.checked)
-                  }
-                />
-                <span>
-                  {settingsLabels
-                    ? t("appSettings.defaultShowHeader")
-                    : t("diagramProperties.showHeader")}
-                </span>
-              </label>
+        <fieldset className="theme-editor-group">
+          <legend>{t("diagramAppearance.groupFont")}</legend>
+          <div className="field">
+            <span>
+              {settingsLabels
+                ? t("diagramAppearance.groupFont")
+                : t("diagramProperties.diagramFont")}
+            </span>
+            <FontPicker
+              value={canvasSetup.diagramFont}
+              onChange={canvasSetup.onDiagramFontChange}
+            />
+          </div>
+          {canvasSetup.fontMissing && (
+            <p className="hint">
+              {t("diagramProperties.fontMissing", {
+                font: canvasSetup.diagramFont,
+              })}
+            </p>
+          )}
+          {canvasSetup.showFontHints &&
+            !canvasSetup.fontMissing &&
+            !isDefaultDiagramFont(canvasSetup.diagramFont) && (
+              <p className="hint">{t("diagramProperties.customFontHint")}</p>
             )}
-
-          <fieldset className="theme-editor-group">
-            <legend>{t("diagramAppearance.groupFont")}</legend>
-            <div className="field">
-              <span>
-                {settingsLabels
-                  ? t("appSettings.defaultDiagramFont")
-                  : t("diagramProperties.diagramFont")}
-              </span>
-              <FontPicker
-                value={canvasSetup.diagramFont}
-                onChange={canvasSetup.onDiagramFontChange}
-              />
-            </div>
-            {canvasSetup.fontMissing && (
-              <p className="hint">
-                {t("diagramProperties.fontMissing", {
-                  font: canvasSetup.diagramFont,
-                })}
-              </p>
-            )}
-            {canvasSetup.showFontHints &&
-              !canvasSetup.fontMissing &&
-              !isDefaultDiagramFont(canvasSetup.diagramFont) && (
-                <p className="hint">{t("diagramProperties.customFontHint")}</p>
-              )}
-            {canvasSetup.showFontHints && (
-              <p className="hint">{t("diagramProperties.uiFontHint")}</p>
-            )}
-          </fieldset>
-        </>
+          {canvasSetup.showFontHints && (
+            <p className="hint">{t("diagramProperties.uiFontHint")}</p>
+          )}
+        </fieldset>
       )}
 
       <fieldset className="theme-editor-group">
         <legend>{t("diagramAppearance.groupHeader")}</legend>
         <div className="diagram-appearance-element">
-          <HeaderAppearancePreview
-            titleLabel={value.diagramTitleLabel}
-            subtitleLabel={value.diagramSubtitleLabel}
-            fontFamily={fontFamily}
-            canvasBackground={canvasBackground}
-          />
+          <div className="diagram-appearance-preview-column">
+            <HeaderAppearancePreview
+              titleLabel={value.diagramTitleLabel}
+              subtitleLabel={value.diagramSubtitleLabel}
+              fontFamily={fontFamily}
+              canvasBackground={canvasBackground}
+            />
+            <label className="field checkbox diagram-appearance-header-visibility">
+              <input
+                type="checkbox"
+                checked={value.showHeader}
+                onChange={(e) => onChange({ showHeader: e.target.checked })}
+              />
+              <span>{t("diagramProperties.showHeader")}</span>
+            </label>
+          </div>
           {showAppearanceColours && (
             <div className="diagram-appearance-element-controls">
               <p className="hint">{t("diagramAppearance.headerChromeHint")}</p>

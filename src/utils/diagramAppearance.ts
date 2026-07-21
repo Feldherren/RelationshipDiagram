@@ -24,6 +24,7 @@ import {
   DEFAULT_DIAGRAM_SUBTITLE_COLOR,
   DEFAULT_DIAGRAM_TITLE_COLOR,
 } from "./diagramHeaderPill";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import { DEFAULT_DIAGRAM_GRID_COLOR } from "./gridBackground";
 
 export type { DiagramAppearance, LabelChrome };
@@ -91,6 +92,8 @@ function defaultDiagramSubtitleLabel(): LabelChrome {
 }
 
 export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
+  fontFamily: DEFAULT_DIAGRAM_FONT,
+  showHeader: true,
   backgroundMode: "grid",
   backgroundColor: cloneRgb(DEFAULT_DIAGRAM_BACKGROUND),
   backgroundImageData: null,
@@ -114,6 +117,8 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
 
 /** Built-in Default (Dark) diagram appearance. */
 export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
+  fontFamily: DEFAULT_DIAGRAM_FONT,
+  showHeader: true,
   backgroundMode: "grid",
   backgroundColor: { r: 1, g: 28, b: 55 },
   backgroundImageData: null,
@@ -285,10 +290,21 @@ function backgroundColorsEqual(
   return colorsEqual(a, b);
 }
 
+function resolveFontFamily(
+  value: unknown,
+  fallback: string = DEFAULT_DIAGRAM_FONT,
+): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
 export function cloneDiagramAppearance(
   appearance: DiagramAppearance,
 ): DiagramAppearance {
   return {
+    fontFamily: appearance.fontFamily,
+    showHeader: appearance.showHeader,
     backgroundMode: appearance.backgroundMode,
     backgroundColor: cloneBackgroundColor(appearance.backgroundColor),
     backgroundImageData: appearance.backgroundImageData,
@@ -323,6 +339,11 @@ export function resolveDiagramAppearance(
   }
   const partial = value as Partial<DiagramAppearance>;
   return {
+    fontFamily: resolveFontFamily(partial.fontFamily, defaults.fontFamily),
+    showHeader:
+      typeof partial.showHeader === "boolean"
+        ? partial.showHeader
+        : defaults.showHeader,
     backgroundMode: isBackgroundMode(partial.backgroundMode)
       ? partial.backgroundMode
       : defaults.backgroundMode,
@@ -450,6 +471,13 @@ export function serializeDiagramAppearance(
 ): Partial<DiagramAppearance> | undefined {
   const defaults = DEFAULT_DIAGRAM_APPEARANCE;
   const out: Partial<DiagramAppearance> = {};
+
+  if (appearance.fontFamily !== defaults.fontFamily) {
+    out.fontFamily = appearance.fontFamily;
+  }
+  if (appearance.showHeader !== defaults.showHeader) {
+    out.showHeader = appearance.showHeader;
+  }
 
   if (appearance.backgroundMode !== defaults.backgroundMode) {
     out.backgroundMode = appearance.backgroundMode;
@@ -603,6 +631,12 @@ export function patchDiagramAppearance(
   patch: Partial<DiagramAppearance>,
 ): DiagramAppearance {
   const next = cloneDiagramAppearance(current);
+  if (patch.fontFamily !== undefined) {
+    next.fontFamily = resolveFontFamily(patch.fontFamily, next.fontFamily);
+  }
+  if (patch.showHeader !== undefined) {
+    next.showHeader = Boolean(patch.showHeader);
+  }
   if (patch.backgroundMode !== undefined) {
     next.backgroundMode = patch.backgroundMode;
   }

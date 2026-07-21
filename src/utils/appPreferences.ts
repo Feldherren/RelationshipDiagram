@@ -248,6 +248,37 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     };
   }
 
+  const appearanceHadFont =
+    storedAppearance !== null &&
+    typeof storedAppearance.fontFamily === "string" &&
+    storedAppearance.fontFamily.trim().length > 0;
+  const legacyDefaultFont =
+    typeof stored.defaultDiagramFont === "string" &&
+    stored.defaultDiagramFont.trim()
+      ? stored.defaultDiagramFont.trim()
+      : null;
+  // Themes that predate fontFamily inherit the legacy defaultDiagramFont pref.
+  if (!appearanceHadFont && legacyDefaultFont) {
+    diagramAppearance = {
+      ...diagramAppearance,
+      fontFamily: legacyDefaultFont,
+    };
+  }
+
+  const appearanceHadShowHeader =
+    storedAppearance !== null &&
+    typeof storedAppearance.showHeader === "boolean";
+  const legacyShowHeader =
+    typeof stored.defaultShowHeader === "boolean"
+      ? stored.defaultShowHeader
+      : null;
+  if (!appearanceHadShowHeader && legacyShowHeader !== null) {
+    diagramAppearance = {
+      ...diagramAppearance,
+      showHeader: legacyShowHeader,
+    };
+  }
+
   return {
     autosaveEnabled:
       typeof stored.autosaveEnabled === "boolean"
@@ -258,16 +289,9 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
     defaultBackgroundMode: diagramAppearance.backgroundMode,
-    defaultShowHeader:
-      typeof stored.defaultShowHeader === "boolean"
-        ? stored.defaultShowHeader
-        : defaults.defaultShowHeader,
+    defaultShowHeader: diagramAppearance.showHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,
-    defaultDiagramFont:
-      typeof stored.defaultDiagramFont === "string" &&
-      stored.defaultDiagramFont.trim()
-        ? stored.defaultDiagramFont
-        : defaults.defaultDiagramFont,
+    defaultDiagramFont: diagramAppearance.fontFamily,
     diagramAppearance,
     diagramThemePreference,
     customDiagramThemes,
@@ -549,12 +573,32 @@ export function getAppPreferences(): AppPreferences {
 
 export function setAppPreferences(patch: Partial<AppPreferences>): AppPreferences {
   const current = getAppPreferences();
+  let diagramAppearance = patch.diagramAppearance
+    ? cloneDiagramAppearance(patch.diagramAppearance)
+    : current.diagramAppearance;
+
+  // Keep legacy prefs in sync with theme appearance.
+  if (!patch.diagramAppearance) {
+    if (patch.defaultDiagramFont !== undefined) {
+      diagramAppearance = {
+        ...diagramAppearance,
+        fontFamily: patch.defaultDiagramFont.trim() || DEFAULT_DIAGRAM_FONT,
+      };
+    }
+    if (patch.defaultShowHeader !== undefined) {
+      diagramAppearance = {
+        ...diagramAppearance,
+        showHeader: patch.defaultShowHeader,
+      };
+    }
+  }
+
   const next: AppPreferences = {
     ...current,
     ...patch,
-    diagramAppearance: patch.diagramAppearance
-      ? cloneDiagramAppearance(patch.diagramAppearance)
-      : current.diagramAppearance,
+    diagramAppearance,
+    defaultDiagramFont: diagramAppearance.fontFamily,
+    defaultShowHeader: diagramAppearance.showHeader,
     customDiagramThemes: patch.customDiagramThemes
       ? patch.customDiagramThemes.map((theme) => ({
           ...theme,

@@ -31,13 +31,11 @@ export function DiagramPropertiesDialog({
   const [applyThemeValue, setApplyThemeValue] = useState("");
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
-  const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const fontMissing = useDiagramStore((s) => s.fontMissing);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const setDiagramTitle = useDiagramStore((s) => s.setDiagramTitle);
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
-  const setShowDiagramHeader = useDiagramStore((s) => s.setShowDiagramHeader);
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
   const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
   const replaceDiagramAppearance = useDiagramStore(
@@ -89,15 +87,6 @@ export function DiagramPropertiesDialog({
               placeholder={t("diagramProperties.subtitlePlaceholder")}
               onChange={(e) => setDiagramSubtitle(e.target.value)}
             />
-          </label>
-
-          <label className="field checkbox">
-            <input
-              type="checkbox"
-              checked={showDiagramHeader}
-              onChange={(e) => setShowDiagramHeader(e.target.checked)}
-            />
-            <span>{t("diagramProperties.showHeader")}</span>
           </label>
         </>
       );

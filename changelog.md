@@ -1,3 +1,8 @@
+# v0.6.1
+- Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
+	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.
+	- When applying a theme to the current diagram from Settings > Diagram Themes, header and subtitle visibility is now applied.
+- Moved the checkbox for header and subtitle visibility to the Header section of Diagram Themes.
 # v0.6.0
 - Added numerical field to character size slider.
 - Added slider to floating text font size field.

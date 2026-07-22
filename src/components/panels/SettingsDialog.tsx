@@ -584,6 +584,16 @@ export function SettingsDialog({
           <p className="hint">
             {t("appSettings.version", { version: packageJson.version })}
           </p>
+          <p>
+            <a
+              className="text-link"
+              href="https://github.com/Feldherren/RelationshipDiagram"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("appSettings.githubRepo")}
+            </a>
+          </p>
         </>
       );
       break;

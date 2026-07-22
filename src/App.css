@@ -1119,6 +1119,16 @@ body,
   margin: 0 0 0.75rem;
 }
 
+.text-link {
+  color: var(--ui-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.text-link:hover {
+  color: var(--ui-accent-hover);
+}
+
 .hint-filename {
   margin: 0.25rem 0 0;
   overflow: hidden;

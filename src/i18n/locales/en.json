@@ -239,6 +239,7 @@
     "clearAutosaveDone": "Autosave data cleared.",
     "aboutSection": "About",
     "version": "Version {{version}}",
+    "githubRepo": "GitHub repository",
     "done": "Done"
   },
   "diagramAppearance": {

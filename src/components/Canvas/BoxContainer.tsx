@@ -11,6 +11,8 @@ import {
   COLLAPSED_BOX_SIZE,
   BOX_HEADER_HEIGHT,
   BOX_RESIZE_HANDLE_SCREEN_SIZE,
+  blendRgbOver,
+  contrastingInk,
   rgbToCss,
 } from "../../models/types";
 import {
@@ -39,6 +41,7 @@ import {
   RoundedRectSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
+import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
 
 interface BoxContainerProps {
   box: BoxType;
@@ -85,6 +88,9 @@ const RESIZE_EDGES: BoxResizeEdge[] = [
   "se",
   "sw",
 ];
+
+/** Fill opacity for the collapsed box body (over the diagram background). */
+const COLLAPSED_BOX_FILL_ALPHA = 0.15;
 
 function getResizeHandleLayout(
   bounds: Bounds,
@@ -157,6 +163,9 @@ export function BoxContainer({
   part = "full",
 }: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const diagramBackgroundColor = useDiagramStore(
+    (s) => s.diagramBackgroundColor,
+  );
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
@@ -395,6 +404,12 @@ export function BoxContainer({
     const size = COLLAPSED_BOX_SIZE;
     const connectHandlePos = getCollapsedBoxConnectHandlePosition(size);
     const collapseControlPos = getCollapsedBoxCollapseControlPosition(size);
+    const countSurface = blendRgbOver(
+      box.borderColor,
+      COLLAPSED_BOX_FILL_ALPHA,
+      diagramBackgroundColor ?? DEFAULT_DIAGRAM_BACKGROUND,
+    );
+    const countFill = rgbToCss(contrastingInk(countSurface));
 
     return (
       <Group
@@ -437,7 +452,7 @@ export function BoxContainer({
           height={size * 2}
           stroke={color}
           strokeWidth={3}
-          fill={rgbaWithAlpha(box.borderColor, 0.15)}
+          fill={rgbaWithAlpha(box.borderColor, COLLAPSED_BOX_FILL_ALPHA)}
           cornerRadius={4}
         />
         <PillLabel
@@ -453,7 +468,7 @@ export function BoxContainer({
           text={`${containedCount}`}
           fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={22}
-          fill="#555"
+          fill={countFill}
           align="center"
           width={size * 2}
           offsetX={size}

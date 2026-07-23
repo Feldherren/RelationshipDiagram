@@ -420,3 +420,14 @@ export function contrastingInk(background: RGB): RGB {
     ? { ...CONTRASTING_INK_DARK }
     : { ...CONTRASTING_INK_LIGHT };
 }
+
+/** Standard source-over composite of `fg` at `alpha` onto opaque `bg`. */
+export function blendRgbOver(fg: RGB, alpha: number, bg: RGB): RGB {
+  const a = Math.min(1, Math.max(0, alpha));
+  const inv = 1 - a;
+  return {
+    r: Math.round(fg.r * a + bg.r * inv),
+    g: Math.round(fg.g * a + bg.g * inv),
+    b: Math.round(fg.b * a + bg.b * inv),
+  };
+}

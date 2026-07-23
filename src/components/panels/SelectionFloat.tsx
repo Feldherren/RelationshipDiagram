@@ -6,6 +6,7 @@ import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
 import type { LineStyle, Selection, Viewport } from "../../models/types";
 import {
+  contrastingInk,
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   MAX_CHARACTER_SIZE,
@@ -13,7 +14,9 @@ import {
   MEMBERSHIP_CHIP_RADIUS,
   MIN_CHARACTER_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
+  rgbToCss,
 } from "../../models/types";
+import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
 import {
   getBoxById,
   getCharacterById,
@@ -66,6 +69,9 @@ function SelectionFloatConnector({
 }) {
   const viewport = useDiagramStore((s) => s.viewport);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagramBackgroundColor = useDiagramStore(
+    (s) => s.diagramBackgroundColor,
+  );
   const diagram = getDiagram();
   const panelBounds = {
     x: left,
@@ -87,6 +93,9 @@ function SelectionFloatConnector({
   const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
   if (!shouldShowFloatConnector(panelBounds, anchorScreen)) return null;
   const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+  const connectorColor = rgbToCss(
+    contrastingInk(diagramBackgroundColor ?? DEFAULT_DIAGRAM_BACKGROUND),
+  );
   return (
     <svg
       className="selection-float-connector"
@@ -100,12 +109,14 @@ function SelectionFloatConnector({
         x2={to.x}
         y2={to.y}
         className="selection-float-connector-line"
+        style={{ stroke: connectorColor }}
       />
       <circle
         cx={from.x}
         cy={from.y}
         r={3}
         className="selection-float-connector-dot"
+        style={{ fill: connectorColor }}
       />
     </svg>
   );

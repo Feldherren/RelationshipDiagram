@@ -288,6 +288,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       connectFrom,
       connectDragFrom: connectDrag?.from ?? null,
       lines,
+      groups,
+      characters,
+      boxes,
+      fontFamily: diagramFontFamily,
     }),
     [
       groupsCanvasMode,
@@ -296,6 +300,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       connectFrom,
       connectDrag,
       lines,
+      groups,
+      characters,
+      boxes,
+      diagramFontFamily,
     ],
   );
 

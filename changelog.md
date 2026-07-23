@@ -3,6 +3,8 @@
 - Added github repo link to Settings > About.
 - Can now drag boxes around via their background (as middle-click drag works for panning).
 - Fixed issue where the top resize handle for a box was the line between box header and box body, not the top edge.
+- Collapsed box number that indicates amount of contained objects should now contrast with diagram background (plus however the transparent box interacts with it).
+- If all members of a group are within a single box, and the box is collapsed, the group hub badge should also collapse into the box.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

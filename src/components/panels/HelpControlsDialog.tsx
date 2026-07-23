@@ -65,6 +65,14 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
               keys: t("help.fitKeys"),
               detail: t("help.fitDetail"),
             },
+            {
+              keys: t("help.bookmarkKeys"),
+              detail: t("help.bookmarkDetail"),
+            },
+            {
+              keys: t("help.bookmarkCentreKeys"),
+              detail: t("help.bookmarkCentreDetail"),
+            },
           ]}
         />
 

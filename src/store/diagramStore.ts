@@ -90,7 +90,10 @@ import {
   setAppPreferences,
 } from "../utils/appPreferences";
 import { computeDiagramBounds } from "../utils/diagramBounds";
-import { computeViewportForBounds } from "../utils/viewportFit";
+import {
+  computeViewportForBounds,
+  viewportFromCenterAndScale,
+} from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
 import type { GroupsCanvasMode } from "../utils/groupHub";
 
@@ -183,7 +186,7 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
   deleteBookmark: (id: string) => void;
-  goToBookmark: (id: string) => void;
+  goToBookmark: (id: string, options?: { keepZoom?: boolean }) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -1515,9 +1518,20 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  goToBookmark: (id) => {
+  goToBookmark: (id, options) => {
     const bookmark = get().bookmarks.find((b) => b.id === id);
     if (!bookmark) return;
+    if (options?.keepZoom) {
+      const { viewport, stageSize } = get();
+      set({
+        viewport: viewportFromCenterAndScale(
+          bookmark.anchor,
+          viewport.scale,
+          stageSize,
+        ),
+      });
+      return;
+    }
     set({ viewport: { ...bookmark.viewport } });
   },
 

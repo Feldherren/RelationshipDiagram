@@ -149,8 +149,13 @@ export function ViewportControls() {
                 type="button"
                 className="bookmark-strip-item"
                 style={{ color: rgbToCss(bookmark.color) }}
+                title={t("bookmarks.goTitle")}
                 aria-label={t("bookmarks.goAria", { name: bookmark.name })}
-                onClick={() => goToBookmark(bookmark.id)}
+                onClick={(e) =>
+                  goToBookmark(bookmark.id, {
+                    keepZoom: e.ctrlKey || e.metaKey,
+                  })
+                }
                 onContextMenu={(e) => {
                   e.preventDefault();
                   openBookmarkEdit(bookmark.id);

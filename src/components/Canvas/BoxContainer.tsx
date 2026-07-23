@@ -98,7 +98,7 @@ function getResizeHandleLayout(
     case "n":
       return {
         x,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width,
         height: handleSize,
       };
@@ -111,14 +111,14 @@ function getResizeHandleLayout(
     case "ne":
       return {
         x: x + width - half,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width: handleSize,
         height: handleSize,
       };
     case "nw":
       return {
         x: x - half,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width: handleSize,
         height: handleSize,
       };
@@ -543,31 +543,6 @@ export function BoxContainer({
           onMouseDown={beginMove}
         />
       )}
-      {showForeground &&
-        RESIZE_EDGES.map((edge) => {
-          const layout = getResizeHandleLayout(bounds, edge, handleSize);
-          return (
-            <Rect
-              key={edge}
-              x={layout.x}
-              y={layout.y}
-              width={layout.width}
-              height={layout.height}
-              fill="transparent"
-              onMouseEnter={() => {
-                if (!resizing && !dragging) {
-                  document.body.style.cursor = cursorForBoxResizeEdge(edge);
-                }
-              }}
-              onMouseLeave={() => {
-                if (!resizing && !dragging) {
-                  document.body.style.cursor = "";
-                }
-              }}
-              onMouseDown={(e) => beginResize(e, edge, bounds)}
-            />
-          );
-        })}
       {showForeground && (
         <Rect
           x={bounds.x}
@@ -603,6 +578,31 @@ export function BoxContainer({
           selected={selected}
         />
       )}
+      {showForeground &&
+        RESIZE_EDGES.map((edge) => {
+          const layout = getResizeHandleLayout(bounds, edge, handleSize);
+          return (
+            <Rect
+              key={edge}
+              x={layout.x}
+              y={layout.y}
+              width={layout.width}
+              height={layout.height}
+              fill="transparent"
+              onMouseEnter={() => {
+                if (!resizing && !dragging) {
+                  document.body.style.cursor = cursorForBoxResizeEdge(edge);
+                }
+              }}
+              onMouseLeave={() => {
+                if (!resizing && !dragging) {
+                  document.body.style.cursor = "";
+                }
+              }}
+              onMouseDown={(e) => beginResize(e, edge, bounds)}
+            />
+          );
+        })}
       {showForeground && showCollapseControl && (
         <BoxCollapseControl
           x={collapseControlPos.x}

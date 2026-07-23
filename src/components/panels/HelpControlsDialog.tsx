@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { getAppPreferences } from "../../utils/appPreferences";
 
 interface HelpControlsDialogProps {
   open: boolean;
@@ -34,6 +35,11 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
 
   if (!open) return null;
 
+  const swapBookmarkClicks =
+    getAppPreferences().swapBookmarkClickBehaviour;
+  const bookmarkGoDetail = t("help.bookmarkDetail");
+  const bookmarkCentreDetail = t("help.bookmarkCentreDetail");
+
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div
@@ -67,11 +73,15 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
             },
             {
               keys: t("help.bookmarkKeys"),
-              detail: t("help.bookmarkDetail"),
+              detail: swapBookmarkClicks
+                ? bookmarkCentreDetail
+                : bookmarkGoDetail,
             },
             {
               keys: t("help.bookmarkCentreKeys"),
-              detail: t("help.bookmarkCentreDetail"),
+              detail: swapBookmarkClicks
+                ? bookmarkGoDetail
+                : bookmarkCentreDetail,
             },
           ]}
         />

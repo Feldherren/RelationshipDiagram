@@ -10,6 +10,7 @@ import { rgbToCss } from "../../models/types";
 import { useDiagramStore } from "../../store/diagramStore";
 import { BookmarkIcon, BookmarkAddIcon } from "../icons/BookmarkIcon";
 import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
+import { getAppPreferences } from "../../utils/appPreferences";
 import {
   resolveSymbolSwatchStyle,
   subscribeUiChrome,
@@ -149,13 +150,20 @@ export function ViewportControls() {
                 type="button"
                 className="bookmark-strip-item"
                 style={{ color: rgbToCss(bookmark.color) }}
-                title={t("bookmarks.goTitle")}
-                aria-label={t("bookmarks.goAria", { name: bookmark.name })}
-                onClick={(e) =>
-                  goToBookmark(bookmark.id, {
-                    keepZoom: e.ctrlKey || e.metaKey,
-                  })
+                title={
+                  getAppPreferences().swapBookmarkClickBehaviour
+                    ? t("bookmarks.goTitleSwapped")
+                    : t("bookmarks.goTitle")
                 }
+                aria-label={t("bookmarks.goAria", { name: bookmark.name })}
+                onClick={(e) => {
+                  const modifier = e.ctrlKey || e.metaKey;
+                  const swapped =
+                    getAppPreferences().swapBookmarkClickBehaviour;
+                  goToBookmark(bookmark.id, {
+                    keepZoom: swapped ? !modifier : modifier,
+                  });
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   openBookmarkEdit(bookmark.id);

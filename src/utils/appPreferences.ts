@@ -69,6 +69,11 @@ export interface AppPreferences {
   /** Whether bookmark flags are shown on the canvas. */
   bookmarksVisible: boolean;
   /**
+   * When true, plain click centres on a bookmark without changing zoom and
+   * Ctrl/Cmd+click restores pan+zoom. When false (default), the reverse.
+   */
+  swapBookmarkClickBehaviour: boolean;
+  /**
    * Group hub canvas eye: all hubs+corridors, connected badges only, or none.
    * Legacy prefs may still store `groupsVisible` boolean (migrated on load).
    */
@@ -101,6 +106,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiScale: 1,
   customThemes: [],
   bookmarksVisible: true,
+  swapBookmarkClickBehaviour: false,
   groupsCanvasMode: "full",
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
@@ -319,6 +325,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.bookmarksVisible === "boolean"
         ? stored.bookmarksVisible
         : defaults.bookmarksVisible,
+    swapBookmarkClickBehaviour:
+      typeof stored.swapBookmarkClickBehaviour === "boolean"
+        ? stored.swapBookmarkClickBehaviour
+        : defaults.swapBookmarkClickBehaviour,
     groupsCanvasMode: parseGroupsCanvasMode(
       stored.groupsCanvasMode,
       stored.groupsVisible,

@@ -410,6 +410,24 @@ export function SettingsDialog({
             </select>
           </label>
           <p className="hint">{t("appSettings.languageHint")}</p>
+
+          <hr className="theme-editor-divider" />
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.swapBookmarkClickBehaviour}
+              onChange={(e) =>
+                updatePrefs({
+                  swapBookmarkClickBehaviour: e.target.checked,
+                })
+              }
+            />
+            <span>{t("appSettings.swapBookmarkClickBehaviour")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.swapBookmarkClickBehaviourHint")}
+          </p>
         </>
       );
       break;

@@ -30,8 +30,8 @@ import {
   connectorEndpoints,
   defaultFloatAnchorScreen,
   getGroupChipAnchorWorld,
-  getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
+  getSelectionAvoidBounds,
   getSelectionConnectorAnchorWorld,
   isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
@@ -321,16 +321,10 @@ export function SelectionFloat() {
   const isGroupSelection = selection.type === "group";
   const vp = liveViewport(viewport);
 
-  let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
-  if (selection.type === "line") {
-    const line = lines.find((l) => l.id === selection.id);
-    if (line) {
-      avoidScreen = worldBoundsToScreen(
-        getLineSelectionAvoidBounds(line, diagram),
-        vp,
-      );
-    }
-  }
+  const avoidWorld = getSelectionAvoidBounds(selection, diagram, vp.scale);
+  const avoidScreen = avoidWorld
+    ? worldBoundsToScreen(avoidWorld, vp)
+    : undefined;
 
   const placementMatches =
     Boolean(placementKey) && floatPlacement?.key === placementKey;

@@ -143,11 +143,12 @@ export function getBoxCollapseControlPosition(bounds: Bounds): Point {
 }
 
 export function getCollapsedBoxConnectHandlePosition(size: number): Point {
-  const offset = getConnectHandleOffset(size);
-  return { x: offset.x, y: offset.y };
+  // Mirror the collapse control: same vertical inset, upper-right instead of upper-left.
+  return { x: size - 10, y: -size + 14 };
 }
 
 export function getCollapsedBoxCollapseControlPosition(size: number): Point {
-  const offset = getConnectHandleOffset(size);
-  return { x: -offset.x, y: offset.y };
+  // Same inset from the square's upper-left as the expanded box control, so
+  // upper-left–anchored collapse/expand keeps the button under the cursor.
+  return { x: -size + 10, y: -size + 14 };
 }

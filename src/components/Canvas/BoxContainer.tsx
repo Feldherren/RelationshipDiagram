@@ -63,6 +63,9 @@ interface BoxContainerProps {
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   /** Split render: background below relationship lines, foreground above. */
   part?: "full" | "background" | "foreground";
+  /** Shared hover across background/foreground parts (and collapse remounts). */
+  hovered?: boolean;
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 interface ResizeDragStart {
@@ -161,6 +164,8 @@ export function BoxContainer({
   onDragEnd,
   onConnectHandleDown,
   part = "full",
+  hovered: hoveredProp,
+  onHoverChange,
 }: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagramBackgroundColor = useDiagramStore(
@@ -180,7 +185,12 @@ export function BoxContainer({
   const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const clickGuard = useClickWithoutDrag();
   const gestureClearedSelectionRef = useRef(false);
-  const [hovered, setHovered] = useState(false);
+  const [localHovered, setLocalHovered] = useState(false);
+  const hovered = hoveredProp ?? localHovered;
+  const setHovered = (value: boolean) => {
+    if (onHoverChange) onHoverChange(value);
+    else setLocalHovered(value);
+  };
   const [resizing, setResizing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -206,6 +216,12 @@ export function BoxContainer({
     characters,
     diagramFontFamily,
   ).length;
+
+  const handleToggleCollapse = () => {
+    // Keep hover through the expanded↔collapsed remount so the chevron stays.
+    setHovered(true);
+    onToggleCollapse();
+  };
 
   useEffect(() => {
     if (!resizing) return;
@@ -481,7 +497,7 @@ export function BoxContainer({
             y={collapseControlPos.y}
             collapsed
             viewportScale={viewportScale}
-            onToggle={onToggleCollapse}
+            onToggle={handleToggleCollapse}
           />
         )}
         {showConnectHandle && (
@@ -624,7 +640,7 @@ export function BoxContainer({
           y={collapseControlPos.y}
           collapsed={false}
           viewportScale={viewportScale}
-          onToggle={onToggleCollapse}
+          onToggle={handleToggleCollapse}
         />
       )}
       {showForeground && showConnectHandle && (

@@ -24,10 +24,10 @@ import type {
 import {
   DEFAULT_CHARACTER_SIZE,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  COLLAPSED_BOX_SIZE,
   defaultMembershipAppearance,
 } from "../models/types";
 import {
-  getBoxCenter,
   getCharactersContainedInBox,
   getEmptyBoxBounds,
   getFloatingTextsContainedInBox,
@@ -1084,21 +1084,94 @@ export const useDiagramStore = create<DiagramState>()(
     if (!box) return;
 
     if (!box.collapsed) {
-      const center = getBoxCenter(box);
+      const bounds = resolveBoxBounds(box);
+      if (!bounds) return;
+      // collapsedPosition is the chip centre; place it so the chip's upper-left
+      // matches the expanded box's upper-left (keeps the collapse control put).
+      const collapsedPosition = {
+        x: bounds.x + COLLAPSED_BOX_SIZE,
+        y: bounds.y + COLLAPSED_BOX_SIZE,
+      };
       set((s) => ({
         boxes: s.boxes.map((b) =>
           b.id === id
-            ? { ...b, collapsed: true, collapsedPosition: center }
+            ? { ...b, collapsed: true, collapsedPosition }
             : b,
         ),
       }));
-    } else {
+      return;
+    }
+
+    const bounds = resolveBoxBounds(box);
+    const collapsedPos = box.collapsedPosition;
+    if (!bounds || !collapsedPos) {
       set((s) => ({
         boxes: s.boxes.map((b) =>
           b.id === id ? { ...b, collapsed: false } : b,
         ),
       }));
+      return;
     }
+
+    const dx = collapsedPos.x - COLLAPSED_BOX_SIZE - bounds.x;
+    const dy = collapsedPos.y - COLLAPSED_BOX_SIZE - bounds.y;
+    const fontFamily = state.diagramFontFamily;
+    const containedCharacterIds = new Set(
+      getCharactersContainedInBox(box, state.characters, fontFamily).map(
+        (c) => c.id,
+      ),
+    );
+    const containedFloatingTextIds = new Set(
+      getFloatingTextsContainedInBox(box, state.floatingTexts, fontFamily).map(
+        (t) => t.id,
+      ),
+    );
+
+    set((s) => ({
+      characters: s.characters.map((c) => {
+        if (!containedCharacterIds.has(c.id) || (dx === 0 && dy === 0)) {
+          return c;
+        }
+        return {
+          ...c,
+          position: {
+            x: c.position.x + dx,
+            y: c.position.y + dy,
+          },
+        };
+      }),
+      floatingTexts: s.floatingTexts.map((t) => {
+        if (!containedFloatingTextIds.has(t.id) || (dx === 0 && dy === 0)) {
+          return t;
+        }
+        return {
+          ...t,
+          position: {
+            x: t.position.x + dx,
+            y: t.position.y + dy,
+          },
+        };
+      }),
+      boxes: s.boxes.map((b) => {
+        if (b.id !== id) return b;
+        const next: Box = { ...b, collapsed: false };
+        if (dx === 0 && dy === 0) return next;
+        if (b.bounds) {
+          next.bounds = {
+            ...b.bounds,
+            x: b.bounds.x + dx,
+            y: b.bounds.y + dy,
+          };
+        }
+        if (b.anchorPosition) {
+          next.anchorPosition = {
+            x: b.anchorPosition.x + dx,
+            y: b.anchorPosition.y + dy,
+          };
+        }
+        return next;
+      }),
+    }));
   },
 
   moveBox: (id, delta, contents, options) => {

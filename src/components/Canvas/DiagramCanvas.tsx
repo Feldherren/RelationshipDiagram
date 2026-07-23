@@ -257,8 +257,46 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const [isDraggingBox, setIsDraggingBox] = useState(false);
   const isInteractingWithBox = isResizingBox || isDraggingBox;
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
+  const [hoveredBoxId, setHoveredBoxId] = useState<string | null>(null);
+  /** Ignore leave briefly after collapse so remount doesn't drop hover. */
+  const boxHoverStickyUntilRef = useRef(0);
+  const boxHoverClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [addObjectMenu, setAddObjectMenu] =
     useState<CanvasAddObjectMenuState | null>(null);
+
+  const setBoxHovered = useCallback((boxId: string, hovered: boolean) => {
+    if (boxHoverClearTimerRef.current != null) {
+      clearTimeout(boxHoverClearTimerRef.current);
+      boxHoverClearTimerRef.current = null;
+    }
+    if (hovered) {
+      setHoveredBoxId(boxId);
+      return;
+    }
+    if (performance.now() < boxHoverStickyUntilRef.current) {
+      return;
+    }
+    // Defer clear so moving between background/foreground parts doesn't flicker.
+    boxHoverClearTimerRef.current = setTimeout(() => {
+      boxHoverClearTimerRef.current = null;
+      setHoveredBoxId((current) => (current === boxId ? null : current));
+    }, 0);
+  }, []);
+
+  const handleToggleBoxCollapse = useCallback(
+    (boxId: string) => {
+      if (boxHoverClearTimerRef.current != null) {
+        clearTimeout(boxHoverClearTimerRef.current);
+        boxHoverClearTimerRef.current = null;
+      }
+      boxHoverStickyUntilRef.current = performance.now() + 100;
+      setHoveredBoxId(boxId);
+      toggleBoxCollapse(boxId);
+    },
+    [toggleBoxCollapse],
+  );
 
   const SAME_MENU_SPOT_PX = 8;
 
@@ -314,6 +352,14 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     };
     window.addEventListener("mouseup", clearBoxInteraction);
     return () => window.removeEventListener("mouseup", clearBoxInteraction);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (boxHoverClearTimerRef.current != null) {
+        clearTimeout(boxHoverClearTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -724,7 +770,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
@@ -740,6 +786,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 part="background"
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 
@@ -923,7 +971,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
@@ -939,6 +987,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 part="foreground"
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 
@@ -961,7 +1011,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
@@ -976,6 +1026,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   id: box.id,
                   kind: "box",
                 })}
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 

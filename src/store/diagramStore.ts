@@ -1082,10 +1082,23 @@ export const useDiagramStore = create<DiagramState>()(
     const state = get();
     const box = state.boxes.find((b) => b.id === id);
     if (!box) return;
+    const fontFamily = state.diagramFontFamily;
 
     if (!box.collapsed) {
       const bounds = resolveBoxBounds(box);
       if (!bounds) return;
+      // Freeze membership at collapse so the expanded footprint cannot capture
+      // objects while the chip is dragged around.
+      const containedCharacterIds = getCharactersContainedInBox(
+        box,
+        state.characters,
+        fontFamily,
+      ).map((c) => c.id);
+      const containedFloatingTextIds = getFloatingTextsContainedInBox(
+        box,
+        state.floatingTexts,
+        fontFamily,
+      ).map((t) => t.id);
       // collapsedPosition is the chip centre; place it so the chip's upper-left
       // matches the expanded box's upper-left (keeps the collapse control put).
       const collapsedPosition = {
@@ -1095,7 +1108,13 @@ export const useDiagramStore = create<DiagramState>()(
       set((s) => ({
         boxes: s.boxes.map((b) =>
           b.id === id
-            ? { ...b, collapsed: true, collapsedPosition }
+            ? {
+                ...b,
+                collapsed: true,
+                collapsedPosition,
+                containedCharacterIds,
+                containedFloatingTextIds,
+              }
             : b,
         ),
       }));
@@ -1106,25 +1125,32 @@ export const useDiagramStore = create<DiagramState>()(
     const collapsedPos = box.collapsedPosition;
     if (!bounds || !collapsedPos) {
       set((s) => ({
-        boxes: s.boxes.map((b) =>
-          b.id === id ? { ...b, collapsed: false } : b,
-        ),
+        boxes: s.boxes.map((b) => {
+          if (b.id !== id) return b;
+          const next: Box = { ...b, collapsed: false };
+          delete next.containedCharacterIds;
+          delete next.containedFloatingTextIds;
+          return next;
+        }),
       }));
       return;
     }
 
     const dx = collapsedPos.x - COLLAPSED_BOX_SIZE - bounds.x;
     const dy = collapsedPos.y - COLLAPSED_BOX_SIZE - bounds.y;
-    const fontFamily = state.diagramFontFamily;
     const containedCharacterIds = new Set(
-      getCharactersContainedInBox(box, state.characters, fontFamily).map(
-        (c) => c.id,
-      ),
+      box.containedCharacterIds ??
+        getCharactersContainedInBox(box, state.characters, fontFamily).map(
+          (c) => c.id,
+        ),
     );
     const containedFloatingTextIds = new Set(
-      getFloatingTextsContainedInBox(box, state.floatingTexts, fontFamily).map(
-        (t) => t.id,
-      ),
+      box.containedFloatingTextIds ??
+        getFloatingTextsContainedInBox(
+          box,
+          state.floatingTexts,
+          fontFamily,
+        ).map((t) => t.id),
     );
 
     set((s) => ({
@@ -1155,6 +1181,8 @@ export const useDiagramStore = create<DiagramState>()(
       boxes: s.boxes.map((b) => {
         if (b.id !== id) return b;
         const next: Box = { ...b, collapsed: false };
+        delete next.containedCharacterIds;
+        delete next.containedFloatingTextIds;
         if (dx === 0 && dy === 0) return next;
         if (b.bounds) {
           next.bounds = {

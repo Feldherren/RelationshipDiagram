@@ -22,6 +22,11 @@ import {
   MIN_FLOATING_TEXT_FONT_SIZE,
   normalizeMembershipAppearance,
 } from "../models/types";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import {
+  isCharacterGeometricallyInBox,
+  isFloatingTextGeometricallyInBox,
+} from "./geometry";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -153,14 +158,17 @@ function normalizeFloatingTexts(
   });
 }
 
-/** Normalize any supported diagram payload to the current schema (v3). */
 function normalizeDiagram(
   data: Omit<Diagram, "schemaVersion"> & { schemaVersion?: number },
 ): Diagram {
+  const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const characters = data.characters;
+  const floatingTexts = normalizeFloatingTexts(data.floatingTexts);
+
   return {
     ...data,
     schemaVersion: 3,
-    characters: data.characters,
+    characters,
     lines: normalizeLines(data.lines ?? []),
     groups: (data.groups ?? []).map((g) => ({
       id: g.id,
@@ -176,16 +184,35 @@ function normalizeDiagram(
         ? { hubPosition: { x: g.hubPosition.x, y: g.hubPosition.y } }
         : {}),
     })),
-    boxes: (data.boxes ?? []).map((b) => ({
-      id: b.id,
-      name: b.name,
-      borderColor: b.borderColor,
-      collapsed: b.collapsed ?? false,
-      collapsedPosition: b.collapsedPosition,
-      anchorPosition: b.anchorPosition,
-      bounds: b.bounds,
-    })),
-    floatingTexts: normalizeFloatingTexts(data.floatingTexts),
+    boxes: (data.boxes ?? []).map((b) => {
+      const collapsed = b.collapsed ?? false;
+      const box: Box = {
+        id: b.id,
+        name: b.name,
+        borderColor: b.borderColor,
+        collapsed,
+        collapsedPosition: b.collapsedPosition,
+        anchorPosition: b.anchorPosition,
+        bounds: b.bounds,
+      };
+      if (!collapsed) return box;
+
+      // Prefer persisted freeze; backfill from geometry for older files.
+      box.containedCharacterIds = Array.isArray(b.containedCharacterIds)
+        ? [...b.containedCharacterIds]
+        : characters
+            .filter((c) => isCharacterGeometricallyInBox(c, box))
+            .map((c) => c.id);
+      box.containedFloatingTextIds = Array.isArray(b.containedFloatingTextIds)
+        ? [...b.containedFloatingTextIds]
+        : floatingTexts
+            .filter((t) =>
+              isFloatingTextGeometricallyInBox(t, box, fontFamily),
+            )
+            .map((t) => t.id);
+      return box;
+    }),
+    floatingTexts,
     showGrid: data.showGrid ?? true,
     gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
     appearance: data.appearance,

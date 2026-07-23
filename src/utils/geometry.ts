@@ -275,15 +275,29 @@ export function isPointContainedInBox(point: Point, box: Box): boolean {
   );
 }
 
-/** True when the character node body (circle/shape) is fully inside the box; labels are ignored. */
+/** Character body fully inside expanded bounds; ignores collapse membership. */
+export function isCharacterGeometricallyInBox(
+  character: Character,
+  box: Box,
+): boolean {
+  const boxBounds = resolveBoxBounds(box);
+  if (!boxBounds) return false;
+  return isBoundsFullyInside(getCharacterShapeBounds(character), boxBounds);
+}
+
+/**
+ * True when the character is a member of the box. While collapsed, membership is
+ * the freeze from collapse time (so the expanded footprint cannot capture anew).
+ */
 export function isCharacterContainedInBox(
   character: Character,
   box: Box,
   _fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): boolean {
-  const boxBounds = resolveBoxBounds(box);
-  if (!boxBounds) return false;
-  return isBoundsFullyInside(getCharacterShapeBounds(character), boxBounds);
+  if (box.collapsed && box.containedCharacterIds) {
+    return box.containedCharacterIds.includes(character.id);
+  }
+  return isCharacterGeometricallyInBox(character, box);
 }
 
 export function getCharactersContainedInBox(
@@ -291,13 +305,17 @@ export function getCharactersContainedInBox(
   characters: Character[],
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): Character[] {
+  if (box.collapsed && box.containedCharacterIds) {
+    const ids = new Set(box.containedCharacterIds);
+    return characters.filter((c) => ids.has(c.id));
+  }
   return characters.filter((c) =>
     isCharacterContainedInBox(c, box, fontFamily),
   );
 }
 
-/** True when the floating text pill is fully inside the box. */
-export function isFloatingTextContainedInBox(
+/** Floating text pill fully inside expanded bounds; ignores collapse membership. */
+export function isFloatingTextGeometricallyInBox(
   floatingText: FloatingText,
   box: Box,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
@@ -310,11 +328,27 @@ export function isFloatingTextContainedInBox(
   );
 }
 
+/** True when the floating text is a member of the box (frozen while collapsed). */
+export function isFloatingTextContainedInBox(
+  floatingText: FloatingText,
+  box: Box,
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): boolean {
+  if (box.collapsed && box.containedFloatingTextIds) {
+    return box.containedFloatingTextIds.includes(floatingText.id);
+  }
+  return isFloatingTextGeometricallyInBox(floatingText, box, fontFamily);
+}
+
 export function getFloatingTextsContainedInBox(
   box: Box,
   floatingTexts: FloatingText[],
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
 ): FloatingText[] {
+  if (box.collapsed && box.containedFloatingTextIds) {
+    const ids = new Set(box.containedFloatingTextIds);
+    return floatingTexts.filter((t) => ids.has(t.id));
+  }
   return floatingTexts.filter((t) =>
     isFloatingTextContainedInBox(t, box, fontFamily),
   );

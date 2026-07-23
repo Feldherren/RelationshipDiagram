@@ -9,8 +9,9 @@
 	- Mousing-over the header of a box now highlights it with the aura effect.
 	- Mousing-over the body of a box now displays the expand/collapse and relationship line buttons.
 	- Collapsing a box now determines its new position relative to the upper-left corner, ensuring the contract/expand button remains beneath the cursor. Expanding boxes functions similarly.
+	- Collapsed boxes no longer capture (or visually hide) objects when their expanded footprint is dragged over them.
 - Character size and font size sliders no longer show a text cursor.
-- Hexagon and pentagon character border shapes now have rounded corners.
+- Hexagon and pentagon character border shapes now have rounded corners, like the square.
 - Detail panels near the right window edge open to the left of the selected object instead of covering it.
 - Detached detail panel connector line uses light/dark contrast against the diagram background so it stays visible.
 # v0.6.1

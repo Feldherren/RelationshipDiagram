@@ -15,8 +15,8 @@ export const GROUP_SPOKE_WIDTH_FACTOR = 1.12;
 export const GROUP_HUB_HIT_PADDING = 10;
 
 /**
- * Member world position for hub geometry. If the character’s centre lies inside
- * a collapsed box’s bounds, use that box’s collapsed square centre.
+ * Member world position for hub geometry. If the character is a member of a
+ * collapsed box, use that box’s collapsed square centre.
  */
 export function getGroupMemberAnchor(
   character: Character,
@@ -24,14 +24,8 @@ export function getGroupMemberAnchor(
 ): Point {
   const p = character.position;
   for (const box of boxes) {
-    if (!box.collapsed || !box.bounds) continue;
-    const b = box.bounds;
-    if (
-      p.x >= b.x &&
-      p.x <= b.x + b.width &&
-      p.y >= b.y &&
-      p.y <= b.y + b.height
-    ) {
+    if (!box.collapsed) continue;
+    if (isCharacterContainedInBox(character, box)) {
       return box.collapsedPosition ?? p;
     }
   }

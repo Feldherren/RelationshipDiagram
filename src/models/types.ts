@@ -191,6 +191,9 @@ export interface Box {
   borderColor: RGB;
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
+  /** Frozen at collapse; while collapsed, only these members are hidden/moved. */
+  containedCharacterIds?: string[];
+  containedFloatingTextIds?: string[];
   anchorPosition?: { x: number; y: number };
   bounds?: Bounds;
 }

@@ -68,6 +68,10 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
               detail: t("help.zoomDetail"),
             },
             {
+              keys: t("help.zoomPresetKeys"),
+              detail: t("help.zoomPresetDetail"),
+            },
+            {
               keys: t("help.fitKeys"),
               detail: t("help.fitDetail"),
             },

@@ -20,6 +20,7 @@
 - Detached detail panel connector line uses light/dark contrast against the diagram background so it stays visible.
 - Ctrl+click a bookmark to centre the view on it without changing zoom (plain click still restores pan and zoom).
 	- Settings > General can swap click and Ctrl+click for bookmarks.
+- Click the lower-right zoom indicator to choose 50%, 100%, or 150% (zooms around the view centre).
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

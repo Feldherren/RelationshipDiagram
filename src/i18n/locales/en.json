@@ -32,7 +32,8 @@
     "editMembersHint": "Click characters to toggle membership (Esc when done)",
     "zoom": "{{percent}}%",
     "zoomAria": "Zoom level {{percent}} percent",
-    "zoomTitle": "Current diagram zoom",
+    "zoomTitle": "Set zoom level",
+    "zoomMenuAria": "Zoom presets",
     "fitToContent": "Zoom to extents",
     "fitToContentTitle": "Zoom to extents",
     "backgroundImageHandle": "Background"
@@ -380,6 +381,8 @@
     "middlePanDetail": "Pan from anywhere",
     "zoomKeys": "Scroll wheel",
     "zoomDetail": "Zoom toward the pointer",
+    "zoomPresetKeys": "Click zoom %",
+    "zoomPresetDetail": "Choose 50%, 100%, or 150%",
     "fitKeys": "Zoom to extents",
     "fitDetail": "Fit the whole diagram in view (toolbar button)",
     "bookmarkKeys": "Click bookmark",

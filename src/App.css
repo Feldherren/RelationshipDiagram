@@ -330,6 +330,10 @@ body,
   margin: 0 0 0.75rem;
 }
 
+.field > .line-arrow-toggles {
+  margin-bottom: 0;
+}
+
 .line-arrow-toggle.is-active {
   background: var(--ui-accent);
   border-color: var(--ui-accent);

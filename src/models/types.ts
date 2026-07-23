@@ -198,6 +198,8 @@ export interface Box {
   bounds?: Bounds;
 }
 
+export type FloatingTextAlign = "left" | "center" | "right";
+
 /** Freestanding canvas annotation — not connected to characters, boxes, or lines. */
 export interface FloatingText {
   id: string;
@@ -205,12 +207,26 @@ export interface FloatingText {
   text: string;
   color: RGB;
   fontSize: number;
+  /** Horizontal alignment within the text area. Defaults to center. */
+  textAlign?: FloatingTextAlign;
+  /** Explicit area width after the user resizes; omit for content-sized width. */
+  width?: number;
+  /** Explicit area height after the user resizes; omit for content-sized height. */
+  height?: number;
 }
 
 export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
 export const DEFAULT_FLOATING_TEXT_FONT_SIZE = 15;
+export const DEFAULT_FLOATING_TEXT_ALIGN: FloatingTextAlign = "center";
 export const MIN_FLOATING_TEXT_FONT_SIZE = 10;
 export const MAX_FLOATING_TEXT_FONT_SIZE = 72;
+export const MIN_FLOATING_TEXT_WIDTH = 40;
+export const MIN_FLOATING_TEXT_HEIGHT = 24;
+export const FLOATING_TEXT_ALIGNS: FloatingTextAlign[] = [
+  "left",
+  "center",
+  "right",
+];
 
 export interface Viewport {
   x: number;

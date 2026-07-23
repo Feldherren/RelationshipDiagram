@@ -10,6 +10,9 @@
 	- Mousing-over the body of a box now displays the expand/collapse and relationship line buttons.
 	- Collapsing a box now determines its new position relative to the upper-left corner, ensuring the contract/expand button remains beneath the cursor. Expanding boxes functions similarly.
 	- Collapsed boxes no longer capture (or visually hide) objects when their expanded footprint is dragged over them.
+- Floating text improvements
+	- Text details panel can set left, centre, or right alignment.
+	- Selected text areas can be resized by dragging the dotted outline (edges and corners).
 - Character size and font size sliders no longer show a text cursor.
 - Hexagon and pentagon character border shapes now have rounded corners, like the square.
 - Detail panels near the right window edge open to the left of the selected object instead of covering it.

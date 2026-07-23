@@ -4,11 +4,18 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
-import type { LineStyle, Selection, Viewport } from "../../models/types";
+import type {
+  FloatingTextAlign,
+  LineStyle,
+  Selection,
+  Viewport,
+} from "../../models/types";
 import {
   contrastingInk,
+  DEFAULT_FLOATING_TEXT_ALIGN,
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  FLOATING_TEXT_ALIGNS,
   MAX_CHARACTER_SIZE,
   MAX_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
@@ -184,6 +191,50 @@ function ArrowToggleIcon({ direction }: { direction: "left" | "right" }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function TextAlignIcon({ align }: { align: FloatingTextAlign }) {
+  const lines =
+    align === "left"
+      ? [
+          { x: 4, w: 16 },
+          { x: 4, w: 12 },
+          { x: 4, w: 14 },
+        ]
+      : align === "right"
+        ? [
+            { x: 4, w: 16 },
+            { x: 8, w: 12 },
+            { x: 6, w: 14 },
+          ]
+        : [
+            { x: 4, w: 16 },
+            { x: 6, w: 12 },
+            { x: 5, w: 14 },
+          ];
+
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      {lines.map((line, index) => (
+        <rect
+          key={index}
+          x={line.x}
+          y={6 + index * 5}
+          width={line.w}
+          height={2}
+          rx={1}
+          fill="currentColor"
+        />
+      ))}
     </svg>
   );
 }
@@ -801,6 +852,7 @@ export function SelectionFloat() {
     const color = floatingText.color ?? DEFAULT_FLOATING_TEXT_COLOR;
     const fontSize =
       floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
+    const textAlign = floatingText.textAlign ?? DEFAULT_FLOATING_TEXT_ALIGN;
 
     const commitFontSize = (raw: string) => {
       const parsed = Number(raw);
@@ -830,6 +882,40 @@ export function SelectionFloat() {
             }
           />
         </label>
+        <div className="field">
+          <span>{t("selection.textAlign")}</span>
+          <div
+            className="line-arrow-toggles"
+            role="group"
+            aria-label={t("selection.textAlign")}
+          >
+            {FLOATING_TEXT_ALIGNS.map((align) => {
+              const alignLabelKey =
+                align === "left"
+                  ? "selection.textAlignLeft"
+                  : align === "right"
+                    ? "selection.textAlignRight"
+                    : "selection.textAlignCenter";
+              return (
+                <button
+                  key={align}
+                  type="button"
+                  className={`btn-icon line-arrow-toggle${
+                    textAlign === align ? " is-active" : ""
+                  }`}
+                  aria-label={t(alignLabelKey)}
+                  aria-pressed={textAlign === align}
+                  title={t(alignLabelKey)}
+                  onClick={() =>
+                    updateFloatingText(floatingText.id, { textAlign: align })
+                  }
+                >
+                  <TextAlignIcon align={align} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <RgbPicker
           label={t("selection.colour")}
           value={color}

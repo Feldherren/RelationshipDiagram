@@ -18,9 +18,13 @@ import type {
 import {
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  FLOATING_TEXT_ALIGNS,
   MAX_FLOATING_TEXT_FONT_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
+  MIN_FLOATING_TEXT_HEIGHT,
+  MIN_FLOATING_TEXT_WIDTH,
   normalizeMembershipAppearance,
+  type FloatingTextAlign,
 } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 import {
@@ -131,6 +135,26 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
   });
 }
 
+function normalizeFloatingTextAlign(
+  value: unknown,
+): FloatingTextAlign | undefined {
+  if (
+    typeof value === "string" &&
+    (FLOATING_TEXT_ALIGNS as string[]).includes(value)
+  ) {
+    return value as FloatingTextAlign;
+  }
+  return undefined;
+}
+
+function normalizeFloatingTextDimension(
+  value: unknown,
+  min: number,
+): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(min, Math.round(value));
+}
+
 function normalizeFloatingTexts(
   texts: Diagram["floatingTexts"],
 ): FloatingText[] {
@@ -146,6 +170,15 @@ function normalizeFloatingTexts(
             Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize)),
           )
         : DEFAULT_FLOATING_TEXT_FONT_SIZE;
+    const textAlign = normalizeFloatingTextAlign(partial.textAlign);
+    const width = normalizeFloatingTextDimension(
+      partial.width,
+      MIN_FLOATING_TEXT_WIDTH,
+    );
+    const height = normalizeFloatingTextDimension(
+      partial.height,
+      MIN_FLOATING_TEXT_HEIGHT,
+    );
     return {
       id: partial.id,
       position: { x: partial.position.x, y: partial.position.y },
@@ -154,6 +187,9 @@ function normalizeFloatingTexts(
         ? { ...partial.color }
         : { ...DEFAULT_FLOATING_TEXT_COLOR },
       fontSize,
+      ...(textAlign ? { textAlign } : {}),
+      ...(width != null ? { width } : {}),
+      ...(height != null ? { height } : {}),
     };
   });
 }

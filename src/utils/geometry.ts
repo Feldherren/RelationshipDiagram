@@ -94,7 +94,10 @@ export function getFloatingTextBounds(
     ? floatingText.text
     : i18n.t("defaults.floatingTextPlaceholder");
   const fontSize = floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
-  const size = getFloatingTextSize(displayText, fontSize, fontFamily);
+  const size = getFloatingTextSize(displayText, fontSize, fontFamily, {
+    width: floatingText.width,
+    height: floatingText.height,
+  });
   const { x, y } = floatingText.position;
   return {
     x: x - size.width / 2 - PILL_STROKE_MARGIN,

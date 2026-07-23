@@ -1,6 +1,7 @@
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.
+- Can now drag boxes around via their background (as middle-click drag works for panning).
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

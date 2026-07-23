@@ -530,7 +530,17 @@ export function BoxContainer({
           strokeWidth={2}
           fill={rgbaWithAlpha(box.borderColor, 0.08)}
           cornerRadius={12}
-          listening={false}
+          onMouseEnter={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "grab";
+            }
+          }}
+          onMouseLeave={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "";
+            }
+          }}
+          onMouseDown={beginMove}
         />
       )}
       {showForeground &&

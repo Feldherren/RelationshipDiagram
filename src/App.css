@@ -249,7 +249,7 @@ body,
   cursor: pointer;
 }
 
-.selection-float-draggable input,
+.selection-float-draggable input:not([type="range"]),
 .selection-float-draggable textarea,
 .selection-float-draggable select {
   cursor: text;

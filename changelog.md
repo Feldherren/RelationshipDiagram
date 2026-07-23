@@ -9,6 +9,7 @@
 	- Mousing-over the header of a box now highlights it with the aura effect.
 	- Mousing-over the body of a box now displays the expand/collapse and relationship line buttons.
 	- Collapsing a box now determines its new position relative to the upper-left corner, ensuring the contract/expand button remains beneath the cursor. Expanding boxes functions similarly.
+- Character size and font size sliders no longer show a text cursor.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

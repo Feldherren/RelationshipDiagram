@@ -16,6 +16,8 @@ import type {
   RGB,
 } from "../models/types";
 import {
+  clampCharacterSize,
+  DEFAULT_CHARACTER_SIZE,
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
   FLOATING_TEXT_ALIGNS,
@@ -24,6 +26,7 @@ import {
   MIN_FLOATING_TEXT_HEIGHT,
   MIN_FLOATING_TEXT_WIDTH,
   normalizeMembershipAppearance,
+  type Character,
   type FloatingTextAlign,
 } from "../models/types";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
@@ -194,11 +197,23 @@ function normalizeFloatingTexts(
   });
 }
 
+function normalizeCharacters(
+  characters: Diagram["characters"],
+): Character[] {
+  return (characters ?? []).map((c) => ({
+    ...c,
+    size:
+      typeof c.size === "number" && Number.isFinite(c.size)
+        ? clampCharacterSize(c.size)
+        : DEFAULT_CHARACTER_SIZE,
+  }));
+}
+
 function normalizeDiagram(
   data: Omit<Diagram, "schemaVersion"> & { schemaVersion?: number },
 ): Diagram {
   const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
-  const characters = data.characters;
+  const characters = normalizeCharacters(data.characters);
   const floatingTexts = normalizeFloatingTexts(data.floatingTexts);
 
   return {

@@ -11,6 +11,7 @@ import type {
   Viewport,
 } from "../../models/types";
 import {
+  clampCharacterSize,
   contrastingInk,
   DEFAULT_FLOATING_TEXT_ALIGN,
   DEFAULT_FLOATING_TEXT_COLOR,
@@ -551,10 +552,7 @@ export function SelectionFloat() {
         return;
       }
       updateCharacter(character.id, {
-        size: Math.min(
-          MAX_CHARACTER_SIZE,
-          Math.max(MIN_CHARACTER_SIZE, Math.round(parsed)),
-        ),
+        size: clampCharacterSize(parsed),
       });
     };
 
@@ -644,7 +642,7 @@ export function SelectionFloat() {
                 const parsed = Number(e.target.value);
                 if (!Number.isFinite(parsed)) return;
                 updateCharacter(character.id, {
-                  size: Math.round(parsed),
+                  size: clampCharacterSize(parsed),
                 });
               }}
               onBlur={(e) => commitSize(e.target.value)}

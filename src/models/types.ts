@@ -357,6 +357,13 @@ export interface Point {
 export const DEFAULT_CHARACTER_SIZE = 40;
 export const MIN_CHARACTER_SIZE = 24;
 export const MAX_CHARACTER_SIZE = 80;
+
+export function clampCharacterSize(size: number): number {
+  return Math.min(
+    MAX_CHARACTER_SIZE,
+    Math.max(MIN_CHARACTER_SIZE, Math.round(size)),
+  );
+}
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
 /** Corner radius for square / polygon character borders (matches square Rect). */
 export const CHARACTER_BORDER_CORNER_RADIUS = 4;

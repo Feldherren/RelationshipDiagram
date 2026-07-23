@@ -2,7 +2,11 @@ import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
 import { useRef, useState } from "react";
 import type Konva from "konva";
 import type { Character } from "../../models/types";
-import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
+import {
+  CHARACTER_BORDER_CORNER_RADIUS,
+  CHARACTER_BORDER_STROKE_WIDTH,
+  rgbToCss,
+} from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import {
@@ -72,7 +76,7 @@ function ShapeOutline({
           y={-size}
           width={size * 2}
           height={size * 2}
-          cornerRadius={4}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );
@@ -83,6 +87,7 @@ function ShapeOutline({
           y={0}
           sides={5}
           radius={size}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );
@@ -93,6 +98,7 @@ function ShapeOutline({
           y={0}
           sides={6}
           radius={size}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );

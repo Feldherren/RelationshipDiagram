@@ -339,6 +339,8 @@ export const DEFAULT_CHARACTER_SIZE = 40;
 export const MIN_CHARACTER_SIZE = 24;
 export const MAX_CHARACTER_SIZE = 80;
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
+/** Corner radius for square / polygon character borders (matches square Rect). */
+export const CHARACTER_BORDER_CORNER_RADIUS = 4;
 export const BOX_PADDING = 48;
 export const BOX_HEADER_HEIGHT = 28;
 export const COLLAPSED_BOX_SIZE = 44;

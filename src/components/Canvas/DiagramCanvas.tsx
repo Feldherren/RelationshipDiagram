@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
 import { FloatingTextNode } from "./FloatingTextNode";
+import { FloatingTextEditor } from "./FloatingTextEditor";
 import { LineEdge } from "./LineEdge";
 import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
@@ -119,6 +120,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     boxes,
     floatingTexts,
     selection,
+    editingFloatingTextId,
     toolMode,
     connectFrom,
     connectDrag,
@@ -143,6 +145,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     updateConnectDrag,
     endConnectDrag,
     updateLine,
+    beginEditingFloatingText,
   } = useDiagramStore(
     useShallow((s) => ({
       characters: s.characters,
@@ -151,6 +154,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       boxes: s.boxes,
       floatingTexts: s.floatingTexts,
       selection: s.selection,
+      editingFloatingTextId: s.editingFloatingTextId,
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
       connectDrag: s.connectDrag,
@@ -175,6 +179,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       updateConnectDrag: s.updateConnectDrag,
       endConnectDrag: s.endConnectDrag,
       updateLine: s.updateLine,
+      beginEditingFloatingText: s.beginEditingFloatingText,
     })),
   );
 
@@ -1050,10 +1055,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 "floatingText",
                 floatingText.id,
               )}
+              editing={editingFloatingTextId === floatingText.id}
               draggable={
                 toolMode !== "exportBounds" &&
                 toolMode !== "editGroupMembers" &&
-                !connectDrag
+                !connectDrag &&
+                editingFloatingTextId !== floatingText.id
               }
               onSelect={() =>
                 setSelection(
@@ -1061,12 +1068,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   { openDetails: false },
                 )
               }
-              onOpenDetails={() =>
-                setSelection(
-                  { type: "floatingText", id: floatingText.id },
-                  { openDetails: true },
-                )
-              }
+              onStartEdit={() => beginEditingFloatingText(floatingText.id)}
+              onOpenDetails={() => beginEditingFloatingText(floatingText.id)}
               onDragMove={(pos) =>
                 moveFloatingText(floatingText.id, pos, {
                   recordHistory: false,
@@ -1099,6 +1102,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         menu={addObjectMenu}
         onClose={() => setAddObjectMenu(null)}
       />
+      <FloatingTextEditor />
     </div>
   );
 }

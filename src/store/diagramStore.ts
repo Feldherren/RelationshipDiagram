@@ -118,6 +118,8 @@ interface DiagramState {
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
   selectionDetailsOpen: boolean;
+  /** Floating text currently being edited inline on the canvas (HTML overlay). */
+  editingFloatingTextId: string | null;
   toolMode: ToolMode;
   connectFrom: NodeRef | null;
   connectDrag: ConnectDrag | null;
@@ -153,6 +155,8 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
   openSelectionDetails: () => void;
+  beginEditingFloatingText: (id: string) => void;
+  endEditingFloatingText: () => void;
   setShowGrid: (show: boolean) => void;
   setGridStyle: (style: GridStyle) => void;
   setDiagramBackgroundMode: (mode: DiagramBackgroundMode) => void;
@@ -334,6 +338,7 @@ function restoreHistorySnapshot(
     viewport,
     selection: null,
     selectionDetailsOpen: false,
+    editingFloatingTextId: null,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -356,6 +361,7 @@ export const useDiagramStore = create<DiagramState>()(
   lineLabelContrastWithBackground: false,
   selection: null,
   selectionDetailsOpen: false,
+  editingFloatingTextId: null,
   toolMode: "select",
   connectFrom: null,
   connectDrag: null,
@@ -442,6 +448,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       selection,
       selectionDetailsOpen: openDetails,
+      editingFloatingTextId: null,
       ...(editingGroupId != null && !stayingOnEditedGroup
         ? { toolMode: "select" as const }
         : {}),
@@ -543,7 +550,26 @@ export const useDiagramStore = create<DiagramState>()(
     if (!selection || selection.type === "multi") {
       return;
     }
-    set({ selectionDetailsOpen: true });
+    if (selection.type === "floatingText") {
+      get().beginEditingFloatingText(selection.id);
+      return;
+    }
+    set({ selectionDetailsOpen: true, editingFloatingTextId: null });
+  },
+  beginEditingFloatingText: (id) => {
+    if (!get().floatingTexts.some((t) => t.id === id)) return;
+    if (get().editingFloatingTextId !== id) {
+      get().captureHistory();
+    }
+    set({
+      editingFloatingTextId: id,
+      selection: { type: "floatingText", id },
+      selectionDetailsOpen: true,
+    });
+  },
+  endEditingFloatingText: () => {
+    if (get().editingFloatingTextId == null) return;
+    set({ editingFloatingTextId: null });
   },
   setShowGrid: (show) =>
     {
@@ -1275,7 +1301,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       floatingTexts: [...s.floatingTexts, floatingText],
       selection: { type: "floatingText", id: floatingText.id },
-      selectionDetailsOpen: false,
+      selectionDetailsOpen: true,
+      editingFloatingTextId: floatingText.id,
     }));
   },
 
@@ -1293,6 +1320,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       floatingTexts: s.floatingTexts.filter((t) => t.id !== id),
       selection: selectionAfterRemovingItem(s.selection, "floatingText", id),
+      editingFloatingTextId:
+        s.editingFloatingTextId === id ? null : s.editingFloatingTextId,
     }));
   },
 
@@ -1580,6 +1609,7 @@ export const useDiagramStore = create<DiagramState>()(
           })),
           selection: null,
           selectionDetailsOpen: false,
+          editingFloatingTextId: null,
         };
       });
       return;
@@ -1653,6 +1683,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle: liveGridStyle,
       selection: null,
       selectionDetailsOpen: false,
+      editingFloatingTextId: null,
       connectFrom: null,
       connectDrag: null,
       toolMode: "select",

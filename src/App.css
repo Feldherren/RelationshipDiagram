@@ -189,6 +189,25 @@ body,
   cursor: pointer;
 }
 
+.floating-text-editor {
+  position: absolute;
+  z-index: 6;
+  margin: 0;
+  border: none;
+  outline: 1.5px dashed #4a90d9;
+  outline-offset: -1px;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+  caret-color: currentColor;
+}
+
+.floating-text-editor::placeholder {
+  color: inherit;
+  opacity: 0.4;
+}
+
 .diagram-title-bar {
   position: absolute;
   top: 0.75rem;

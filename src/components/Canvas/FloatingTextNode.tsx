@@ -34,8 +34,10 @@ import { requestSuppressStageClick } from "../../utils/suppressStageClick";
 interface FloatingTextNodeProps {
   floatingText: FloatingText;
   selected: boolean;
+  editing: boolean;
   draggable: boolean;
   onSelect: () => void;
+  onStartEdit: () => void;
   onOpenDetails: () => void;
   onDragMove: (pos: { x: number; y: number }) => void;
   onDragEnd: (pos: { x: number; y: number }) => void;
@@ -105,8 +107,10 @@ function getResizeHandleLayout(
 export function FloatingTextNode({
   floatingText,
   selected,
+  editing,
   draggable,
   onSelect,
+  onStartEdit,
   onOpenDetails,
   onDragMove,
   onDragEnd,
@@ -141,8 +145,14 @@ export function FloatingTextNode({
   const color = floatingText.color ?? DEFAULT_FLOATING_TEXT_COLOR;
   const textAlign = floatingText.textAlign ?? DEFAULT_FLOATING_TEXT_ALIGN;
   const hasExplicitWidth = floatingText.width != null;
+  const sizeSource =
+    editing && floatingText.text.length === 0
+      ? t("defaults.floatingTextPlaceholder")
+      : editing
+        ? floatingText.text
+        : displayText;
   const { width, height } = getFloatingTextSize(
-    displayText,
+    sizeSource,
     fontSize,
     fontFamily,
     { width: floatingText.width, height: floatingText.height },
@@ -157,6 +167,7 @@ export function FloatingTextNode({
   };
   const canResize =
     selected &&
+    !editing &&
     selection?.type === "floatingText" &&
     selection.id === floatingText.id;
   const handleSize = BOX_RESIZE_HANDLE_SCREEN_SIZE / viewportScale;
@@ -262,12 +273,12 @@ export function FloatingTextNode({
     <Group
       x={floatingText.position.x}
       y={floatingText.position.y}
-      draggable={draggable && !resizing}
+      draggable={draggable && !resizing && !editing}
       onMouseDown={(e) => {
-        allowDragRef.current = e.evt.button === 0;
+        allowDragRef.current = e.evt.button === 0 && !editing;
       }}
       onTouchStart={() => {
-        allowDragRef.current = true;
+        allowDragRef.current = !editing;
       }}
       onClick={(e) => {
         e.cancelBubble = true;
@@ -281,12 +292,12 @@ export function FloatingTextNode({
       onDblClick={(e) => {
         e.cancelBubble = true;
         e.evt.preventDefault();
-        onOpenDetails();
+        onStartEdit();
       }}
       onDblTap={(e) => {
         e.cancelBubble = true;
         e.evt.preventDefault();
-        onOpenDetails();
+        onStartEdit();
       }}
       onContextMenu={(e) => {
         e.cancelBubble = true;
@@ -294,13 +305,16 @@ export function FloatingTextNode({
         onOpenDetails();
       }}
       onDragStart={(e) => {
-        if (!allowDragRef.current || resizing) {
+        if (!allowDragRef.current || resizing || editing) {
           e.target.stopDrag();
           return;
         }
         // Dragging is layout, not inspect — keep selection, close the float.
         captureHistory();
-        useDiagramStore.setState({ selectionDetailsOpen: false });
+        useDiagramStore.setState({
+          selectionDetailsOpen: false,
+          editingFloatingTextId: null,
+        });
         multiDragLastPosRef.current = {
           x: floatingText.position.x,
           y: floatingText.position.y,
@@ -342,9 +356,9 @@ export function FloatingTextNode({
         width={width}
         height={height}
         fill="transparent"
-        stroke={selected ? SELECTION_STROKE : "transparent"}
-        strokeWidth={selected ? 1.5 : 0}
-        dash={selected ? [5, 4] : undefined}
+        stroke={selected && !editing ? SELECTION_STROKE : "transparent"}
+        strokeWidth={selected && !editing ? 1.5 : 0}
+        dash={selected && !editing ? [5, 4] : undefined}
         listening
       />
       <Text
@@ -361,6 +375,7 @@ export function FloatingTextNode({
         verticalAlign="middle"
         wrap={hasExplicitWidth ? "word" : "none"}
         listening={false}
+        visible={!editing}
       />
       {canResize &&
         RESIZE_EDGES.map((edge) => {

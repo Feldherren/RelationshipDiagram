@@ -119,6 +119,7 @@ export function usePanZoom(
 
       if (e.key === "Escape") {
         useDiagramStore.getState().cancelConnect();
+        useDiagramStore.getState().endEditingFloatingText();
         useDiagramStore.setState({ toolMode: "select" });
       }
       if (e.key === "Enter") {
@@ -133,10 +134,17 @@ export function usePanZoom(
           return;
         }
         e.preventDefault();
+        if (selection.type === "floatingText") {
+          useDiagramStore.getState().beginEditingFloatingText(selection.id);
+          return;
+        }
         useDiagramStore.getState().openSelectionDetails();
       }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (isEditable) {
+          return;
+        }
+        if (useDiagramStore.getState().editingFloatingTextId != null) {
           return;
         }
         if (useDiagramStore.getState().toolMode === "editGroupMembers") {

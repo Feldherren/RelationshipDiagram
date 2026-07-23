@@ -140,6 +140,10 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
               detail: t("help.deleteDetail"),
             },
             {
+              keys: t("help.editTextKeys"),
+              detail: t("help.editTextDetail"),
+            },
+            {
               keys: t("help.propertiesKeys"),
               detail: t("help.propertiesDetail"),
             },

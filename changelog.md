@@ -13,6 +13,7 @@
 - Floating text improvements
 	- Text details panel can set left, centre, or right alignment.
 	- Selected text areas can be resized by dragging the dotted outline (edges and corners).
+	- Double-click, right-click, or Enter edits text on the canvas and opens the details panel together (no separate text field in the panel). Esc (or clicking away) finishes typing.
 - Character size and font size sliders no longer show a text cursor.
 - Hexagon and pentagon character border shapes now have rounded corners, like the square.
 - Detail panels near the right window edge open to the left of the selected object instead of covering it.

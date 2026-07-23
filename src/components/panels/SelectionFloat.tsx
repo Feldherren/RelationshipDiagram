@@ -871,17 +871,6 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.text")}</h2>
-        <label className="field">
-          <span>{t("selection.textField")}</span>
-          <textarea
-            value={floatingText.text}
-            placeholder={t("selection.textPlaceholder")}
-            rows={4}
-            onChange={(e) =>
-              updateFloatingText(floatingText.id, { text: e.target.value })
-            }
-          />
-        </label>
         <div className="field">
           <span>{t("selection.textAlign")}</span>
           <div

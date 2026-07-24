@@ -779,8 +779,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -980,8 +983,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -1020,8 +1026,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}

@@ -42,6 +42,10 @@ import {
   shouldShowAura,
 } from "./HoverAura";
 import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
+import {
+  captureMultiDragSnapshot,
+  type MultiDragSnapshot,
+} from "../../utils/snapToGrid";
 
 interface BoxContainerProps {
   box: BoxType;
@@ -55,6 +59,12 @@ interface BoxContainerProps {
   onMoveByDelta: (
     delta: { dx: number; dy: number },
     contents: { characterIds: string[]; floatingTextIds: string[] },
+    snapOptions?: {
+      initialBox: BoxType;
+      initialCharacterPositions: Record<string, { x: number; y: number }>;
+      initialFloatingTextPositions: Record<string, { x: number; y: number }>;
+      totalDelta: { dx: number; dy: number };
+    },
   ) => void;
   onResizeStart: () => void;
   onResizeEnd: () => void;
@@ -75,10 +85,14 @@ interface ResizeDragStart {
 }
 
 interface MoveDragStart {
-  pointer: { x: number; y: number };
+  /** Pointer position at drag start (world). Total delta is measured from this. */
   origin: { x: number; y: number };
   characterIds: string[];
   floatingTextIds: string[];
+  initialBox: BoxType;
+  initialCharacterPositions: Record<string, { x: number; y: number }>;
+  initialFloatingTextPositions: Record<string, { x: number; y: number }>;
+  multiSnapshot: MultiDragSnapshot | null;
 }
 
 const RESIZE_EDGES: BoxResizeEdge[] = [
@@ -307,20 +321,37 @@ export function BoxContainer({
         moveHistoryCapturedRef.current = true;
         captureHistory();
       }
-      const delta = {
-        dx: pointer.x - dragStart.pointer.x,
-        dy: pointer.y - dragStart.pointer.y,
+      const totalDelta = {
+        dx: pointer.x - dragStart.origin.x,
+        dy: pointer.y - dragStart.origin.y,
       };
       const selection = useDiagramStore.getState().selection;
       if (isIdInMultiSelection(selection, "box", box.id)) {
-        moveMultiSelectionByDelta(delta, { recordHistory: false });
+        if (dragStart.multiSnapshot) {
+          moveMultiSelectionByDelta(totalDelta, {
+            recordHistory: false,
+            initialSnapshot: dragStart.multiSnapshot,
+            totalDelta,
+          });
+        } else {
+          moveMultiSelectionByDelta(totalDelta, { recordHistory: false });
+        }
       } else {
-        onMoveByDeltaRef.current(delta, {
-          characterIds: dragStart.characterIds,
-          floatingTextIds: dragStart.floatingTextIds,
-        });
+        onMoveByDeltaRef.current(
+          totalDelta,
+          {
+            characterIds: dragStart.characterIds,
+            floatingTextIds: dragStart.floatingTextIds,
+          },
+          {
+            initialBox: dragStart.initialBox,
+            initialCharacterPositions: dragStart.initialCharacterPositions,
+            initialFloatingTextPositions:
+              dragStart.initialFloatingTextPositions,
+            totalDelta,
+          },
+        );
       }
-      dragStart.pointer = pointer;
     };
 
     const onUp = () => {
@@ -378,19 +409,75 @@ export function BoxContainer({
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
     moveHistoryCapturedRef.current = false;
+
+    const characterIds = getCharactersContainedInBox(
+      box,
+      characters,
+      diagramFontFamily,
+    ).map((c) => c.id);
+    const floatingTextIds = getFloatingTextsContainedInBox(
+      box,
+      floatingTexts,
+      diagramFontFamily,
+    ).map((t) => t.id);
+
+    const initialCharacterPositions: Record<string, { x: number; y: number }> =
+      {};
+    for (const c of characters) {
+      if (characterIds.includes(c.id)) {
+        initialCharacterPositions[c.id] = { ...c.position };
+      }
+    }
+    const initialFloatingTextPositions: Record<
+      string,
+      { x: number; y: number }
+    > = {};
+    for (const t of floatingTexts) {
+      if (floatingTextIds.includes(t.id)) {
+        initialFloatingTextPositions[t.id] = { ...t.position };
+      }
+    }
+
+    const state = useDiagramStore.getState();
+    const multiSnapshot = isIdInMultiSelection(state.selection, "box", box.id)
+      ? captureMultiDragSnapshot(
+          state.selection,
+          state.characters,
+          state.boxes,
+          state.floatingTexts,
+          state.diagramFontFamily,
+          (b) => ({
+            characterIds: getCharactersContainedInBox(
+              b,
+              state.characters,
+              state.diagramFontFamily,
+            ).map((c) => c.id),
+            floatingTextIds: getFloatingTextsContainedInBox(
+              b,
+              state.floatingTexts,
+              state.diagramFontFamily,
+            ).map((t) => t.id),
+          }),
+        )
+      : null;
+
     moveStartRef.current = {
-      pointer: world,
       origin: world,
-      characterIds: getCharactersContainedInBox(
-        box,
-        characters,
-        diagramFontFamily,
-      ).map((c) => c.id),
-      floatingTextIds: getFloatingTextsContainedInBox(
-        box,
-        floatingTexts,
-        diagramFontFamily,
-      ).map((t) => t.id),
+      characterIds,
+      floatingTextIds,
+      initialBox: {
+        ...box,
+        bounds: box.bounds ? { ...box.bounds } : undefined,
+        anchorPosition: box.anchorPosition
+          ? { ...box.anchorPosition }
+          : undefined,
+        collapsedPosition: box.collapsedPosition
+          ? { ...box.collapsedPosition }
+          : undefined,
+      },
+      initialCharacterPositions,
+      initialFloatingTextPositions,
+      multiSnapshot,
     };
     document.body.style.cursor = "grabbing";
     setDragging(true);

@@ -21,6 +21,8 @@ import { useDiagramStore } from "../../store/diagramStore";
 import { formatFontForCanvas } from "../../utils/diagramFont";
 import {
   cursorForBoxResizeEdge,
+  getCharactersContainedInBox,
+  getFloatingTextsContainedInBox,
   resizeBoxBounds,
 } from "../../utils/geometry";
 import {
@@ -30,6 +32,11 @@ import {
 import { SELECTION_PILL_NODE_NAME } from "../../utils/export";
 import { isIdInMultiSelection } from "../../utils/selectionMulti";
 import { requestSuppressStageClick } from "../../utils/suppressStageClick";
+import {
+  captureMultiDragSnapshot,
+  snapPointToGrid,
+  type MultiDragSnapshot,
+} from "../../utils/snapToGrid";
 
 interface FloatingTextNodeProps {
   floatingText: FloatingText;
@@ -117,7 +124,13 @@ export function FloatingTextNode({
 }: FloatingTextNodeProps) {
   const { t } = useTranslation();
   const allowDragRef = useRef(true);
-  const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const multiDragOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const multiDragSnapshotRef = useRef<MultiDragSnapshot | null>(null);
+  /**
+   * While dragging, drive Group x/y from this local position so React props
+   * never fight Konva's drag tracker (which caused snap points to be skipped).
+   */
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const resizeStartRef = useRef<{
     bounds: Bounds;
@@ -132,10 +145,16 @@ export function FloatingTextNode({
   const moveMultiSelectionByDelta = useDiagramStore(
     (s) => s.moveMultiSelectionByDelta,
   );
+  const snapToGridEnabled = useDiagramStore((s) => s.snapToGridEnabled);
   const updateFloatingText = useDiagramStore((s) => s.updateFloatingText);
   const screenToWorld = useDiagramStore((s) => s.screenToWorld);
   const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const fontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const inMulti = isIdInMultiSelection(
+    selection,
+    "floatingText",
+    floatingText.id,
+  );
 
   const hasText = Boolean(floatingText.text.trim());
   const displayText = hasText
@@ -271,8 +290,8 @@ export function FloatingTextNode({
 
   return (
     <Group
-      x={floatingText.position.x}
-      y={floatingText.position.y}
+      x={dragPos?.x ?? floatingText.position.x}
+      y={dragPos?.y ?? floatingText.position.y}
       draggable={draggable && !resizing && !editing}
       onMouseDown={(e) => {
         allowDragRef.current = e.evt.button === 0 && !editing;
@@ -315,34 +334,78 @@ export function FloatingTextNode({
           selectionDetailsOpen: false,
           editingFloatingTextId: null,
         });
-        multiDragLastPosRef.current = {
+        const start = {
           x: floatingText.position.x,
           y: floatingText.position.y,
         };
+        multiDragOriginRef.current = start;
+        setDragPos(start);
+        if (inMulti) {
+          const state = useDiagramStore.getState();
+          multiDragSnapshotRef.current = captureMultiDragSnapshot(
+            state.selection,
+            state.characters,
+            state.boxes,
+            state.floatingTexts,
+            state.diagramFontFamily,
+            (b) => ({
+              characterIds: getCharactersContainedInBox(
+                b,
+                state.characters,
+                state.diagramFontFamily,
+              ).map((c) => c.id),
+              floatingTextIds: getFloatingTextsContainedInBox(
+                b,
+                state.floatingTexts,
+                state.diagramFontFamily,
+              ).map((t) => t.id),
+            }),
+          );
+        } else {
+          multiDragSnapshotRef.current = null;
+        }
       }}
       onDragMove={(e) => {
-        const pos = { x: e.target.x(), y: e.target.y() };
-        if (
-          isIdInMultiSelection(selection, "floatingText", floatingText.id)
-        ) {
-          const last = multiDragLastPosRef.current ?? pos;
-          const dx = pos.x - last.x;
-          const dy = pos.y - last.y;
-          multiDragLastPosRef.current = pos;
-          if (dx !== 0 || dy !== 0) {
-            moveMultiSelectionByDelta({ dx, dy }, { recordHistory: false });
+        let pos = { x: e.target.x(), y: e.target.y() };
+        if (inMulti) {
+          const origin = multiDragOriginRef.current ?? pos;
+          const totalDelta = {
+            dx: pos.x - origin.x,
+            dy: pos.y - origin.y,
+          };
+          const snapshot = multiDragSnapshotRef.current;
+          if (snapshot) {
+            moveMultiSelectionByDelta(totalDelta, {
+              recordHistory: false,
+              initialSnapshot: snapshot,
+              totalDelta,
+            });
+          } else if (totalDelta.dx !== 0 || totalDelta.dy !== 0) {
+            moveMultiSelectionByDelta(totalDelta, { recordHistory: false });
           }
+          setDragPos(pos);
           return;
         }
+        if (snapToGridEnabled) {
+          pos = snapPointToGrid(pos);
+          e.target.position(pos);
+        }
+        setDragPos((prev) =>
+          prev && prev.x === pos.x && prev.y === pos.y ? prev : pos,
+        );
         onDragMove(pos);
       }}
       onDragEnd={(e) => {
-        const pos = { x: e.target.x(), y: e.target.y() };
-        multiDragLastPosRef.current = null;
-        if (
-          isIdInMultiSelection(selection, "floatingText", floatingText.id)
-        ) {
+        let pos = { x: e.target.x(), y: e.target.y() };
+        multiDragOriginRef.current = null;
+        multiDragSnapshotRef.current = null;
+        setDragPos(null);
+        if (inMulti) {
           return;
+        }
+        if (snapToGridEnabled) {
+          pos = snapPointToGrid(pos);
+          e.target.position(pos);
         }
         onDragEnd(pos);
       }}

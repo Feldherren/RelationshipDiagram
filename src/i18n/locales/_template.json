@@ -13,7 +13,9 @@
     "help": "Controls",
     "helpAria": "Canvas controls and shortcuts",
     "settings": "Settings",
-    "settingsAria": "Application settings"
+    "settingsAria": "Application settings",
+    "snapToGrid": "Snap to grid",
+    "snapToGridTitle": "Snap objects to grid intersections while dragging"
   },
   "app": {
     "saveFailed": "Failed to save diagram.",

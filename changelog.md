@@ -22,6 +22,7 @@
 	- Settings > General can swap click and Ctrl+click for bookmarks.
 - Click the lower-right zoom indicator to choose 50%, 100%, or 150% (zooms around the view centre).
 - Character size is clamped to the slider range (24–80) so invalid values cannot break the canvas or persist after save/reload.
+- Snap-to-grid mode; when enabled, characters, text and boxes snap to a grid (matching the grid background option, but not requiring it) when dragged around.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

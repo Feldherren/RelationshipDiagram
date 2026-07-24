@@ -85,6 +85,11 @@ export interface AppPreferences {
    * background. When false (default), label text matches the line colour.
    */
   lineLabelContrastWithBackground: boolean;
+  /**
+   * When true, characters/boxes/text snap to grid intersections while
+   * dragging or being placed. Independent of grid background visibility.
+   */
+  snapToGridEnabled: boolean;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -110,6 +115,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   groupsCanvasMode: "full",
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
+  snapToGridEnabled: false,
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -341,6 +347,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.lineLabelContrastWithBackground === "boolean"
         ? stored.lineLabelContrastWithBackground
         : defaults.lineLabelContrastWithBackground,
+    snapToGridEnabled:
+      typeof stored.snapToGridEnabled === "boolean"
+        ? stored.snapToGridEnabled
+        : defaults.snapToGridEnabled,
   };
 }
 

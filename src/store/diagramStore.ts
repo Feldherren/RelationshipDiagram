@@ -96,9 +96,31 @@ import {
 } from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
 import type { GroupsCanvasMode } from "../utils/groupHub";
+import {
+  snapBoxTopLeftToGrid,
+  snapMultiSelectionDelta,
+  snapPointToGrid,
+  type MultiDragSnapshot,
+} from "../utils/snapToGrid";
 
 interface HistoryOptions {
   recordHistory?: boolean;
+}
+
+/** Optional absolute-from-snapshot options for box drag (supports snap-to-grid). */
+export interface MoveBoxSnapOptions extends HistoryOptions {
+  initialBox?: Box;
+  initialCharacterPositions?: Record<string, { x: number; y: number }>;
+  initialFloatingTextPositions?: Record<string, { x: number; y: number }>;
+  totalDelta?: { dx: number; dy: number };
+  /** When true, apply totalDelta from snapshot without re-snapping (multi-select). */
+  skipSnap?: boolean;
+}
+
+/** Optional absolute-from-snapshot options for multi-select drag. */
+export interface MoveMultiSelectionOptions extends HistoryOptions {
+  initialSnapshot?: MultiDragSnapshot;
+  totalDelta?: { dx: number; dy: number };
 }
 
 interface DiagramState {
@@ -115,6 +137,8 @@ interface DiagramState {
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
+  /** When true, drag/place snaps to grid intersections. */
+  snapToGridEnabled: boolean;
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
   selectionDetailsOpen: boolean;
@@ -152,7 +176,7 @@ interface DiagramState {
   setMultiSelection: (items: MultiSelectableItem[]) => void;
   moveMultiSelectionByDelta: (
     delta: { dx: number; dy: number },
-    options?: HistoryOptions,
+    options?: MoveMultiSelectionOptions,
   ) => void;
   openSelectionDetails: () => void;
   beginEditingFloatingText: (id: string) => void;
@@ -176,6 +200,7 @@ interface DiagramState {
   setGroupsCanvasMode: (mode: GroupsCanvasMode) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
   setLineLabelContrastWithBackground: (enabled: boolean) => void;
+  setSnapToGridEnabled: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
   closeBookmarkEdit: () => void;
   addBookmark: (name?: string, color?: RGB) => void;
@@ -237,7 +262,7 @@ interface DiagramState {
     id: string,
     delta: { dx: number; dy: number },
     contents: { characterIds: string[]; floatingTextIds: string[] },
-    options?: HistoryOptions,
+    options?: MoveBoxSnapOptions,
   ) => void;
 
   addFloatingTextAt: (position: { x: number; y: number }) => void;
@@ -359,6 +384,7 @@ export const useDiagramStore = create<DiagramState>()(
   groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
+  snapToGridEnabled: false,
   selection: null,
   selectionDetailsOpen: false,
   editingFloatingTextId: null,
@@ -469,6 +495,117 @@ export const useDiagramStore = create<DiagramState>()(
     const { selection, characters, boxes, floatingTexts, diagramFontFamily } =
       get();
     if (selection?.type !== "multi" || selection.items.length === 0) return;
+
+    const snapshot = options?.initialSnapshot;
+    const totalDelta = options?.totalDelta ?? delta;
+
+    if (snapshot) {
+      let dx = totalDelta.dx;
+      let dy = totalDelta.dy;
+      if (get().snapToGridEnabled) {
+        const snapped = snapMultiSelectionDelta(
+          snapshot.initialBounds,
+          totalDelta,
+        );
+        dx = snapped.dx;
+        dy = snapped.dy;
+      }
+
+      if (options?.recordHistory !== false) get().captureHistory();
+
+      const movedByBoxCharacters = new Set<string>();
+      const movedByBoxFloatingTexts = new Set<string>();
+
+      for (const [boxId, contents] of Object.entries(snapshot.boxContents)) {
+        for (const id of contents.characterIds) movedByBoxCharacters.add(id);
+        for (const id of contents.floatingTextIds) {
+          movedByBoxFloatingTexts.add(id);
+        }
+        const initialBoxSnap = snapshot.boxes[boxId];
+        if (!initialBoxSnap) continue;
+        const initialBox: Box = {
+          id: boxId,
+          name: "",
+          collapsed: initialBoxSnap.collapsed,
+          borderColor: { r: 0, g: 0, b: 0 },
+          bounds: initialBoxSnap.bounds ?? undefined,
+          anchorPosition: initialBoxSnap.anchorPosition ?? undefined,
+          collapsedPosition: initialBoxSnap.collapsedPosition ?? undefined,
+        };
+        get().moveBox(
+          boxId,
+          { dx, dy },
+          contents,
+          {
+            recordHistory: false,
+            initialBox,
+            initialCharacterPositions: snapshot.characters,
+            initialFloatingTextPositions: snapshot.floatingTexts,
+            totalDelta: { dx, dy },
+            skipSnap: true,
+          },
+        );
+      }
+
+      // Apply absolute positions for standalone characters/text from snapshot
+      // (selection AABB snap already applied; do not snap per-item).
+      const selectedCharacterIds = new Set(
+        selection.items.filter((i) => i.type === "character").map((i) => i.id),
+      );
+      const selectedFloatingTextIds = new Set(
+        selection.items
+          .filter((i) => i.type === "floatingText")
+          .map((i) => i.id),
+      );
+
+      const charUpdates: Record<string, { x: number; y: number }> = {};
+      const textUpdates: Record<string, { x: number; y: number }> = {};
+
+      for (const characterId of selectedCharacterIds) {
+        if (movedByBoxCharacters.has(characterId)) continue;
+        const start = snapshot.characters[characterId];
+        if (!start) continue;
+        charUpdates[characterId] = {
+          x: start.x + dx,
+          y: start.y + dy,
+        };
+      }
+      for (const floatingTextId of selectedFloatingTextIds) {
+        if (movedByBoxFloatingTexts.has(floatingTextId)) continue;
+        const start = snapshot.floatingTexts[floatingTextId];
+        if (!start) continue;
+        textUpdates[floatingTextId] = {
+          x: start.x + dx,
+          y: start.y + dy,
+        };
+      }
+
+      if (
+        Object.keys(charUpdates).length > 0 ||
+        Object.keys(textUpdates).length > 0
+      ) {
+        set((s) => ({
+          characters:
+            Object.keys(charUpdates).length === 0
+              ? s.characters
+              : s.characters.map((c) =>
+                  charUpdates[c.id]
+                    ? { ...c, position: charUpdates[c.id] }
+                    : c,
+                ),
+          floatingTexts:
+            Object.keys(textUpdates).length === 0
+              ? s.floatingTexts
+              : s.floatingTexts.map((t) =>
+                  textUpdates[t.id]
+                    ? { ...t, position: textUpdates[t.id] }
+                    : t,
+                ),
+        }));
+      }
+      return;
+    }
+
     if (delta.dx === 0 && delta.dy === 0) return;
 
     if (options?.recordHistory !== false) get().captureHistory();
@@ -786,6 +923,7 @@ export const useDiagramStore = create<DiagramState>()(
       groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
+      snapToGridEnabled: prefs.snapToGridEnabled,
     });
   },
 
@@ -860,8 +998,11 @@ export const useDiagramStore = create<DiagramState>()(
 
   addCharacterAt: (position) => {
     get().captureHistory();
+    const pos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
     const character = createDefaultCharacter(
-      position,
+      pos,
       get().diagramAppearance.defaultCharacterBorderColor,
     );
     set((s) => ({
@@ -898,10 +1039,21 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   moveCharacter: (id, position, options) => {
+    const nextPos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
+    const current = get().characters.find((c) => c.id === id);
+    if (
+      current &&
+      current.position.x === nextPos.x &&
+      current.position.y === nextPos.y
+    ) {
+      return;
+    }
     if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       characters: s.characters.map((c) =>
-        c.id === id ? { ...c, position } : c,
+        c.id === id ? { ...c, position: nextPos } : c,
       ),
     }));
   },
@@ -1067,14 +1219,15 @@ export const useDiagramStore = create<DiagramState>()(
 
   addBoxAt: (position) => {
     get().captureHistory();
-    const { boxes, diagramAppearance } = get();
-    const bounds = getEmptyBoxBounds(position);
+    const { boxes, diagramAppearance, snapToGridEnabled } = get();
+    const anchor = snapToGridEnabled ? snapPointToGrid(position) : position;
+    const bounds = getEmptyBoxBounds(anchor);
     const box: Box = {
       id: uuidv4(),
       name: i18n.t("defaults.boxName", { n: boxes.length + 1 }),
       collapsed: false,
-      anchorPosition: position,
-      collapsedPosition: position,
+      anchorPosition: anchor,
+      collapsedPosition: anchor,
       bounds,
       borderColor: { ...diagramAppearance.defaultBoxBorderColor },
     };
@@ -1233,6 +1386,93 @@ export const useDiagramStore = create<DiagramState>()(
 
   moveBox: (id, delta, contents, options) => {
     if (options?.recordHistory !== false) get().captureHistory();
+
+    const snapEnabled = get().snapToGridEnabled && !options?.skipSnap;
+    const hasSnapshot =
+      options?.initialBox != null && options.totalDelta != null;
+
+    if (hasSnapshot) {
+      const initialBox = options.initialBox!;
+      const totalDelta = options.totalDelta!;
+      const initialChars = options.initialCharacterPositions ?? {};
+      const initialTexts = options.initialFloatingTextPositions ?? {};
+
+      let dx = totalDelta.dx;
+      let dy = totalDelta.dy;
+
+      if (snapEnabled) {
+        if (initialBox.collapsed) {
+          const origin =
+            initialBox.collapsedPosition ??
+            initialBox.anchorPosition ??
+            { x: 0, y: 0 };
+          const snapped = snapPointToGrid({
+            x: origin.x + totalDelta.dx,
+            y: origin.y + totalDelta.dy,
+          });
+          dx = snapped.x - origin.x;
+          dy = snapped.y - origin.y;
+        } else {
+          const origin = initialBox.bounds
+            ? { x: initialBox.bounds.x, y: initialBox.bounds.y }
+            : (initialBox.anchorPosition ?? { x: 0, y: 0 });
+          const snapped = snapBoxTopLeftToGrid({
+            x: origin.x + totalDelta.dx,
+            y: origin.y + totalDelta.dy,
+          });
+          dx = snapped.x - origin.x;
+          dy = snapped.y - origin.y;
+        }
+      }
+
+      const containedCharacterIds = new Set(contents.characterIds);
+      const containedFloatingTextIds = new Set(contents.floatingTextIds);
+
+      set((s) => ({
+        characters: s.characters.map((c) => {
+          if (!containedCharacterIds.has(c.id)) return c;
+          const start = initialChars[c.id] ?? c.position;
+          return {
+            ...c,
+            position: { x: start.x + dx, y: start.y + dy },
+          };
+        }),
+        floatingTexts: s.floatingTexts.map((t) => {
+          if (!containedFloatingTextIds.has(t.id)) return t;
+          const start = initialTexts[t.id] ?? t.position;
+          return {
+            ...t,
+            position: { x: start.x + dx, y: start.y + dy },
+          };
+        }),
+        boxes: s.boxes.map((b) => {
+          if (b.id !== id) return b;
+          const next: Box = { ...b };
+          if (initialBox.bounds) {
+            next.bounds = {
+              ...initialBox.bounds,
+              x: initialBox.bounds.x + dx,
+              y: initialBox.bounds.y + dy,
+            };
+          }
+          if (initialBox.anchorPosition) {
+            next.anchorPosition = {
+              x: initialBox.anchorPosition.x + dx,
+              y: initialBox.anchorPosition.y + dy,
+            };
+          }
+          if (initialBox.collapsedPosition) {
+            next.collapsedPosition = {
+              x: initialBox.collapsedPosition.x + dx,
+              y: initialBox.collapsedPosition.y + dy,
+            };
+          }
+          return next;
+        }),
+      }));
+      return;
+    }
+
     set((s) => {
       const box = s.boxes.find((b) => b.id === id);
       if (!box) return {};
@@ -1291,9 +1531,12 @@ export const useDiagramStore = create<DiagramState>()(
 
   addFloatingTextAt: (position) => {
     get().captureHistory();
+    const pos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
     const floatingText: FloatingText = {
       id: uuidv4(),
-      position,
+      position: pos,
       text: "",
       color: { ...get().diagramAppearance.defaultFloatingTextColor },
       fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
@@ -1326,10 +1569,21 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   moveFloatingText: (id, position, options) => {
+    const nextPos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
+    const current = get().floatingTexts.find((t) => t.id === id);
+    if (
+      current &&
+      current.position.x === nextPos.x &&
+      current.position.y === nextPos.y
+    ) {
+      return;
+    }
     if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.map((t) =>
-        t.id === id ? { ...t, position } : t,
+        t.id === id ? { ...t, position: nextPos } : t,
       ),
     }));
   },
@@ -1454,6 +1708,11 @@ export const useDiagramStore = create<DiagramState>()(
   setLineLabelContrastWithBackground: (enabled) => {
     set({ lineLabelContrastWithBackground: enabled });
     setAppPreferences({ lineLabelContrastWithBackground: enabled });
+  },
+
+  setSnapToGridEnabled: (enabled) => {
+    set({ snapToGridEnabled: enabled });
+    setAppPreferences({ snapToGridEnabled: enabled });
   },
 
   openBookmarkEdit: (id) => {

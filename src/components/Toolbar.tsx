@@ -103,6 +103,25 @@ function RedoIcon() {
   );
 }
 
+function SnapToGridIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M3 3h2v2H3V3zm0 8h2v2H3v-2zm0 8h2v2H3v-2zm8-16h2v2h-2V3zm0 8h2v2h-2v-2zm0 8h2v2h-2v-2zm8-16h2v2h-2V3zm0 8h2v2h-2v-2zm0 8h2v2h-2v-2zM5 5h6v6H5V5zm8 0h6v6h-6V5zM5 13h6v6H5v-6zm8 0h6v6h-6v-6z"
+        opacity="0.55"
+      />
+      <circle cx="12" cy="12" r="2.25" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
@@ -118,6 +137,8 @@ export function Toolbar({
   const redo = useDiagramStore((s) => s.redo);
   const canUndo = useDiagramStore((s) => s.undoStack.length > 0);
   const canRedo = useDiagramStore((s) => s.redoStack.length > 0);
+  const snapToGridEnabled = useDiagramStore((s) => s.snapToGridEnabled);
+  const setSnapToGridEnabled = useDiagramStore((s) => s.setSnapToGridEnabled);
 
   return (
     <header className="toolbar">
@@ -176,6 +197,27 @@ export function Toolbar({
           title={t("canvas.fitToContentTitle")}
         >
           <FitToContentIcon />
+        </button>
+      </div>
+
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("toolbar.snapToGrid")}
+      >
+        <button
+          type="button"
+          className={
+            snapToGridEnabled
+              ? "toolbar-icon-button active"
+              : "toolbar-icon-button"
+          }
+          aria-pressed={snapToGridEnabled}
+          aria-label={t("toolbar.snapToGrid")}
+          title={t("toolbar.snapToGridTitle")}
+          onClick={() => setSnapToGridEnabled(!snapToGridEnabled)}
+        >
+          <SnapToGridIcon />
         </button>
       </div>
 

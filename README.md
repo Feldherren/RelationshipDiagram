@@ -150,11 +150,13 @@ Eye Closed: https://www.svgrepo.com/svg/528958/eye-closed (Solar Icons, [CC Attr
 
 Flame Symbol: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
 
+Glitter 2: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+
 Music Note: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
 Skull: https://www.svgrepo.com/svg/510199/skull (zest, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
-Glitter 2: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+Snap To Grid: https://www.svgrepo.com/svg/451326/snap-to-grid (Esri, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
 Stone Block: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 

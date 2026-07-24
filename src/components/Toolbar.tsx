@@ -104,20 +104,25 @@ function RedoIcon() {
 }
 
 function SnapToGridIcon() {
+  // Integer 16×16 geometry keeps fills sharp at the toolbar's 16px size.
   return (
     <svg
       className="toolbar-icon"
-      viewBox="0 0 24 24"
+      viewBox="0 0 16 16"
       width="16"
       height="16"
       aria-hidden="true"
     >
+      {/* Hash grid */}
       <path
         fill="currentColor"
-        d="M3 3h2v2H3V3zm0 8h2v2H3v-2zm0 8h2v2H3v-2zm8-16h2v2h-2V3zm0 8h2v2h-2v-2zm0 8h2v2h-2v-2zm8-16h2v2h-2V3zm0 8h2v2h-2v-2zm0 8h2v2h-2v-2zM5 5h6v6H5V5zm8 0h6v6h-6V5zM5 13h6v6H5v-6zm8 0h6v6h-6v-6z"
-        opacity="0.55"
+        d="M2 0h1v16H2V0zm4 0h1v16H6V0zM0 2h9v1H0V2zm0 4h9v1H0V6zm0 4h9v1H0v-1zm0 4h9v1H0v-1z"
       />
-      <circle cx="12" cy="12" r="2.25" fill="currentColor" />
+      {/* Magnet: pole tips + horseshoe arms + base */}
+      <path
+        fill="currentColor"
+        d="M10 3h1v1h-1zm3 0h1v1h-1zM9 5h2v6H9V5zm4 0h2v6h-2zM9 10h6v1.5c0 1.4-1.1 2.5-3 2.5s-3-1.1-3-2.5V10z"
+      />
     </svg>
   );
 }

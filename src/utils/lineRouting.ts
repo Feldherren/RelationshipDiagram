@@ -20,6 +20,15 @@ const SAMPLE_SEGMENTS = 48;
 /** Minimum loop reach beyond the node rim (bend ≈ 0). */
 const SELF_LOOP_BASE_OUTSET = 36;
 
+// Constant pixel period for wavy/jagged styles so the pattern density stays
+// fixed regardless of line length (longer lines add more waves/zags rather than
+// stretching a fixed count).
+const WAVE_LENGTH = 40;
+const WAVE_AMPLITUDE = 8;
+const WAVE_SAMPLE_SPACING = 4;
+const JAG_PERIOD = 24;
+const JAG_ZIG = 12;
+
 export interface RoutedLine {
   points: number[];
   labelPoint: Point;
@@ -207,19 +216,6 @@ function quadraticPointAt(
   };
 }
 
-function quadraticTangentAt(
-  p0: Point,
-  p1: Point,
-  p2: Point,
-  t: number,
-): Point {
-  const mt = 1 - t;
-  return normalize({
-    x: 2 * mt * (p1.x - p0.x) + 2 * t * (p2.x - p1.x),
-    y: 2 * mt * (p1.y - p0.y) + 2 * t * (p2.y - p1.y),
-  });
-}
-
 function sampleQuadratic(p0: Point, p1: Point, p2: Point, segments: number): Point[] {
   const points: Point[] = [];
   for (let i = 0; i <= segments; i++) {
@@ -228,49 +224,103 @@ function sampleQuadratic(p0: Point, p1: Point, p2: Point, segments: number): Poi
   return points;
 }
 
+function polylineLength(points: Point[]): number {
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    total += Math.hypot(
+      points[i + 1].x - points[i].x,
+      points[i + 1].y - points[i].y,
+    );
+  }
+  return total;
+}
+
+interface PathSample {
+  point: Point;
+  tangent: Point;
+  distance: number;
+}
+
+/**
+ * Walk a polyline once and emit evenly-spaced samples along its arc length.
+ * The number of samples derives from the true length, so density is constant
+ * regardless of how long the path is. Endpoints are always included exactly.
+ */
+function sampleAlongPolyline(base: Point[], spacing: number): PathSample[] {
+  if (base.length < 2) {
+    return base.map((p) => ({ point: p, tangent: { x: 1, y: 0 }, distance: 0 }));
+  }
+  const total = polylineLength(base);
+  if (total === 0) {
+    return [{ point: base[0], tangent: { x: 1, y: 0 }, distance: 0 }];
+  }
+
+  const count = Math.max(1, Math.round(total / spacing));
+  const step = total / count;
+
+  const samples: PathSample[] = [];
+  let segIdx = 0;
+  let segStartDist = 0;
+  let segLen = Math.hypot(base[1].x - base[0].x, base[1].y - base[0].y);
+
+  for (let s = 0; s <= count; s++) {
+    const target = s * step;
+    while (segIdx < base.length - 2 && segStartDist + segLen < target) {
+      segStartDist += segLen;
+      segIdx += 1;
+      segLen = Math.hypot(
+        base[segIdx + 1].x - base[segIdx].x,
+        base[segIdx + 1].y - base[segIdx].y,
+      );
+    }
+    const a = base[segIdx];
+    const b = base[segIdx + 1];
+    const localT = segLen > 0 ? (target - segStartDist) / segLen : 0;
+    samples.push({
+      point: interpolate(a, b, Math.min(1, Math.max(0, localT))),
+      tangent: normalize({ x: b.x - a.x, y: b.y - a.y }),
+      distance: target,
+    });
+  }
+  return samples;
+}
+
+function applyWavyToPolyline(base: Point[]): Point[] {
+  if (base.length < 2) return base;
+  const samples = sampleAlongPolyline(base, WAVE_SAMPLE_SPACING);
+  const last = samples.length - 1;
+  return samples.map((sample, i) => {
+    if (i === 0 || i === last) return sample.point;
+    const perp = perpendicular(sample.tangent);
+    const wave =
+      Math.sin((2 * Math.PI * sample.distance) / WAVE_LENGTH) * WAVE_AMPLITUDE;
+    return {
+      x: sample.point.x + perp.x * wave,
+      y: sample.point.y + perp.y * wave,
+    };
+  });
+}
+
+function applyJaggedToPolyline(base: Point[]): Point[] {
+  if (base.length < 2) return base;
+  const samples = sampleAlongPolyline(base, JAG_PERIOD);
+  if (samples.length < 2) return base;
+  const last = samples.length - 1;
+  return samples.map((sample, i) => {
+    if (i === 0 || i === last) return sample.point;
+    const perp = perpendicular(sample.tangent);
+    const side = i % 2 === 0 ? 1 : -1;
+    return {
+      x: sample.point.x + perp.x * side * JAG_ZIG,
+      y: sample.point.y + perp.y * side * JAG_ZIG,
+    };
+  });
+}
+
 function applyPathStyle(base: Point[], style: Line["style"]): Point[] {
   if (base.length < 2) return base;
-
-  if (style === "wavy") {
-    const points: Point[] = [];
-    const amplitude = 8;
-    for (let i = 0; i < base.length; i++) {
-      const t = i / (base.length - 1);
-      const prev = base[Math.max(0, i - 1)];
-      const next = base[Math.min(base.length - 1, i + 1)];
-      const tangent = normalize({ x: next.x - prev.x, y: next.y - prev.y });
-      const perp = perpendicular(tangent);
-      const wave = Math.sin(t * Math.PI * 8) * amplitude;
-      if (i === 0 || i === base.length - 1) {
-        points.push(base[i]);
-      } else {
-        points.push({
-          x: base[i].x + perp.x * wave,
-          y: base[i].y + perp.y * wave,
-        });
-      }
-    }
-    return points;
-  }
-
-  if (style === "jagged") {
-    const points: Point[] = [base[0]];
-    const zig = 12;
-    for (let i = 1; i < base.length - 1; i++) {
-      const prev = base[i - 1];
-      const next = base[i + 1];
-      const tangent = normalize({ x: next.x - prev.x, y: next.y - prev.y });
-      const perp = perpendicular(tangent);
-      const side = i % 2 === 0 ? 1 : -1;
-      points.push({
-        x: base[i].x + perp.x * side * zig,
-        y: base[i].y + perp.y * side * zig,
-      });
-    }
-    points.push(base[base.length - 1]);
-    return points;
-  }
-
+  if (style === "wavy") return applyWavyToPolyline(base);
+  if (style === "jagged") return applyJaggedToPolyline(base);
   return base;
 }
 
@@ -349,48 +399,32 @@ function sampleSelfLoopPath(
   return applyPathStyle(points, style);
 }
 
+/** Rough arc length of a quadratic bezier via its control polygon. */
+function estimateQuadraticLength(p0: Point, p1: Point, p2: Point): number {
+  const chord = Math.hypot(p2.x - p0.x, p2.y - p0.y);
+  const controlNet =
+    Math.hypot(p1.x - p0.x, p1.y - p0.y) +
+    Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  return (chord + controlNet) / 2;
+}
+
 function sampleStyledCenterPath(
   fromCenter: Point,
   control: Point,
   toCenter: Point,
   style: Line["style"],
 ): Point[] {
-  if (style === "wavy") {
-    const points: Point[] = [];
-    const amplitude = 8;
-    for (let i = 0; i <= SAMPLE_SEGMENTS; i++) {
-      const t = i / SAMPLE_SEGMENTS;
-      const base = quadraticPointAt(fromCenter, control, toCenter, t);
-      const tangent = quadraticTangentAt(fromCenter, control, toCenter, t);
-      const perp = perpendicular(tangent);
-      const wave = Math.sin(t * Math.PI * 8) * amplitude;
-      points.push({
-        x: base.x + perp.x * wave,
-        y: base.y + perp.y * wave,
-      });
-    }
-    points[0] = fromCenter;
-    points[points.length - 1] = toCenter;
-    return points;
-  }
-
-  if (style === "jagged") {
-    const points: Point[] = [fromCenter];
-    const segments = 16;
-    const zig = 12;
-    for (let i = 1; i < segments; i++) {
-      const t = i / segments;
-      const base = quadraticPointAt(fromCenter, control, toCenter, t);
-      const tangent = quadraticTangentAt(fromCenter, control, toCenter, t);
-      const perp = perpendicular(tangent);
-      const side = i % 2 === 0 ? 1 : -1;
-      points.push({
-        x: base.x + perp.x * side * zig,
-        y: base.y + perp.y * side * zig,
-      });
-    }
-    points.push(toCenter);
-    return points;
+  if (style === "wavy" || style === "jagged") {
+    // Densely sample the base curve so the arc-length walk in the style
+    // applicators stays accurate, then perturb at a fixed pixel period.
+    const roughLength = estimateQuadraticLength(fromCenter, control, toCenter);
+    const segments = Math.max(SAMPLE_SEGMENTS, Math.ceil(roughLength / 6));
+    const base = sampleQuadratic(fromCenter, control, toCenter, segments);
+    base[0] = fromCenter;
+    base[base.length - 1] = toCenter;
+    return style === "wavy"
+      ? applyWavyToPolyline(base)
+      : applyJaggedToPolyline(base);
   }
 
   // straight / dotted: pure quadratic (or a line when bend ≈ 0)

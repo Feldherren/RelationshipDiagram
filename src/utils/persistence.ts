@@ -200,13 +200,20 @@ function normalizeFloatingTexts(
 function normalizeCharacters(
   characters: Diagram["characters"],
 ): Character[] {
-  return (characters ?? []).map((c) => ({
-    ...c,
-    size:
-      typeof c.size === "number" && Number.isFinite(c.size)
-        ? clampCharacterSize(c.size)
-        : DEFAULT_CHARACTER_SIZE,
-  }));
+  return (characters ?? []).map((c) => {
+    const link =
+      typeof c.link === "string" && c.link.trim().length > 0
+        ? c.link.trim()
+        : undefined;
+    return {
+      ...c,
+      size:
+        typeof c.size === "number" && Number.isFinite(c.size)
+          ? clampCharacterSize(c.size)
+          : DEFAULT_CHARACTER_SIZE,
+      link,
+    };
+  });
 }
 
 function normalizeDiagram(

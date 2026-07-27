@@ -32,6 +32,7 @@ import {
   MembershipChips,
   type MembershipChipItem,
 } from "./MembershipChips";
+import { CharacterLinkChip } from "./CharacterLinkChip";
 import { isIdInMultiSelection } from "../../utils/selectionMulti";
 import {
   captureMultiDragSnapshot,
@@ -360,6 +361,14 @@ export function CharacterNode({
         characterY={character.position.y}
         highlightedGroupId={highlightedGroupId}
         onChipClick={onSelectGroup}
+      />
+      <CharacterLinkChip
+        characterId={character.id}
+        link={character.link}
+        characterSize={size}
+        borderShape={character.borderShape}
+        characterX={character.position.x}
+        characterY={character.position.y}
       />
       {character.name && (
         <PillLabel

@@ -34,6 +34,8 @@ export interface Character {
   borderShape: BorderShape;
   borderColor: RGB;
   size: number;
+  /** External URI (https://, obsidian://, mailto:, etc.) shown as a link chip on the node. */
+  link?: string;
 }
 
 export interface Line {

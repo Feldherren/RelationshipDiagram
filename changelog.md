@@ -24,6 +24,9 @@
 - Character size is clamped to the slider range (24–80) so invalid values cannot break the canvas or persist after save/reload.
 - Snap-to-grid mode; when enabled, characters, text and boxes snap to a grid (matching the grid background option, but not requiring it) when dragged around.
 - Jagged and wavy lines are now continue to look jagged/wavy even if stretched (they just get more jags/waves the longer they get, rather than stretching a fixed amount of them).
+- Added field for external links to characters, and a button to click to visit them (if present).
+	- Mouseover of the chip previews the link text before you click
+	- Works for web links (http://, https://), app protocols (obsidian://, vscode), other common schemes (mailto:, tel:, ftp://)
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

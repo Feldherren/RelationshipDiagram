@@ -25,6 +25,7 @@ import {
   rgbToCss,
 } from "../../models/types";
 import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
+import { isValidUri, normalizeCharacterLink } from "../../utils/uri";
 import {
   getBoxById,
   getCharacterById,
@@ -581,6 +582,38 @@ export function SelectionFloat() {
               })
             }
           />
+        </label>
+        <label className="field">
+          <span>{t("selection.link")}</span>
+          <input
+            type="text"
+            value={character.link ?? ""}
+            placeholder={t("selection.linkPlaceholder")}
+            onChange={(e) =>
+              updateCharacter(character.id, {
+                link: e.target.value || undefined,
+              })
+            }
+            onBlur={(e) => {
+              const next = normalizeCharacterLink(e.target.value);
+              if (next !== character.link) {
+                updateCharacter(character.id, { link: next });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const next = normalizeCharacterLink(
+                  (e.target as HTMLInputElement).value,
+                );
+                updateCharacter(character.id, { link: next });
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          {character.link && !isValidUri(character.link) && (
+            <p className="hint">{t("selection.linkInvalid")}</p>
+          )}
         </label>
         <div className="field">
           <span>{t("selection.image")}</span>

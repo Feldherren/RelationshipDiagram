@@ -144,6 +144,8 @@ Bookmark Filled: https://www.svgrepo.com/svg/472457/bookmark-filled (jtblabs, [M
 
 Droplet: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
+External Link: https://www.svgrepo.com/svg/506476/external-link (primefaces, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Eye: https://www.svgrepo.com/svg/528962/eye (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
 Eye Closed: https://www.svgrepo.com/svg/528958/eye-closed (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))

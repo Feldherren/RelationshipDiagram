@@ -16,6 +16,7 @@ import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useDiagramStore } from "./store/diagramStore";
 import { getAppPreferences } from "./utils/appPreferences";
+import { confirmDialog } from "./utils/confirmDialog";
 import {
   loadDiagramFromFile,
   saveDiagramToFile,
@@ -74,12 +75,11 @@ function App() {
       groups.length > 0 ||
       boxes.length > 0 ||
       floatingTexts.length > 0;
-    if (
-      confirmBeforeNewDiagram &&
-      hasContent &&
-      !window.confirm(t("app.newConfirm"))
-    ) {
-      return;
+    if (confirmBeforeNewDiagram && hasContent) {
+      const confirmed = await confirmDialog(t("app.newConfirm"), {
+        title: t("app.name"),
+      });
+      if (!confirmed) return;
     }
     await newDiagram();
   };

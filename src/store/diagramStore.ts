@@ -95,6 +95,7 @@ import {
   viewportFromCenterAndScale,
 } from "../utils/viewportFit";
 import { randomPastelColor } from "../utils/pastelPalette";
+import { remapDiagramElementColors } from "../utils/remapDiagramThemeColors";
 import type { GroupsCanvasMode } from "../utils/groupHub";
 import {
   snapBoxTopLeftToGrid,
@@ -196,6 +197,10 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
+  applyDiagramTheme: (
+    appearance: DiagramAppearance,
+    options?: { remapDefaultColors?: boolean },
+  ) => void;
   setBookmarksVisible: (visible: boolean) => void;
   setGroupsCanvasMode: (mode: GroupsCanvasMode) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
@@ -301,6 +306,46 @@ function createDefaultCharacter(
     borderShape: "circle",
     borderColor: { ...borderColor },
     size: DEFAULT_CHARACTER_SIZE,
+  };
+}
+
+function buildDiagramAppearanceStateUpdate(appearance: DiagramAppearance): {
+  diagramAppearance: DiagramAppearance;
+  showGrid: boolean;
+  gridStyle: GridStyle;
+  diagramBackgroundColor: RGB | null;
+  diagramFontFamily: string;
+  fontMissing: boolean;
+  showDiagramHeader: boolean;
+} {
+  const diagramAppearance = cloneDiagramAppearance(appearance);
+  const background = applyDiagramBackgroundMode(
+    diagramAppearance.backgroundMode,
+    diagramAppearance.backgroundColor,
+  );
+  let fontFamily = diagramAppearance.fontFamily || DEFAULT_DIAGRAM_FONT;
+  if (isDeprecatedFontFamily(fontFamily)) {
+    fontFamily = DEFAULT_DIAGRAM_FONT;
+  }
+  const syncedAppearance = {
+    ...diagramAppearance,
+    fontFamily,
+    backgroundMode: syncBackgroundModeFromCanvasState(
+      diagramAppearance.backgroundMode,
+      background.showGrid,
+      background.gridStyle,
+      background.backgroundColor,
+    ),
+    backgroundColor: background.backgroundColor,
+  };
+  return {
+    diagramAppearance: syncedAppearance,
+    showGrid: background.showGrid,
+    gridStyle: background.gridStyle,
+    diagramBackgroundColor: background.backgroundColor,
+    diagramFontFamily: fontFamily,
+    fontMissing: false,
+    showDiagramHeader: syncedAppearance.showHeader,
   };
 }
 
@@ -837,36 +882,51 @@ export const useDiagramStore = create<DiagramState>()(
 
   replaceDiagramAppearance: (appearance) => {
     get().captureHistory();
-    const diagramAppearance = cloneDiagramAppearance(appearance);
-    const background = applyDiagramBackgroundMode(
-      diagramAppearance.backgroundMode,
-      diagramAppearance.backgroundColor,
-    );
-    let fontFamily = diagramAppearance.fontFamily || DEFAULT_DIAGRAM_FONT;
-    if (isDeprecatedFontFamily(fontFamily)) {
-      fontFamily = DEFAULT_DIAGRAM_FONT;
-    }
-    const syncedAppearance = {
-      ...diagramAppearance,
-      fontFamily,
-      backgroundMode: syncBackgroundModeFromCanvasState(
-        diagramAppearance.backgroundMode,
-        background.showGrid,
-        background.gridStyle,
-        background.backgroundColor,
-      ),
-      backgroundColor: background.backgroundColor,
-    };
-    set({
-      diagramAppearance: syncedAppearance,
-      showGrid: background.showGrid,
-      gridStyle: background.gridStyle,
-      diagramBackgroundColor: background.backgroundColor,
-      diagramFontFamily: fontFamily,
-      fontMissing: false,
-      showDiagramHeader: syncedAppearance.showHeader,
-    });
+    const update = buildDiagramAppearanceStateUpdate(appearance);
+    set(update);
 
+    const fontFamily = update.diagramFontFamily;
+    if (isDefaultDiagramFont(fontFamily)) return;
+
+    void ensureFontLoaded(fontFamily).then((resolvedFamily) => {
+      const current = get().diagramAppearance;
+      if (current.fontFamily !== fontFamily) return;
+      set({
+        diagramFontFamily: resolvedFamily ?? fontFamily,
+        fontMissing: !resolvedFamily,
+        diagramAppearance: {
+          ...current,
+          fontFamily: resolvedFamily ?? fontFamily,
+        },
+      });
+    });
+  },
+
+  applyDiagramTheme: (appearance, options) => {
+    get().captureHistory();
+    const previousAppearance = get().diagramAppearance;
+    const update = buildDiagramAppearanceStateUpdate(appearance);
+
+    if (options?.remapDefaultColors) {
+      const remapped = remapDiagramElementColors(
+        {
+          characters: get().characters,
+          lines: get().lines,
+          boxes: get().boxes,
+          floatingTexts: get().floatingTexts,
+        },
+        previousAppearance,
+        update.diagramAppearance,
+      );
+      set({
+        ...update,
+        ...remapped,
+      });
+    } else {
+      set(update);
+    }
+
+    const fontFamily = update.diagramFontFamily;
     if (isDefaultDiagramFont(fontFamily)) return;
 
     void ensureFontLoaded(fontFamily).then((resolvedFamily) => {

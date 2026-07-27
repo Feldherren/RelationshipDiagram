@@ -5,13 +5,24 @@ import { getAppPreferences } from "../../utils/appPreferences";
 import {
   BUILT_IN_DIAGRAM_THEME_IDS,
   builtInDiagramThemeLabelKey,
+  isBuiltInDiagramThemeId,
   resolveDiagramThemeAppearance,
+  type DiagramAppearance,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
+import { countRemappableElements } from "../../utils/remapDiagramThemeColors";
+import { ApplyDiagramThemeDialog } from "./ApplyDiagramThemeDialog";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
 type PropertiesSectionId = "header" | "appearance";
+
+interface PendingThemeApply {
+  preference: DiagramThemePreference;
+  appearance: DiagramAppearance;
+  themeName: string;
+  remappableCount: number;
+}
 
 interface DiagramPropertiesDialogProps {
   open: boolean;
@@ -29,6 +40,8 @@ export function DiagramPropertiesDialog({
   const [activeSection, setActiveSection] =
     useState<PropertiesSectionId>("header");
   const [applyThemeValue, setApplyThemeValue] = useState("");
+  const [pendingThemeApply, setPendingThemeApply] =
+    useState<PendingThemeApply | null>(null);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
@@ -38,25 +51,58 @@ export function DiagramPropertiesDialog({
   const setDiagramSubtitle = useDiagramStore((s) => s.setDiagramSubtitle);
   const setDiagramFontFamily = useDiagramStore((s) => s.setDiagramFontFamily);
   const setDiagramAppearance = useDiagramStore((s) => s.setDiagramAppearance);
-  const replaceDiagramAppearance = useDiagramStore(
-    (s) => s.replaceDiagramAppearance,
-  );
+  const applyDiagramTheme = useDiagramStore((s) => s.applyDiagramTheme);
+  const characters = useDiagramStore((s) => s.characters);
+  const lines = useDiagramStore((s) => s.lines);
+  const boxes = useDiagramStore((s) => s.boxes);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
 
   useEffect(() => {
     if (!open) return;
     setActiveSection("header");
     setApplyThemeValue("");
+    setPendingThemeApply(null);
   }, [open]);
 
   const prefs = getAppPreferences();
 
-  const handleApplyTheme = (preference: DiagramThemePreference) => {
+  const resolveThemeName = (preference: DiagramThemePreference): string => {
+    if (isBuiltInDiagramThemeId(preference)) {
+      return t(builtInDiagramThemeLabelKey(preference));
+    }
+    return (
+      prefs.customDiagramThemes.find((theme) => theme.id === preference)
+        ?.name ?? preference
+    );
+  };
+
+  const handleApplyThemeSelect = (preference: DiagramThemePreference) => {
     const next = resolveDiagramThemeAppearance(
       preference,
       prefs.customDiagramThemes,
     );
-    replaceDiagramAppearance(next);
+    const remappableCount = countRemappableElements(
+      { characters, lines, boxes, floatingTexts },
+      diagramAppearance,
+    );
+    setPendingThemeApply({
+      preference,
+      appearance: next,
+      themeName: resolveThemeName(preference),
+      remappableCount,
+    });
     setApplyThemeValue(preference);
+  };
+
+  const handleApplyThemeConfirm = (remapDefaultColors: boolean) => {
+    if (!pendingThemeApply) return;
+    applyDiagramTheme(pendingThemeApply.appearance, { remapDefaultColors });
+    setPendingThemeApply(null);
+  };
+
+  const handleApplyThemeCancel = () => {
+    setPendingThemeApply(null);
+    setApplyThemeValue("");
   };
 
   const sections = [
@@ -103,7 +149,7 @@ export function DiagramPropertiesDialog({
               onChange={(e) => {
                 const value = e.target.value;
                 if (!value) return;
-                handleApplyTheme(value as DiagramThemePreference);
+                handleApplyThemeSelect(value as DiagramThemePreference);
               }}
             >
               <option value="" disabled>
@@ -151,16 +197,26 @@ export function DiagramPropertiesDialog({
   }
 
   return (
-    <TwoPaneDialog
-      open={open}
-      onClose={onClose}
-      title={t("diagramProperties.title")}
-      sections={sections}
-      activeSection={activeSection}
-      onSectionChange={(id) => setActiveSection(id as PropertiesSectionId)}
-      doneLabel={t("diagramProperties.done")}
-    >
-      {content}
-    </TwoPaneDialog>
+    <>
+      <TwoPaneDialog
+        open={open}
+        onClose={onClose}
+        title={t("diagramProperties.title")}
+        sections={sections}
+        activeSection={activeSection}
+        onSectionChange={(id) => setActiveSection(id as PropertiesSectionId)}
+        doneLabel={t("diagramProperties.done")}
+      >
+        {content}
+      </TwoPaneDialog>
+
+      <ApplyDiagramThemeDialog
+        open={pendingThemeApply !== null}
+        themeName={pendingThemeApply?.themeName ?? ""}
+        remappableCount={pendingThemeApply?.remappableCount ?? 0}
+        onCancel={handleApplyThemeCancel}
+        onConfirm={handleApplyThemeConfirm}
+      />
+    </>
   );
 }

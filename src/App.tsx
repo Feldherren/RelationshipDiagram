@@ -8,6 +8,7 @@ import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog, type SettingsSectionId } from "./components/panels/SettingsDialog";
 import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
+import { ExternalLinkConfirmHost } from "./components/panels/ExternalLinkConfirmHost";
 import { Toolbar } from "./components/Toolbar";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
@@ -139,6 +140,7 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         initialSection={settingsSection}
       />
+      <ExternalLinkConfirmHost />
     </div>
   );
 }

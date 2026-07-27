@@ -1,3 +1,5 @@
+import { getAppPreferences } from "./appPreferences";
+import { requestExternalLinkConfirm } from "./externalLinkConfirm";
 import { isHttpUri, isValidUri, normalizeUriForOpen } from "./uri";
 import { isTauriApp } from "./tauri";
 
@@ -11,17 +13,14 @@ function openCustomProtocolUri(uri: string): void {
   link.remove();
 }
 
-export async function openExternalUrl(raw: string): Promise<void> {
-  const uri = normalizeUriForOpen(raw);
-  if (!isValidUri(uri)) return;
-
+async function openExternalUrlNow(uri: string): Promise<void> {
   if (isTauriApp()) {
     try {
       const { openUrl } = await import("@tauri-apps/plugin-opener");
       await openUrl(uri);
       return;
     } catch {
-      // Permission or handler failure — fall through to the webview anchor path.
+      // Permission or handler failure — fall through to the webview path.
     }
   }
 
@@ -30,4 +29,17 @@ export async function openExternalUrl(raw: string): Promise<void> {
   } else {
     openCustomProtocolUri(uri);
   }
+}
+
+export async function openExternalUrl(raw: string): Promise<void> {
+  const uri = normalizeUriForOpen(raw);
+  if (!isValidUri(uri)) return;
+
+  const { confirmBeforeOpenExternalLink } = getAppPreferences();
+  if (confirmBeforeOpenExternalLink) {
+    const confirmed = await requestExternalLinkConfirm(uri);
+    if (!confirmed) return;
+  }
+
+  await openExternalUrlNow(uri);
 }

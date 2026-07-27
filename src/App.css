@@ -1297,6 +1297,23 @@ body,
   flex-shrink: 0;
 }
 
+.external-link-confirm-uri {
+  margin: 0.35rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-height: 10rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
 .two-pane {
   display: flex;
   flex: 1 1 auto;

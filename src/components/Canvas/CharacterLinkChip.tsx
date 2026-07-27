@@ -45,6 +45,10 @@ export function CharacterLinkChip({
   const handleOpen = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
     if ("button" in e.evt && e.evt.button !== 0) return;
+    document.body.style.cursor = "";
+    if (getMembershipChipTooltip()?.id === tooltipId) {
+      setMembershipChipTooltip(null);
+    }
     void openExternalUrl(link);
   };
 

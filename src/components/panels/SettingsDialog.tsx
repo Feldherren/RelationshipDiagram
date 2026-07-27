@@ -29,6 +29,7 @@ import {
 import {
   BUILT_IN_DIAGRAM_THEME_IDS,
   builtInDiagramThemeLabelKey,
+  cloneDiagramAppearance,
   createDiagramThemeDocument,
   isBuiltInDiagramThemeId,
   patchDiagramAppearance,
@@ -42,8 +43,10 @@ import {
   exportZoomRatioFromPercent,
 } from "../../utils/exportZoom";
 import { downloadJson } from "../../utils/downloadJson";
+import { countRemappableElements } from "../../utils/remapDiagramThemeColors";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { DiagramThemeLibraryControls } from "./DiagramThemeLibraryControls";
+import { ApplyDiagramThemeDialog } from "./ApplyDiagramThemeDialog";
 import { ForkDiagramThemeDialog } from "./ForkDiagramThemeDialog";
 import { ExportZoomControls } from "./ExportZoomControls";
 import { ThemeEditorPanel } from "./ThemeEditorPanel";
@@ -68,6 +71,12 @@ interface SettingsDialogProps {
   initialSection?: SettingsSectionId;
 }
 
+interface PendingThemeApply {
+  appearance: DiagramAppearance;
+  themeName: string;
+  remappableCount: number;
+}
+
 export function SettingsDialog({
   open,
   onClose,
@@ -83,6 +92,8 @@ export function SettingsDialog({
   const [forkDialogOpen, setForkDialogOpen] = useState(false);
   const [forkPendingAppearance, setForkPendingAppearance] =
     useState<DiagramAppearance | null>(null);
+  const [pendingThemeApply, setPendingThemeApply] =
+    useState<PendingThemeApply | null>(null);
   const setAutosaveEnabled = useDiagramStore((s) => s.setAutosaveEnabled);
   const setSelectionPulseEnabled = useDiagramStore(
     (s) => s.setSelectionPulseEnabled,
@@ -90,14 +101,18 @@ export function SettingsDialog({
   const setLineLabelContrastWithBackground = useDiagramStore(
     (s) => s.setLineLabelContrastWithBackground,
   );
-  const replaceDiagramAppearance = useDiagramStore(
-    (s) => s.replaceDiagramAppearance,
-  );
+  const applyDiagramTheme = useDiagramStore((s) => s.applyDiagramTheme);
+  const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
+  const characters = useDiagramStore((s) => s.characters);
+  const lines = useDiagramStore((s) => s.lines);
+  const boxes = useDiagramStore((s) => s.boxes);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
 
   useEffect(() => {
     if (!open) {
       setForkDialogOpen(false);
       setForkPendingAppearance(null);
+      setPendingThemeApply(null);
       return;
     }
     setPrefsState(getAppPreferences());
@@ -205,8 +220,30 @@ export function SettingsDialog({
   };
 
   const handleApplyDiagramThemeToCurrent = () => {
-    if (!window.confirm(t("appSettings.diagramThemeApplyConfirm"))) return;
-    replaceDiagramAppearance(prefs.diagramAppearance);
+    const remappableCount = countRemappableElements(
+      { characters, lines, boxes, floatingTexts },
+      diagramAppearance,
+    );
+    const preference = prefs.diagramThemePreference;
+    const themeName = isBuiltInDiagramThemeId(preference)
+      ? t(builtInDiagramThemeLabelKey(preference))
+      : (prefs.customDiagramThemes.find((theme) => theme.id === preference)
+          ?.name ?? preference);
+    setPendingThemeApply({
+      appearance: cloneDiagramAppearance(prefs.diagramAppearance),
+      themeName,
+      remappableCount,
+    });
+  };
+
+  const handleApplyThemeConfirm = (remapDefaultColors: boolean) => {
+    if (!pendingThemeApply) return;
+    applyDiagramTheme(pendingThemeApply.appearance, { remapDefaultColors });
+    setPendingThemeApply(null);
+  };
+
+  const handleApplyThemeCancel = () => {
+    setPendingThemeApply(null);
   };
 
   const handleDiagramAppearanceChange = (
@@ -366,7 +403,7 @@ export function SettingsDialog({
             appearance={prefs.diagramAppearance}
             prefs={prefs}
             onPrefsChange={setPrefsState}
-            onApplyAppearance={replaceDiagramAppearance}
+            onApplyAppearance={applyDiagramTheme}
             hintKey="appSettings.diagramThemesLibraryHint"
           />
 
@@ -634,6 +671,13 @@ export function SettingsDialog({
         open={forkDialogOpen}
         onCancel={handleForkDialogCancel}
         onConfirm={handleForkDialogConfirm}
+      />
+      <ApplyDiagramThemeDialog
+        open={pendingThemeApply !== null}
+        themeName={pendingThemeApply?.themeName ?? ""}
+        remappableCount={pendingThemeApply?.remappableCount ?? 0}
+        onCancel={handleApplyThemeCancel}
+        onConfirm={handleApplyThemeConfirm}
       />
     </>
   );

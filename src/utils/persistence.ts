@@ -216,8 +216,18 @@ function normalizeCharacters(
   });
 }
 
+function normalizeDiagramId(id: unknown): string {
+  if (typeof id === "string" && id.trim().length > 0) {
+    return id.trim();
+  }
+  return uuidv4();
+}
+
 function normalizeDiagram(
-  data: Omit<Diagram, "schemaVersion"> & { schemaVersion?: number },
+  data: Omit<Diagram, "schemaVersion" | "id"> & {
+    schemaVersion?: number;
+    id?: string;
+  },
 ): Diagram {
   const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
   const characters = normalizeCharacters(data.characters);
@@ -226,6 +236,7 @@ function normalizeDiagram(
   return {
     ...data,
     schemaVersion: 3,
+    id: normalizeDiagramId(data.id),
     characters,
     lines: normalizeLines(data.lines ?? []),
     groups: (data.groups ?? []).map((g) => ({

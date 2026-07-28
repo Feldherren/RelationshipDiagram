@@ -48,8 +48,6 @@ export type ExportBoundsMode = "auto" | "custom";
 export interface AppPreferences {
   autosaveEnabled: boolean;
   confirmBeforeNewDiagram: boolean;
-  /** When true, confirm before opening character external links. */
-  confirmBeforeOpenExternalLink: boolean;
   defaultBackgroundMode: DiagramBackgroundMode;
   defaultShowHeader: boolean;
   defaultBackgroundColor: RGB | null;
@@ -97,7 +95,6 @@ export interface AppPreferences {
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autosaveEnabled: true,
   confirmBeforeNewDiagram: true,
-  confirmBeforeOpenExternalLink: true,
   defaultBackgroundMode: "grid",
   defaultShowHeader: true,
   defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
@@ -303,10 +300,6 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.confirmBeforeNewDiagram === "boolean"
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
-    confirmBeforeOpenExternalLink:
-      typeof stored.confirmBeforeOpenExternalLink === "boolean"
-        ? stored.confirmBeforeOpenExternalLink
-        : defaults.confirmBeforeOpenExternalLink,
     defaultBackgroundMode: diagramAppearance.backgroundMode,
     defaultShowHeader: diagramAppearance.showHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,

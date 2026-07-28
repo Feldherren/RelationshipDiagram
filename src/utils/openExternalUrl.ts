@@ -1,7 +1,8 @@
-import { getAppPreferences } from "./appPreferences";
+import { getDiagramLocalPreferences, setDiagramLocalPreferences } from "./diagramLocalPreferences";
 import { requestExternalLinkConfirm } from "./externalLinkConfirm";
 import { isHttpUri, isValidUri, normalizeUriForOpen } from "./uri";
 import { isTauriApp } from "./tauri";
+import { useDiagramStore } from "../store/diagramStore";
 
 /** Delegate custom schemes to the OS handler (e.g. obsidian:// → Obsidian). */
 function openCustomProtocolUri(uri: string): void {
@@ -35,10 +36,18 @@ export async function openExternalUrl(raw: string): Promise<void> {
   const uri = normalizeUriForOpen(raw);
   if (!isValidUri(uri)) return;
 
-  const { confirmBeforeOpenExternalLink } = getAppPreferences();
+  const diagramId = useDiagramStore.getState().diagramId;
+  const { confirmBeforeOpenExternalLink } =
+    getDiagramLocalPreferences(diagramId);
+
   if (confirmBeforeOpenExternalLink) {
-    const confirmed = await requestExternalLinkConfirm(uri);
-    if (!confirmed) return;
+    const result = await requestExternalLinkConfirm(uri);
+    if (!result.confirmed) return;
+    if (result.skipFuturePrompts) {
+      setDiagramLocalPreferences(diagramId, {
+        confirmBeforeOpenExternalLink: false,
+      });
+    }
   }
 
   await openExternalUrlNow(uri);

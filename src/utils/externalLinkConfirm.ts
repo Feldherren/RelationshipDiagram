@@ -1,6 +1,12 @@
 /** Promise-based host state for the open-external-link confirmation dialog. */
 
-type ResolveFn = (confirmed: boolean) => void;
+export interface ExternalLinkConfirmResult {
+  confirmed: boolean;
+  /** When true with confirmed, remember to skip prompts for this diagram locally. */
+  skipFuturePrompts: boolean;
+}
+
+type ResolveFn = (result: ExternalLinkConfirmResult) => void;
 
 let pendingUri: string | null = null;
 let resolvePending: ResolveFn | null = null;
@@ -10,18 +16,20 @@ function notify(): void {
   for (const listener of listeners) listener();
 }
 
-function settle(confirmed: boolean): void {
+function settle(result: ExternalLinkConfirmResult): void {
   const resolve = resolvePending;
   pendingUri = null;
   resolvePending = null;
   notify();
-  resolve?.(confirmed);
+  resolve?.(result);
 }
 
-/** Ask the user to confirm opening `uri`. Resolves true if they confirm. */
-export function requestExternalLinkConfirm(uri: string): Promise<boolean> {
+/** Ask the user to confirm opening `uri`. */
+export function requestExternalLinkConfirm(
+  uri: string,
+): Promise<ExternalLinkConfirmResult> {
   if (resolvePending) {
-    settle(false);
+    settle({ confirmed: false, skipFuturePrompts: false });
   }
   return new Promise((resolve) => {
     pendingUri = uri;
@@ -44,9 +52,9 @@ export function subscribePendingExternalLink(
 }
 
 export function cancelExternalLinkConfirm(): void {
-  settle(false);
+  settle({ confirmed: false, skipFuturePrompts: false });
 }
 
-export function acceptExternalLinkConfirm(): void {
-  settle(true);
+export function acceptExternalLinkConfirm(skipFuturePrompts = false): void {
+  settle({ confirmed: true, skipFuturePrompts });
 }

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getUriScheme } from "../../utils/uri";
 
@@ -6,7 +6,7 @@ interface OpenExternalLinkDialogProps {
   open: boolean;
   uri: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (skipFuturePrompts: boolean) => void;
 }
 
 export function OpenExternalLinkDialog({
@@ -18,7 +18,14 @@ export function OpenExternalLinkDialog({
   const { t } = useTranslation();
   const titleId = useId();
   const uriId = useId();
+  const skipId = useId();
   const scheme = getUriScheme(uri) ?? "";
+  const [skipFuturePrompts, setSkipFuturePrompts] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setSkipFuturePrompts(false);
+  }, [open, uri]);
 
   if (!open) return null;
 
@@ -50,13 +57,26 @@ export function OpenExternalLinkDialog({
           </p>
         </div>
 
+        <label className="field checkbox" htmlFor={skipId}>
+          <input
+            id={skipId}
+            type="checkbox"
+            checked={skipFuturePrompts}
+            onChange={(e) => setSkipFuturePrompts(e.target.checked)}
+          />
+          <span>{t("selection.openLinkConfirmDontAskAgain")}</span>
+        </label>
         <p className="hint">{t("selection.openLinkConfirmHint")}</p>
 
         <div className="dialog-actions">
           <button type="button" className="btn-secondary" onClick={onCancel}>
             {t("selection.openLinkConfirmCancel")}
           </button>
-          <button type="button" className="btn-primary" onClick={onConfirm}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => onConfirm(skipFuturePrompts)}
+          >
             {t("selection.openLinkConfirmOpen")}
           </button>
         </div>

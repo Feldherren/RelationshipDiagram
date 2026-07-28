@@ -27,6 +27,7 @@
 - Added field for external links to characters, and a button to click to visit them (if present).
 	- Mouseover of the chip previews the link text before you click.
 	- Works for web links (http://, https://), app protocols (obsidian://, vscode://, etc), other common schemes (mailto:, tel:, ftp://).
+	- Default behaviour is for a safety prompt to confirm the link the user is about to visit. This can be disabled per-diagram, per device.
 - When changing themes, user is now prompted to update colours that haven't been changed from the current theme's defaults to the new theme's defaults, even when elements are individually-customisable.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.

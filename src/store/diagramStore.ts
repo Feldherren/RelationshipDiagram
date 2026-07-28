@@ -62,7 +62,7 @@ import {
   saveAutosave,
 } from "../utils/autosaveStorage";
 import {
-  EMPTY_DIAGRAM,
+  createEmptyDiagram,
   type PersistedDiagramState,
   pickPersistedState,
 } from "./autosaveState";
@@ -159,6 +159,8 @@ interface DiagramState {
   fontMissing: boolean;
   diagramBackgroundColor: RGB | null;
   diagramAppearance: DiagramAppearance;
+  /** Stable id from Diagram.id; used for local per-diagram preferences. */
+  diagramId: string;
   autosaveEnabled: boolean;
   undoStack: PersistedDiagramState[];
   redoStack: PersistedDiagramState[];
@@ -447,6 +449,7 @@ export const useDiagramStore = create<DiagramState>()(
   fontMissing: false,
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
+  diagramId: uuidv4(),
   autosaveEnabled: false,
   undoStack: [],
   redoStack: [],
@@ -1013,7 +1016,7 @@ export const useDiagramStore = create<DiagramState>()(
     );
 
     const diagram: Diagram = {
-      ...EMPTY_DIAGRAM,
+      ...createEmptyDiagram(),
       showGrid: background.showGrid,
       gridStyle: background.gridStyle,
       showHeader: appearance.showHeader ? undefined : false,
@@ -1978,6 +1981,7 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       bookmarks: normalizeBookmarks(diagram.bookmarks),
+      diagramId: diagram.id,
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: liveShowHeader,
@@ -2025,6 +2029,7 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts,
       viewport,
       bookmarks,
+      diagramId,
       diagramTitle,
       diagramSubtitle,
       showDiagramHeader,
@@ -2036,6 +2041,7 @@ export const useDiagramStore = create<DiagramState>()(
     } = get();
     return {
       schemaVersion: 3 as const,
+      id: diagramId,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,

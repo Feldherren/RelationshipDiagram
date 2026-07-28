@@ -548,22 +548,6 @@ export function SettingsDialog({
             />
             <span>{t("appSettings.confirmBeforeNew")}</span>
           </label>
-
-          <label className="field checkbox">
-            <input
-              type="checkbox"
-              checked={prefs.confirmBeforeOpenExternalLink}
-              onChange={(e) =>
-                updatePrefs({
-                  confirmBeforeOpenExternalLink: e.target.checked,
-                })
-              }
-            />
-            <span>{t("appSettings.confirmBeforeOpenExternalLink")}</span>
-          </label>
-          <p className="hint">
-            {t("appSettings.confirmBeforeOpenExternalLinkHint")}
-          </p>
         </>
       );
       break;

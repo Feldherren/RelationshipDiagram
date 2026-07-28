@@ -305,6 +305,11 @@ export interface DiagramAppearance {
 
 export interface Diagram {
   schemaVersion: 3;
+  /**
+   * Stable diagram identity for local per-diagram preferences.
+   * Present in the save file; preferences keyed by this id are not.
+   */
+  id: string;
   title?: string;
   subtitle?: string;
   /** Title text colour; omit for default export-matching dark grey. */

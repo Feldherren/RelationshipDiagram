@@ -130,6 +130,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     diagramBackgroundColor,
     diagramAppearance,
     diagramFontFamily,
+    diagramId,
     stageSize,
     setStageSize,
     setSelection,
@@ -164,6 +165,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       diagramBackgroundColor: s.diagramBackgroundColor,
       diagramAppearance: s.diagramAppearance,
       diagramFontFamily: s.diagramFontFamily,
+      diagramId: s.diagramId,
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
@@ -667,6 +669,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const diagram = useMemo(
     () => ({
       schemaVersion: 3 as const,
+      id: diagramId,
       characters,
       lines,
       groups,
@@ -674,7 +677,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       floatingTexts,
       fontFamily: diagramFontFamily,
     }),
-    [characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
+    [diagramId, characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
   );
 
   const membershipByCharacterId = useMemo(

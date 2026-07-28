@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { getAppPreferences } from "../../utils/appPreferences";
+import {
+  getDiagramLocalPreferences,
+  getDiagramLocalPreferencesVersion,
+  setDiagramLocalPreferences,
+  subscribeDiagramLocalPreferences,
+} from "../../utils/diagramLocalPreferences";
 import {
   BUILT_IN_DIAGRAM_THEME_IDS,
   builtInDiagramThemeLabelKey,
@@ -15,7 +21,7 @@ import { ApplyDiagramThemeDialog } from "./ApplyDiagramThemeDialog";
 import { DiagramAppearancePanel } from "./DiagramAppearancePanel";
 import { TwoPaneDialog } from "./TwoPaneDialog";
 
-type PropertiesSectionId = "header" | "appearance";
+type PropertiesSectionId = "header" | "appearance" | "safety";
 
 interface PendingThemeApply {
   preference: DiagramThemePreference;
@@ -56,6 +62,14 @@ export function DiagramPropertiesDialog({
   const lines = useDiagramStore((s) => s.lines);
   const boxes = useDiagramStore((s) => s.boxes);
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
+  const diagramId = useDiagramStore((s) => s.diagramId);
+  useSyncExternalStore(
+    subscribeDiagramLocalPreferences,
+    getDiagramLocalPreferencesVersion,
+    getDiagramLocalPreferencesVersion,
+  );
+  const confirmBeforeOpenExternalLink =
+    getDiagramLocalPreferences(diagramId).confirmBeforeOpenExternalLink;
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +122,7 @@ export function DiagramPropertiesDialog({
   const sections = [
     { id: "header", label: t("diagramProperties.sectionHeader") },
     { id: "appearance", label: t("diagramProperties.sectionAppearance") },
+    { id: "safety", label: t("diagramProperties.sectionSafety") },
   ] as const;
 
   let content = null;
@@ -191,6 +206,27 @@ export function DiagramPropertiesDialog({
               showFontHints: true,
             }}
           />
+        </>
+      );
+      break;
+    case "safety":
+      content = (
+        <>
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={confirmBeforeOpenExternalLink}
+              onChange={(e) =>
+                setDiagramLocalPreferences(diagramId, {
+                  confirmBeforeOpenExternalLink: e.target.checked,
+                })
+              }
+            />
+            <span>{t("diagramProperties.confirmBeforeOpenExternalLink")}</span>
+          </label>
+          <p className="hint">
+            {t("diagramProperties.confirmBeforeOpenExternalLinkHint")}
+          </p>
         </>
       );
       break;

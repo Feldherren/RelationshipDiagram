@@ -61,7 +61,13 @@ function clipFunc(shape: Character["borderShape"], size: number) {
     canvas.beginPath();
     switch (shape) {
       case "square":
-        canvas.rect(-size, -size, size * 2, size * 2);
+        canvas.roundRect(
+          -size,
+          -size,
+          size * 2,
+          size * 2,
+          CHARACTER_BORDER_CORNER_RADIUS,
+        );
         break;
       case "pentagon":
         drawRoundedRegularPolygon(

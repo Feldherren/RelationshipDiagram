@@ -32,6 +32,7 @@
 - When changing themes, user is now prompted to update colours that haven't been changed from the current theme's defaults to the new theme's defaults, even when elements are individually-customisable.
 - Stopped fake searchbox from showing up in browsers, desktop version.
 	- Now we have proper search functionality, accessible via ctrl+f.
+- I can't personally compile for Mac, but for Mac users I've updated shortcut tooltips.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

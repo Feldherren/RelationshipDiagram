@@ -100,6 +100,7 @@ export function usePanZoom(
       const key = e.key.toLowerCase();
       const hasShortcutModifier = e.ctrlKey || e.metaKey;
 
+      // Undo/redo: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (macOS redo), Ctrl+Y (Windows redo).
       if (hasShortcutModifier && !isEditable) {
         if (key === "z") {
           e.preventDefault();

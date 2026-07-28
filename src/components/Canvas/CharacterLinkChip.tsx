@@ -11,6 +11,7 @@ import {
   setMembershipChipTooltip,
 } from "../../utils/membershipChipTooltip";
 import { openExternalUrl } from "../../utils/openExternalUrl";
+import { getAppPreferences } from "../../utils/appPreferences";
 import { isValidUri } from "../../utils/uri";
 import { ExternalLinkSymbol } from "./ExternalLinkSymbol";
 
@@ -58,6 +59,7 @@ export function CharacterLinkChip({
       y={pos.y}
       onMouseEnter={() => {
         document.body.style.cursor = "pointer";
+        if (!getAppPreferences().showExternalLinkChipTooltip) return;
         setMembershipChipTooltip({
           id: tooltipId,
           text: link,

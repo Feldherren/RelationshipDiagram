@@ -48,6 +48,11 @@ export type ExportBoundsMode = "auto" | "custom";
 export interface AppPreferences {
   autosaveEnabled: boolean;
   confirmBeforeNewDiagram: boolean;
+  /**
+   * When true, hovering a character link chip shows the full URI.
+   * Independent of the per-diagram open confirmation.
+   */
+  showExternalLinkChipTooltip: boolean;
   defaultBackgroundMode: DiagramBackgroundMode;
   defaultShowHeader: boolean;
   defaultBackgroundColor: RGB | null;
@@ -95,6 +100,7 @@ export interface AppPreferences {
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autosaveEnabled: true,
   confirmBeforeNewDiagram: true,
+  showExternalLinkChipTooltip: true,
   defaultBackgroundMode: "grid",
   defaultShowHeader: true,
   defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
@@ -300,6 +306,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.confirmBeforeNewDiagram === "boolean"
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
+    showExternalLinkChipTooltip:
+      typeof stored.showExternalLinkChipTooltip === "boolean"
+        ? stored.showExternalLinkChipTooltip
+        : defaults.showExternalLinkChipTooltip,
     defaultBackgroundMode: diagramAppearance.backgroundMode,
     defaultShowHeader: diagramAppearance.showHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,

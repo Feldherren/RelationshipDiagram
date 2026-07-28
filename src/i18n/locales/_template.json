@@ -227,6 +227,8 @@
     "autosaveEnabled": "Remember work between sessions",
     "autosaveHint": "Automatically saves your diagram locally and restores it when you reopen the app.",
     "confirmBeforeNew": "Confirm before starting a new diagram",
+    "showExternalLinkChipTooltip": "Show link address on chip hover",
+    "showExternalLinkChipTooltipHint": "When enabled, mousing over a character’s link chip previews the full address. Turn this off if you prefer less clutter; the confirmation dialog still shows the address when you click.",
     "defaultShowHeader": "Show title and subtitle",
     "defaultBackgroundColour": "Background colour",
     "defaultDiagramFont": "Diagram font",

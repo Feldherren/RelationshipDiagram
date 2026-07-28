@@ -548,6 +548,22 @@ export function SettingsDialog({
             />
             <span>{t("appSettings.confirmBeforeNew")}</span>
           </label>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
+              checked={prefs.showExternalLinkChipTooltip}
+              onChange={(e) =>
+                updatePrefs({
+                  showExternalLinkChipTooltip: e.target.checked,
+                })
+              }
+            />
+            <span>{t("appSettings.showExternalLinkChipTooltip")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.showExternalLinkChipTooltipHint")}
+          </p>
         </>
       );
       break;

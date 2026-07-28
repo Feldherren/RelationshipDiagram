@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
@@ -74,7 +81,8 @@ export function FindBar({ open, onClose, actionsRef }: FindBarProps) {
   const goToIndex = useCallback(
     (index: number) => {
       if (matches.length === 0) return;
-      const wrapped = ((index % matches.length) + matches.length) % matches.length;
+      const wrapped =
+        ((index % matches.length) + matches.length) % matches.length;
       setMatchIndex(wrapped);
       navigateToMatch(matches[wrapped]);
     },
@@ -88,6 +96,18 @@ export function FindBar({ open, onClose, actionsRef }: FindBarProps) {
   const goToPrevious = useCallback(() => {
     goToIndex(matchIndex - 1);
   }, [goToIndex, matchIndex]);
+
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value);
+      setMatchIndex(0);
+      const nextMatches = searchDiagram(getDiagram(), value);
+      if (nextMatches.length > 0) {
+        navigateToMatch(nextMatches[0]);
+      }
+    },
+    [getDiagram, navigateToMatch],
+  );
 
   useEffect(() => {
     if (!actionsRef) return;
@@ -108,13 +128,13 @@ export function FindBar({ open, onClose, actionsRef }: FindBarProps) {
     return () => window.cancelAnimationFrame(frame);
   }, [open]);
 
+  // Keep the current index valid if the match list shrinks after edits.
   useEffect(() => {
-    if (!open) return;
-    setMatchIndex(0);
-    if (matches.length > 0) {
-      navigateToMatch(matches[0]);
+    if (!open || matches.length === 0) return;
+    if (matchIndex >= matches.length) {
+      setMatchIndex(matches.length - 1);
     }
-  }, [matches, open, navigateToMatch]);
+  }, [open, matches.length, matchIndex]);
 
   useEffect(() => {
     if (!open) return;
@@ -144,7 +164,9 @@ export function FindBar({ open, onClose, actionsRef }: FindBarProps) {
   if (!open) return null;
 
   const hasQuery = query.trim().length > 0;
-  const currentMatch = matches.length > 0 ? matchIndex + 1 : 0;
+  const safeIndex =
+    matches.length === 0 ? 0 : Math.min(matchIndex, matches.length - 1);
+  const currentMatch = matches.length > 0 ? safeIndex + 1 : 0;
   const statusMessage = !hasQuery
     ? ""
     : matches.length === 0
@@ -161,7 +183,7 @@ export function FindBar({ open, onClose, actionsRef }: FindBarProps) {
             type="search"
             className="find-bar-input"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => handleQueryChange(event.target.value)}
             placeholder={t("find.placeholder")}
             aria-keyshortcuts="Control+F Meta+F"
             autoComplete="off"

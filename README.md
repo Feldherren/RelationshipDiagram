@@ -52,6 +52,7 @@ This project includes a [Tauri](https://v2.tauri.app/) shell for running as a na
 1. [Node.js](https://nodejs.org/) (for the frontend)
 2. [Rust](https://www.rust-lang.org/tools/install) (`rustup` is recommended)
 3. **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled on Windows 10/11)
+4. **Mac**: You will need to have [Xcode](https://developer.apple.com/xcode/) installed in order to compile for Mac.
 
 #### Run in development
 

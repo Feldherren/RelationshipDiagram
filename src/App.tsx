@@ -8,14 +8,18 @@ import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog, type SettingsSectionId } from "./components/panels/SettingsDialog";
 import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
+import { ExternalLinkConfirmHost } from "./components/panels/ExternalLinkConfirmHost";
+import { FindBar, type FindBarActions } from "./components/panels/FindBar";
 import { Toolbar } from "./components/Toolbar";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
 import { AddObjectControls } from "./components/panels/AddObjectControls";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
+import { useFindShortcuts } from "./hooks/useFindShortcuts";
 import { useDiagramStore } from "./store/diagramStore";
 import { getAppPreferences } from "./utils/appPreferences";
+import { confirmDialog } from "./utils/confirmDialog";
 import {
   loadDiagramFromFile,
   saveDiagramToFile,
@@ -31,6 +35,8 @@ function App() {
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>("appearance");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const findActionsRef = useRef<FindBarActions | null>(null);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
@@ -39,6 +45,12 @@ function App() {
 
   useAutosave();
   useUiAppearance();
+  useFindShortcuts({
+    open: findOpen,
+    onToggle: () => setFindOpen((open) => !open),
+    onClose: () => setFindOpen(false),
+    actionsRef: findActionsRef,
+  });
 
   useEffect(() => {
     void bootstrapApp();
@@ -74,12 +86,11 @@ function App() {
       groups.length > 0 ||
       boxes.length > 0 ||
       floatingTexts.length > 0;
-    if (
-      confirmBeforeNewDiagram &&
-      hasContent &&
-      !window.confirm(t("app.newConfirm"))
-    ) {
-      return;
+    if (confirmBeforeNewDiagram && hasContent) {
+      const confirmed = await confirmDialog(t("app.newConfirm"), {
+        title: t("app.name"),
+      });
+      if (!confirmed) return;
     }
     await newDiagram();
   };
@@ -109,6 +120,7 @@ function App() {
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onSettings={() => openSettings()}
+        onFind={() => setFindOpen(true)}
       />
       <main className="main">
         <div className="workspace">
@@ -118,6 +130,11 @@ function App() {
           <AddObjectControls />
           <GroupsListPopup />
           <ZoomIndicator />
+          <FindBar
+            open={findOpen}
+            onClose={() => setFindOpen(false)}
+            actionsRef={findActionsRef}
+          />
         </div>
       </main>
       <ExportDialog
@@ -139,6 +156,7 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         initialSection={settingsSection}
       />
+      <ExternalLinkConfirmHost />
     </div>
   );
 }

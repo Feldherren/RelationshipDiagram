@@ -1,3 +1,38 @@
+# v0.7.0
+- New app icon.
+- Added github repo link to Settings > About.
+- Box improvements
+	- Can now drag boxes around via their background (as middle-click drag works for panning).
+	- Fixed issue where the top resize handle for a box was the line between box header and box body, not the top edge.
+	- Collapsed box number that indicates amount of contained objects should now contrast with diagram background (plus however the transparent box interacts with it).
+	- If all members of a group are within a single box, and the box is collapsed, the group hub badge should also collapse into the box.
+	- Mousing-over the header of a box now highlights it with the aura effect.
+	- Mousing-over the body of a box now displays the expand/collapse and relationship line buttons.
+	- Collapsing a box now determines its new position relative to the upper-left corner, ensuring the contract/expand button remains beneath the cursor. Expanding boxes functions similarly.
+	- Collapsed boxes no longer capture (or visually hide) objects when their expanded footprint is dragged over them.
+- Floating text improvements
+	- Text details panel can set left, centre, or right alignment.
+	- Selected text areas can be resized by dragging the dotted outline (edges and corners).
+	- Double-click, right-click, or Enter edits text on the canvas and opens the details panel together (no separate text field in the panel). Esc (or clicking away) finishes typing.
+- Character size and font size sliders no longer show a text cursor.
+- Hexagon and pentagon character border shapes now have rounded corners, like the square.
+- Detail panels near the right window edge open to the left of the selected object instead of covering it.
+- Detached detail panel connector line uses light/dark contrast against the diagram background so it stays visible.
+- Ctrl+click a bookmark to centre the view on it without changing zoom (plain click still restores pan and zoom).
+	- Settings > General can swap click and Ctrl+click for bookmarks.
+- Click the lower-right zoom indicator to choose 50%, 100%, or 150% (zooms around the view centre).
+- Character size is clamped to the slider range (24–80) so invalid values cannot break the canvas or persist after save/reload.
+- Snap-to-grid mode; when enabled, characters, text and boxes snap to a grid (matching the grid background option, but not requiring it) when dragged around.
+- Jagged and wavy lines are now continue to look jagged/wavy even if stretched (they just get more jags/waves the longer they get, rather than stretching a fixed amount of them).
+- Added field for external links to characters, and a button to click to visit them (if present).
+	- Mouseover of the chip previews the link text before you click.
+	- Works for web links (http://, https://), app protocols (obsidian://, vscode://, etc), other common schemes (mailto:, tel:, ftp://).
+	- Default behaviour is for a safety prompt to confirm the link the user is about to visit. This can be disabled per-diagram, per device.
+	- Settings option to disable the link-reveal-on-mouseover over the external link chip.
+- When changing themes, user can now choose whether they want to update colours that haven't been changed from the current theme's defaults to the new theme's defaults, even when elements are individually-customisable.
+- Stopped fake searchbox from showing up in browsers, desktop version.
+	- Now we have proper search functionality, accessible via ctrl+f.
+- I can't personally compile for Mac, but for Mac users I've updated shortcut tooltips.
 # v0.6.1
 - Applying a theme from Settings > Diagram Themes should now behave like editing the current diagram's theme from Diagram Properties.
 	- When applying a theme to the current diagram from Settings > Diagram Themes, font is now applied.

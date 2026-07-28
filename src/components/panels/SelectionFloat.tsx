@@ -4,16 +4,28 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { ShapePicker } from "../pickers/ShapePicker";
-import type { LineStyle, Selection, Viewport } from "../../models/types";
+import type {
+  FloatingTextAlign,
+  LineStyle,
+  Selection,
+  Viewport,
+} from "../../models/types";
 import {
+  clampCharacterSize,
+  contrastingInk,
+  DEFAULT_FLOATING_TEXT_ALIGN,
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  FLOATING_TEXT_ALIGNS,
   MAX_CHARACTER_SIZE,
   MAX_FLOATING_TEXT_FONT_SIZE,
   MEMBERSHIP_CHIP_RADIUS,
   MIN_CHARACTER_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
+  rgbToCss,
 } from "../../models/types";
+import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
+import { isValidUri, normalizeCharacterLink } from "../../utils/uri";
 import {
   getBoxById,
   getCharacterById,
@@ -30,8 +42,8 @@ import {
   connectorEndpoints,
   defaultFloatAnchorScreen,
   getGroupChipAnchorWorld,
-  getLineSelectionAvoidBounds,
   getSelectionAnchorWorld,
+  getSelectionAvoidBounds,
   getSelectionConnectorAnchorWorld,
   isSelectionFloatInteractiveTarget,
   placeSelectionFloat,
@@ -66,6 +78,9 @@ function SelectionFloatConnector({
 }) {
   const viewport = useDiagramStore((s) => s.viewport);
   const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagramBackgroundColor = useDiagramStore(
+    (s) => s.diagramBackgroundColor,
+  );
   const diagram = getDiagram();
   const panelBounds = {
     x: left,
@@ -87,6 +102,9 @@ function SelectionFloatConnector({
   const anchorScreen = worldToScreen(connectorAnchorWorld, viewport);
   if (!shouldShowFloatConnector(panelBounds, anchorScreen)) return null;
   const { from, to } = connectorEndpoints(panelBounds, anchorScreen);
+  const connectorColor = rgbToCss(
+    contrastingInk(diagramBackgroundColor ?? DEFAULT_DIAGRAM_BACKGROUND),
+  );
   return (
     <svg
       className="selection-float-connector"
@@ -100,12 +118,14 @@ function SelectionFloatConnector({
         x2={to.x}
         y2={to.y}
         className="selection-float-connector-line"
+        style={{ stroke: connectorColor }}
       />
       <circle
         cx={from.x}
         cy={from.y}
         r={3}
         className="selection-float-connector-dot"
+        style={{ fill: connectorColor }}
       />
     </svg>
   );
@@ -173,6 +193,50 @@ function ArrowToggleIcon({ direction }: { direction: "left" | "right" }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function TextAlignIcon({ align }: { align: FloatingTextAlign }) {
+  const lines =
+    align === "left"
+      ? [
+          { x: 4, w: 16 },
+          { x: 4, w: 12 },
+          { x: 4, w: 14 },
+        ]
+      : align === "right"
+        ? [
+            { x: 4, w: 16 },
+            { x: 8, w: 12 },
+            { x: 6, w: 14 },
+          ]
+        : [
+            { x: 4, w: 16 },
+            { x: 6, w: 12 },
+            { x: 5, w: 14 },
+          ];
+
+  return (
+    <svg
+      className="btn-icon-svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      {lines.map((line, index) => (
+        <rect
+          key={index}
+          x={line.x}
+          y={6 + index * 5}
+          width={line.w}
+          height={2}
+          rx={1}
+          fill="currentColor"
+        />
+      ))}
     </svg>
   );
 }
@@ -321,16 +385,10 @@ export function SelectionFloat() {
   const isGroupSelection = selection.type === "group";
   const vp = liveViewport(viewport);
 
-  let avoidScreen: ReturnType<typeof worldBoundsToScreen> | undefined;
-  if (selection.type === "line") {
-    const line = lines.find((l) => l.id === selection.id);
-    if (line) {
-      avoidScreen = worldBoundsToScreen(
-        getLineSelectionAvoidBounds(line, diagram),
-        vp,
-      );
-    }
-  }
+  const avoidWorld = getSelectionAvoidBounds(selection, diagram, vp.scale);
+  const avoidScreen = avoidWorld
+    ? worldBoundsToScreen(avoidWorld, vp)
+    : undefined;
 
   const placementMatches =
     Boolean(placementKey) && floatPlacement?.key === placementKey;
@@ -495,10 +553,7 @@ export function SelectionFloat() {
         return;
       }
       updateCharacter(character.id, {
-        size: Math.min(
-          MAX_CHARACTER_SIZE,
-          Math.max(MIN_CHARACTER_SIZE, Math.round(parsed)),
-        ),
+        size: clampCharacterSize(parsed),
       });
     };
 
@@ -527,6 +582,38 @@ export function SelectionFloat() {
               })
             }
           />
+        </label>
+        <label className="field">
+          <span>{t("selection.link")}</span>
+          <input
+            type="text"
+            value={character.link ?? ""}
+            placeholder={t("selection.linkPlaceholder")}
+            onChange={(e) =>
+              updateCharacter(character.id, {
+                link: e.target.value || undefined,
+              })
+            }
+            onBlur={(e) => {
+              const next = normalizeCharacterLink(e.target.value);
+              if (next !== character.link) {
+                updateCharacter(character.id, { link: next });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const next = normalizeCharacterLink(
+                  (e.target as HTMLInputElement).value,
+                );
+                updateCharacter(character.id, { link: next });
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          {character.link && !isValidUri(character.link) && (
+            <p className="hint">{t("selection.linkInvalid")}</p>
+          )}
         </label>
         <div className="field">
           <span>{t("selection.image")}</span>
@@ -588,7 +675,7 @@ export function SelectionFloat() {
                 const parsed = Number(e.target.value);
                 if (!Number.isFinite(parsed)) return;
                 updateCharacter(character.id, {
-                  size: Math.round(parsed),
+                  size: clampCharacterSize(parsed),
                 });
               }}
               onBlur={(e) => commitSize(e.target.value)}
@@ -796,6 +883,7 @@ export function SelectionFloat() {
     const color = floatingText.color ?? DEFAULT_FLOATING_TEXT_COLOR;
     const fontSize =
       floatingText.fontSize || DEFAULT_FLOATING_TEXT_FONT_SIZE;
+    const textAlign = floatingText.textAlign ?? DEFAULT_FLOATING_TEXT_ALIGN;
 
     const commitFontSize = (raw: string) => {
       const parsed = Number(raw);
@@ -814,17 +902,40 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.text")}</h2>
-        <label className="field">
-          <span>{t("selection.textField")}</span>
-          <textarea
-            value={floatingText.text}
-            placeholder={t("selection.textPlaceholder")}
-            rows={4}
-            onChange={(e) =>
-              updateFloatingText(floatingText.id, { text: e.target.value })
-            }
-          />
-        </label>
+        <div className="field">
+          <span>{t("selection.textAlign")}</span>
+          <div
+            className="line-arrow-toggles"
+            role="group"
+            aria-label={t("selection.textAlign")}
+          >
+            {FLOATING_TEXT_ALIGNS.map((align) => {
+              const alignLabelKey =
+                align === "left"
+                  ? "selection.textAlignLeft"
+                  : align === "right"
+                    ? "selection.textAlignRight"
+                    : "selection.textAlignCenter";
+              return (
+                <button
+                  key={align}
+                  type="button"
+                  className={`btn-icon line-arrow-toggle${
+                    textAlign === align ? " is-active" : ""
+                  }`}
+                  aria-label={t(alignLabelKey)}
+                  aria-pressed={textAlign === align}
+                  title={t(alignLabelKey)}
+                  onClick={() =>
+                    updateFloatingText(floatingText.id, { textAlign: align })
+                  }
+                >
+                  <TextAlignIcon align={align} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <RgbPicker
           label={t("selection.colour")}
           value={color}

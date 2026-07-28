@@ -33,8 +33,10 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
+  const diagramId = useDiagramStore((s) => s.diagramId);
   const diagram = {
-      schemaVersion: 3 as const,
+    schemaVersion: 3 as const,
+    id: diagramId,
     title: diagramTitle || undefined,
     subtitle: diagramSubtitle || undefined,
     fontFamily: isDefaultDiagramFont(diagramFontFamily)

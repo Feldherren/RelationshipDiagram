@@ -6,6 +6,7 @@ import type {
   RGB,
   ViewBookmark,
 } from "../models/types";
+import { v4 as uuidv4 } from "uuid";
 
 export interface PersistedDiagramState {
   characters: Diagram["characters"];
@@ -85,12 +86,15 @@ export function hasPersistedStateChanged(
   );
 }
 
-export const EMPTY_DIAGRAM: Diagram = {
-  schemaVersion: 3,
-  characters: [],
-  lines: [],
-  groups: [],
-  boxes: [],
-  floatingTexts: [],
-  viewport: { x: 0, y: 0, scale: 1 },
-};
+export function createEmptyDiagram(): Diagram {
+  return {
+    schemaVersion: 3,
+    id: uuidv4(),
+    characters: [],
+    lines: [],
+    groups: [],
+    boxes: [],
+    floatingTexts: [],
+    viewport: { x: 0, y: 0, scale: 1 },
+  };
+}

@@ -11,6 +11,19 @@
     "fs:default",
     "fs:allow-write-file",
     "fs:allow-write-text-file",
-    "fs:allow-read-text-file"
+    "fs:allow-read-text-file",
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://*" },
+        { "url": "http://*" },
+        { "url": "https://*:*" },
+        { "url": "http://*:*" },
+        { "url": "obsidian:*" },
+        { "url": "mailto:*" },
+        { "url": "tel:*" }
+      ]
+    }
   ]
 }

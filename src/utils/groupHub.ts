@@ -7,14 +7,16 @@ import type {
   Point,
 } from "../models/types";
 import { GROUP_HUB_BADGE_RADIUS } from "../models/types";
+import { isCharacterContainedInBox } from "./geometry";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 /** Spoke stroke ≈ slightly larger than the member’s diameter. */
 export const GROUP_SPOKE_WIDTH_FACTOR = 1.12;
 export const GROUP_HUB_HIT_PADDING = 10;
 
 /**
- * Member world position for hub geometry. If the character’s centre lies inside
- * a collapsed box’s bounds, use that box’s collapsed square centre.
+ * Member world position for hub geometry. If the character is a member of a
+ * collapsed box, use that box’s collapsed square centre.
  */
 export function getGroupMemberAnchor(
   character: Character,
@@ -22,14 +24,8 @@ export function getGroupMemberAnchor(
 ): Point {
   const p = character.position;
   for (const box of boxes) {
-    if (!box.collapsed || !box.bounds) continue;
-    const b = box.bounds;
-    if (
-      p.x >= b.x &&
-      p.x <= b.x + b.width &&
-      p.y >= b.y &&
-      p.y <= b.y + b.height
-    ) {
+    if (!box.collapsed) continue;
+    if (isCharacterContainedInBox(character, box)) {
       return box.collapsedPosition ?? p;
     }
   }
@@ -52,6 +48,38 @@ export function getGroupMemberAnchors(
     });
   }
   return result;
+}
+
+/**
+ * True when every existing member is fully inside the *same* collapsed box
+ * (same containment as hiding characters on the canvas). Members split across
+ * different collapsed boxes do not qualify — the hub stays as the visible link.
+ */
+export function areAllGroupMembersInCollapsedBoxes(
+  group: Group,
+  characters: Character[],
+  boxes: Box[],
+  fontFamily: string = DEFAULT_DIAGRAM_FONT,
+): boolean {
+  const byId = new Map(characters.map((c) => [c.id, c]));
+  let sharedCollapsedBoxId: string | null = null;
+  let foundMember = false;
+  for (const id of group.memberCharacterIds) {
+    const character = byId.get(id);
+    if (!character) continue;
+    foundMember = true;
+    const collapsedBox = boxes.find(
+      (box) =>
+        box.collapsed && isCharacterContainedInBox(character, box, fontFamily),
+    );
+    if (!collapsedBox) return false;
+    if (sharedCollapsedBoxId == null) {
+      sharedCollapsedBoxId = collapsedBox.id;
+    } else if (collapsedBox.id !== sharedCollapsedBoxId) {
+      return false;
+    }
+  }
+  return foundMember;
 }
 
 export function getGroupCentroid(
@@ -138,6 +166,10 @@ export interface GroupCanvasVisibilityContext {
   connectFrom: NodeRef | null;
   connectDragFrom: NodeRef | null;
   lines: Line[];
+  groups: Group[];
+  characters: Character[];
+  boxes: Box[];
+  fontFamily: string;
 }
 
 function isConnecting(ctx: GroupCanvasVisibilityContext): boolean {
@@ -171,6 +203,20 @@ function groupHasLines(groupId: string, lines: Line[]): boolean {
   return lines.some((line) => lineInvolvesGroup(line, groupId));
 }
 
+function isGroupCollapsedAway(
+  groupId: string,
+  ctx: GroupCanvasVisibilityContext,
+): boolean {
+  const group = ctx.groups.find((g) => g.id === groupId);
+  if (!group) return false;
+  return areAllGroupMembersInCollapsedBoxes(
+    group,
+    ctx.characters,
+    ctx.boxes,
+    ctx.fontFamily,
+  );
+}
+
 /**
  * Corridor spokes. Full mode: all membered groups. Otherwise only force-visible
  * / connecting exceptions (never in connected/hidden for idle groups).
@@ -180,14 +226,17 @@ export function shouldShowGroupHubSpokes(
   ctx: GroupCanvasVisibilityContext & { hasMembers: boolean },
 ): boolean {
   if (!ctx.hasMembers) return false;
-  if (ctx.groupsCanvasMode === "full") return true;
   if (isGroupForceVisible(groupId, ctx)) return true;
-  return isConnecting(ctx);
+  if (isConnecting(ctx)) return true;
+  if (isGroupCollapsedAway(groupId, ctx)) return false;
+  if (ctx.groupsCanvasMode === "full") return true;
+  return false;
 }
 
 /**
  * Hub badge. Full: all with members. Connected: only groups with lines.
- * Hidden: force-visible / connecting only.
+ * Hidden: force-visible / connecting only. Also hidden when every member is
+ * inside the same collapsed box (unless selected / connecting).
  */
 export function shouldShowGroupHubBadge(
   groupId: string,
@@ -196,6 +245,7 @@ export function shouldShowGroupHubBadge(
   if (!ctx.hasMembers) return false;
   if (isGroupForceVisible(groupId, ctx)) return true;
   if (isConnecting(ctx)) return true;
+  if (isGroupCollapsedAway(groupId, ctx)) return false;
   if (ctx.groupsCanvasMode === "full") return true;
   if (ctx.groupsCanvasMode === "connected") {
     return groupHasLines(groupId, ctx.lines);
@@ -214,6 +264,7 @@ export function shouldShowGroupLine(
     .map((ref) => ref.id);
   if (groupIds.some((id) => isGroupForceVisible(id, ctx))) return true;
   if (isConnecting(ctx)) return true;
+  if (groupIds.some((id) => isGroupCollapsedAway(id, ctx))) return false;
   if (ctx.groupsCanvasMode === "hidden") return false;
   return true;
 }

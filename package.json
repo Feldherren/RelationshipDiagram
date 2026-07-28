@@ -1,7 +1,7 @@
 {
   "name": "relationshipdiagram",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
   "dependencies": {
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-opener": "^2.5.4",
     "i18next": "^26.3.6",
     "konva": "^10.3.0",
     "react": "^19.2.7",

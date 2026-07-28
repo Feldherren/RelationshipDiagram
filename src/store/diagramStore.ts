@@ -24,10 +24,10 @@ import type {
 import {
   DEFAULT_CHARACTER_SIZE,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  COLLAPSED_BOX_SIZE,
   defaultMembershipAppearance,
 } from "../models/types";
 import {
-  getBoxCenter,
   getCharactersContainedInBox,
   getEmptyBoxBounds,
   getFloatingTextsContainedInBox,
@@ -62,7 +62,7 @@ import {
   saveAutosave,
 } from "../utils/autosaveStorage";
 import {
-  EMPTY_DIAGRAM,
+  createEmptyDiagram,
   type PersistedDiagramState,
   pickPersistedState,
 } from "./autosaveState";
@@ -90,12 +90,40 @@ import {
   setAppPreferences,
 } from "../utils/appPreferences";
 import { computeDiagramBounds } from "../utils/diagramBounds";
-import { computeViewportForBounds } from "../utils/viewportFit";
+import {
+  computeViewportForBounds,
+  viewportFromCenterAndScale,
+} from "../utils/viewportFit";
+import { getGroupHubPosition } from "../utils/groupHub";
+import { getSelectionAnchorWorld } from "../utils/selectionAnchor";
 import { randomPastelColor } from "../utils/pastelPalette";
+import { remapDiagramElementColors } from "../utils/remapDiagramThemeColors";
 import type { GroupsCanvasMode } from "../utils/groupHub";
+import {
+  snapBoxTopLeftToGrid,
+  snapMultiSelectionDelta,
+  snapPointToGrid,
+  type MultiDragSnapshot,
+} from "../utils/snapToGrid";
 
 interface HistoryOptions {
   recordHistory?: boolean;
+}
+
+/** Optional absolute-from-snapshot options for box drag (supports snap-to-grid). */
+export interface MoveBoxSnapOptions extends HistoryOptions {
+  initialBox?: Box;
+  initialCharacterPositions?: Record<string, { x: number; y: number }>;
+  initialFloatingTextPositions?: Record<string, { x: number; y: number }>;
+  totalDelta?: { dx: number; dy: number };
+  /** When true, apply totalDelta from snapshot without re-snapping (multi-select). */
+  skipSnap?: boolean;
+}
+
+/** Optional absolute-from-snapshot options for multi-select drag. */
+export interface MoveMultiSelectionOptions extends HistoryOptions {
+  initialSnapshot?: MultiDragSnapshot;
+  totalDelta?: { dx: number; dy: number };
 }
 
 interface DiagramState {
@@ -112,9 +140,13 @@ interface DiagramState {
   selectionPulseEnabled: boolean;
   /** When true, line label text contrasts with the label background. */
   lineLabelContrastWithBackground: boolean;
+  /** When true, drag/place snaps to grid intersections. */
+  snapToGridEnabled: boolean;
   selection: Selection;
   /** When false, the selection float stays closed even if something is selected. */
   selectionDetailsOpen: boolean;
+  /** Floating text currently being edited inline on the canvas (HTML overlay). */
+  editingFloatingTextId: string | null;
   toolMode: ToolMode;
   connectFrom: NodeRef | null;
   connectDrag: ConnectDrag | null;
@@ -129,6 +161,8 @@ interface DiagramState {
   fontMissing: boolean;
   diagramBackgroundColor: RGB | null;
   diagramAppearance: DiagramAppearance;
+  /** Stable id from Diagram.id; used for local per-diagram preferences. */
+  diagramId: string;
   autosaveEnabled: boolean;
   undoStack: PersistedDiagramState[];
   redoStack: PersistedDiagramState[];
@@ -147,9 +181,11 @@ interface DiagramState {
   setMultiSelection: (items: MultiSelectableItem[]) => void;
   moveMultiSelectionByDelta: (
     delta: { dx: number; dy: number },
-    options?: HistoryOptions,
+    options?: MoveMultiSelectionOptions,
   ) => void;
   openSelectionDetails: () => void;
+  beginEditingFloatingText: (id: string) => void;
+  endEditingFloatingText: () => void;
   setShowGrid: (show: boolean) => void;
   setGridStyle: (style: GridStyle) => void;
   setDiagramBackgroundMode: (mode: DiagramBackgroundMode) => void;
@@ -165,10 +201,15 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
   replaceDiagramAppearance: (appearance: DiagramAppearance) => void;
+  applyDiagramTheme: (
+    appearance: DiagramAppearance,
+    options?: { remapDefaultColors?: boolean },
+  ) => void;
   setBookmarksVisible: (visible: boolean) => void;
   setGroupsCanvasMode: (mode: GroupsCanvasMode) => void;
   setSelectionPulseEnabled: (enabled: boolean) => void;
   setLineLabelContrastWithBackground: (enabled: boolean) => void;
+  setSnapToGridEnabled: (enabled: boolean) => void;
   openBookmarkEdit: (id: string) => void;
   closeBookmarkEdit: () => void;
   addBookmark: (name?: string, color?: RGB) => void;
@@ -183,7 +224,11 @@ interface DiagramState {
     options?: HistoryOptions,
   ) => void;
   deleteBookmark: (id: string) => void;
-  goToBookmark: (id: string) => void;
+  goToBookmark: (id: string, options?: { keepZoom?: boolean }) => void;
+  focusSelection: (
+    selection: Exclude<Selection, null | { type: "multi" }>,
+    options?: { keepZoom?: boolean },
+  ) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -230,7 +275,7 @@ interface DiagramState {
     id: string,
     delta: { dx: number; dy: number },
     contents: { characterIds: string[]; floatingTextIds: string[] },
-    options?: HistoryOptions,
+    options?: MoveBoxSnapOptions,
   ) => void;
 
   addFloatingTextAt: (position: { x: number; y: number }) => void;
@@ -269,6 +314,46 @@ function createDefaultCharacter(
     borderShape: "circle",
     borderColor: { ...borderColor },
     size: DEFAULT_CHARACTER_SIZE,
+  };
+}
+
+function buildDiagramAppearanceStateUpdate(appearance: DiagramAppearance): {
+  diagramAppearance: DiagramAppearance;
+  showGrid: boolean;
+  gridStyle: GridStyle;
+  diagramBackgroundColor: RGB | null;
+  diagramFontFamily: string;
+  fontMissing: boolean;
+  showDiagramHeader: boolean;
+} {
+  const diagramAppearance = cloneDiagramAppearance(appearance);
+  const background = applyDiagramBackgroundMode(
+    diagramAppearance.backgroundMode,
+    diagramAppearance.backgroundColor,
+  );
+  let fontFamily = diagramAppearance.fontFamily || DEFAULT_DIAGRAM_FONT;
+  if (isDeprecatedFontFamily(fontFamily)) {
+    fontFamily = DEFAULT_DIAGRAM_FONT;
+  }
+  const syncedAppearance = {
+    ...diagramAppearance,
+    fontFamily,
+    backgroundMode: syncBackgroundModeFromCanvasState(
+      diagramAppearance.backgroundMode,
+      background.showGrid,
+      background.gridStyle,
+      background.backgroundColor,
+    ),
+    backgroundColor: background.backgroundColor,
+  };
+  return {
+    diagramAppearance: syncedAppearance,
+    showGrid: background.showGrid,
+    gridStyle: background.gridStyle,
+    diagramBackgroundColor: background.backgroundColor,
+    diagramFontFamily: fontFamily,
+    fontMissing: false,
+    showDiagramHeader: syncedAppearance.showHeader,
   };
 }
 
@@ -331,6 +416,7 @@ function restoreHistorySnapshot(
     viewport,
     selection: null,
     selectionDetailsOpen: false,
+    editingFloatingTextId: null,
     connectFrom: null,
     connectDrag: null,
     toolMode: "select" as const,
@@ -351,8 +437,10 @@ export const useDiagramStore = create<DiagramState>()(
   groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
+  snapToGridEnabled: false,
   selection: null,
   selectionDetailsOpen: false,
+  editingFloatingTextId: null,
   toolMode: "select",
   connectFrom: null,
   connectDrag: null,
@@ -367,6 +455,7 @@ export const useDiagramStore = create<DiagramState>()(
   fontMissing: false,
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
+  diagramId: uuidv4(),
   autosaveEnabled: false,
   undoStack: [],
   redoStack: [],
@@ -439,6 +528,7 @@ export const useDiagramStore = create<DiagramState>()(
     set({
       selection,
       selectionDetailsOpen: openDetails,
+      editingFloatingTextId: null,
       ...(editingGroupId != null && !stayingOnEditedGroup
         ? { toolMode: "select" as const }
         : {}),
@@ -459,6 +549,117 @@ export const useDiagramStore = create<DiagramState>()(
     const { selection, characters, boxes, floatingTexts, diagramFontFamily } =
       get();
     if (selection?.type !== "multi" || selection.items.length === 0) return;
+
+    const snapshot = options?.initialSnapshot;
+    const totalDelta = options?.totalDelta ?? delta;
+
+    if (snapshot) {
+      let dx = totalDelta.dx;
+      let dy = totalDelta.dy;
+      if (get().snapToGridEnabled) {
+        const snapped = snapMultiSelectionDelta(
+          snapshot.initialBounds,
+          totalDelta,
+        );
+        dx = snapped.dx;
+        dy = snapped.dy;
+      }
+
+      if (options?.recordHistory !== false) get().captureHistory();
+
+      const movedByBoxCharacters = new Set<string>();
+      const movedByBoxFloatingTexts = new Set<string>();
+
+      for (const [boxId, contents] of Object.entries(snapshot.boxContents)) {
+        for (const id of contents.characterIds) movedByBoxCharacters.add(id);
+        for (const id of contents.floatingTextIds) {
+          movedByBoxFloatingTexts.add(id);
+        }
+        const initialBoxSnap = snapshot.boxes[boxId];
+        if (!initialBoxSnap) continue;
+        const initialBox: Box = {
+          id: boxId,
+          name: "",
+          collapsed: initialBoxSnap.collapsed,
+          borderColor: { r: 0, g: 0, b: 0 },
+          bounds: initialBoxSnap.bounds ?? undefined,
+          anchorPosition: initialBoxSnap.anchorPosition ?? undefined,
+          collapsedPosition: initialBoxSnap.collapsedPosition ?? undefined,
+        };
+        get().moveBox(
+          boxId,
+          { dx, dy },
+          contents,
+          {
+            recordHistory: false,
+            initialBox,
+            initialCharacterPositions: snapshot.characters,
+            initialFloatingTextPositions: snapshot.floatingTexts,
+            totalDelta: { dx, dy },
+            skipSnap: true,
+          },
+        );
+      }
+
+      // Apply absolute positions for standalone characters/text from snapshot
+      // (selection AABB snap already applied; do not snap per-item).
+      const selectedCharacterIds = new Set(
+        selection.items.filter((i) => i.type === "character").map((i) => i.id),
+      );
+      const selectedFloatingTextIds = new Set(
+        selection.items
+          .filter((i) => i.type === "floatingText")
+          .map((i) => i.id),
+      );
+
+      const charUpdates: Record<string, { x: number; y: number }> = {};
+      const textUpdates: Record<string, { x: number; y: number }> = {};
+
+      for (const characterId of selectedCharacterIds) {
+        if (movedByBoxCharacters.has(characterId)) continue;
+        const start = snapshot.characters[characterId];
+        if (!start) continue;
+        charUpdates[characterId] = {
+          x: start.x + dx,
+          y: start.y + dy,
+        };
+      }
+      for (const floatingTextId of selectedFloatingTextIds) {
+        if (movedByBoxFloatingTexts.has(floatingTextId)) continue;
+        const start = snapshot.floatingTexts[floatingTextId];
+        if (!start) continue;
+        textUpdates[floatingTextId] = {
+          x: start.x + dx,
+          y: start.y + dy,
+        };
+      }
+
+      if (
+        Object.keys(charUpdates).length > 0 ||
+        Object.keys(textUpdates).length > 0
+      ) {
+        set((s) => ({
+          characters:
+            Object.keys(charUpdates).length === 0
+              ? s.characters
+              : s.characters.map((c) =>
+                  charUpdates[c.id]
+                    ? { ...c, position: charUpdates[c.id] }
+                    : c,
+                ),
+          floatingTexts:
+            Object.keys(textUpdates).length === 0
+              ? s.floatingTexts
+              : s.floatingTexts.map((t) =>
+                  textUpdates[t.id]
+                    ? { ...t, position: textUpdates[t.id] }
+                    : t,
+                ),
+        }));
+      }
+      return;
+    }
+
     if (delta.dx === 0 && delta.dy === 0) return;
 
     if (options?.recordHistory !== false) get().captureHistory();
@@ -540,7 +741,26 @@ export const useDiagramStore = create<DiagramState>()(
     if (!selection || selection.type === "multi") {
       return;
     }
-    set({ selectionDetailsOpen: true });
+    if (selection.type === "floatingText") {
+      get().beginEditingFloatingText(selection.id);
+      return;
+    }
+    set({ selectionDetailsOpen: true, editingFloatingTextId: null });
+  },
+  beginEditingFloatingText: (id) => {
+    if (!get().floatingTexts.some((t) => t.id === id)) return;
+    if (get().editingFloatingTextId !== id) {
+      get().captureHistory();
+    }
+    set({
+      editingFloatingTextId: id,
+      selection: { type: "floatingText", id },
+      selectionDetailsOpen: true,
+    });
+  },
+  endEditingFloatingText: () => {
+    if (get().editingFloatingTextId == null) return;
+    set({ editingFloatingTextId: null });
   },
   setShowGrid: (show) =>
     {
@@ -671,36 +891,51 @@ export const useDiagramStore = create<DiagramState>()(
 
   replaceDiagramAppearance: (appearance) => {
     get().captureHistory();
-    const diagramAppearance = cloneDiagramAppearance(appearance);
-    const background = applyDiagramBackgroundMode(
-      diagramAppearance.backgroundMode,
-      diagramAppearance.backgroundColor,
-    );
-    let fontFamily = diagramAppearance.fontFamily || DEFAULT_DIAGRAM_FONT;
-    if (isDeprecatedFontFamily(fontFamily)) {
-      fontFamily = DEFAULT_DIAGRAM_FONT;
-    }
-    const syncedAppearance = {
-      ...diagramAppearance,
-      fontFamily,
-      backgroundMode: syncBackgroundModeFromCanvasState(
-        diagramAppearance.backgroundMode,
-        background.showGrid,
-        background.gridStyle,
-        background.backgroundColor,
-      ),
-      backgroundColor: background.backgroundColor,
-    };
-    set({
-      diagramAppearance: syncedAppearance,
-      showGrid: background.showGrid,
-      gridStyle: background.gridStyle,
-      diagramBackgroundColor: background.backgroundColor,
-      diagramFontFamily: fontFamily,
-      fontMissing: false,
-      showDiagramHeader: syncedAppearance.showHeader,
-    });
+    const update = buildDiagramAppearanceStateUpdate(appearance);
+    set(update);
 
+    const fontFamily = update.diagramFontFamily;
+    if (isDefaultDiagramFont(fontFamily)) return;
+
+    void ensureFontLoaded(fontFamily).then((resolvedFamily) => {
+      const current = get().diagramAppearance;
+      if (current.fontFamily !== fontFamily) return;
+      set({
+        diagramFontFamily: resolvedFamily ?? fontFamily,
+        fontMissing: !resolvedFamily,
+        diagramAppearance: {
+          ...current,
+          fontFamily: resolvedFamily ?? fontFamily,
+        },
+      });
+    });
+  },
+
+  applyDiagramTheme: (appearance, options) => {
+    get().captureHistory();
+    const previousAppearance = get().diagramAppearance;
+    const update = buildDiagramAppearanceStateUpdate(appearance);
+
+    if (options?.remapDefaultColors) {
+      const remapped = remapDiagramElementColors(
+        {
+          characters: get().characters,
+          lines: get().lines,
+          boxes: get().boxes,
+          floatingTexts: get().floatingTexts,
+        },
+        previousAppearance,
+        update.diagramAppearance,
+      );
+      set({
+        ...update,
+        ...remapped,
+      });
+    } else {
+      set(update);
+    }
+
+    const fontFamily = update.diagramFontFamily;
     if (isDefaultDiagramFont(fontFamily)) return;
 
     void ensureFontLoaded(fontFamily).then((resolvedFamily) => {
@@ -757,6 +992,7 @@ export const useDiagramStore = create<DiagramState>()(
       groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
+      snapToGridEnabled: prefs.snapToGridEnabled,
     });
   },
 
@@ -786,7 +1022,7 @@ export const useDiagramStore = create<DiagramState>()(
     );
 
     const diagram: Diagram = {
-      ...EMPTY_DIAGRAM,
+      ...createEmptyDiagram(),
       showGrid: background.showGrid,
       gridStyle: background.gridStyle,
       showHeader: appearance.showHeader ? undefined : false,
@@ -831,8 +1067,11 @@ export const useDiagramStore = create<DiagramState>()(
 
   addCharacterAt: (position) => {
     get().captureHistory();
+    const pos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
     const character = createDefaultCharacter(
-      position,
+      pos,
       get().diagramAppearance.defaultCharacterBorderColor,
     );
     set((s) => ({
@@ -869,10 +1108,21 @@ export const useDiagramStore = create<DiagramState>()(
   },
 
   moveCharacter: (id, position, options) => {
+    const nextPos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
+    const current = get().characters.find((c) => c.id === id);
+    if (
+      current &&
+      current.position.x === nextPos.x &&
+      current.position.y === nextPos.y
+    ) {
+      return;
+    }
     if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       characters: s.characters.map((c) =>
-        c.id === id ? { ...c, position } : c,
+        c.id === id ? { ...c, position: nextPos } : c,
       ),
     }));
   },
@@ -1038,14 +1288,15 @@ export const useDiagramStore = create<DiagramState>()(
 
   addBoxAt: (position) => {
     get().captureHistory();
-    const { boxes, diagramAppearance } = get();
-    const bounds = getEmptyBoxBounds(position);
+    const { boxes, diagramAppearance, snapToGridEnabled } = get();
+    const anchor = snapToGridEnabled ? snapPointToGrid(position) : position;
+    const bounds = getEmptyBoxBounds(anchor);
     const box: Box = {
       id: uuidv4(),
       name: i18n.t("defaults.boxName", { n: boxes.length + 1 }),
       collapsed: false,
-      anchorPosition: position,
-      collapsedPosition: position,
+      anchorPosition: anchor,
+      collapsedPosition: anchor,
       bounds,
       borderColor: { ...diagramAppearance.defaultBoxBorderColor },
     };
@@ -1082,27 +1333,215 @@ export const useDiagramStore = create<DiagramState>()(
     const state = get();
     const box = state.boxes.find((b) => b.id === id);
     if (!box) return;
+    const fontFamily = state.diagramFontFamily;
 
     if (!box.collapsed) {
-      const center = getBoxCenter(box);
+      const bounds = resolveBoxBounds(box);
+      if (!bounds) return;
+      // Freeze membership at collapse so the expanded footprint cannot capture
+      // objects while the chip is dragged around.
+      const containedCharacterIds = getCharactersContainedInBox(
+        box,
+        state.characters,
+        fontFamily,
+      ).map((c) => c.id);
+      const containedFloatingTextIds = getFloatingTextsContainedInBox(
+        box,
+        state.floatingTexts,
+        fontFamily,
+      ).map((t) => t.id);
+      // collapsedPosition is the chip centre; place it so the chip's upper-left
+      // matches the expanded box's upper-left (keeps the collapse control put).
+      const collapsedPosition = {
+        x: bounds.x + COLLAPSED_BOX_SIZE,
+        y: bounds.y + COLLAPSED_BOX_SIZE,
+      };
       set((s) => ({
         boxes: s.boxes.map((b) =>
           b.id === id
-            ? { ...b, collapsed: true, collapsedPosition: center }
+            ? {
+                ...b,
+                collapsed: true,
+                collapsedPosition,
+                containedCharacterIds,
+                containedFloatingTextIds,
+              }
             : b,
         ),
       }));
-    } else {
-      set((s) => ({
-        boxes: s.boxes.map((b) =>
-          b.id === id ? { ...b, collapsed: false } : b,
-        ),
-      }));
+      return;
     }
+
+    const bounds = resolveBoxBounds(box);
+    const collapsedPos = box.collapsedPosition;
+    if (!bounds || !collapsedPos) {
+      set((s) => ({
+        boxes: s.boxes.map((b) => {
+          if (b.id !== id) return b;
+          const next: Box = { ...b, collapsed: false };
+          delete next.containedCharacterIds;
+          delete next.containedFloatingTextIds;
+          return next;
+        }),
+      }));
+      return;
+    }
+
+    const dx = collapsedPos.x - COLLAPSED_BOX_SIZE - bounds.x;
+    const dy = collapsedPos.y - COLLAPSED_BOX_SIZE - bounds.y;
+    const containedCharacterIds = new Set(
+      box.containedCharacterIds ??
+        getCharactersContainedInBox(box, state.characters, fontFamily).map(
+          (c) => c.id,
+        ),
+    );
+    const containedFloatingTextIds = new Set(
+      box.containedFloatingTextIds ??
+        getFloatingTextsContainedInBox(
+          box,
+          state.floatingTexts,
+          fontFamily,
+        ).map((t) => t.id),
+    );
+
+    set((s) => ({
+      characters: s.characters.map((c) => {
+        if (!containedCharacterIds.has(c.id) || (dx === 0 && dy === 0)) {
+          return c;
+        }
+        return {
+          ...c,
+          position: {
+            x: c.position.x + dx,
+            y: c.position.y + dy,
+          },
+        };
+      }),
+      floatingTexts: s.floatingTexts.map((t) => {
+        if (!containedFloatingTextIds.has(t.id) || (dx === 0 && dy === 0)) {
+          return t;
+        }
+        return {
+          ...t,
+          position: {
+            x: t.position.x + dx,
+            y: t.position.y + dy,
+          },
+        };
+      }),
+      boxes: s.boxes.map((b) => {
+        if (b.id !== id) return b;
+        const next: Box = { ...b, collapsed: false };
+        delete next.containedCharacterIds;
+        delete next.containedFloatingTextIds;
+        if (dx === 0 && dy === 0) return next;
+        if (b.bounds) {
+          next.bounds = {
+            ...b.bounds,
+            x: b.bounds.x + dx,
+            y: b.bounds.y + dy,
+          };
+        }
+        if (b.anchorPosition) {
+          next.anchorPosition = {
+            x: b.anchorPosition.x + dx,
+            y: b.anchorPosition.y + dy,
+          };
+        }
+        return next;
+      }),
+    }));
   },
 
   moveBox: (id, delta, contents, options) => {
     if (options?.recordHistory !== false) get().captureHistory();
+
+    const snapEnabled = get().snapToGridEnabled && !options?.skipSnap;
+    const hasSnapshot =
+      options?.initialBox != null && options.totalDelta != null;
+
+    if (hasSnapshot) {
+      const initialBox = options.initialBox!;
+      const totalDelta = options.totalDelta!;
+      const initialChars = options.initialCharacterPositions ?? {};
+      const initialTexts = options.initialFloatingTextPositions ?? {};
+
+      let dx = totalDelta.dx;
+      let dy = totalDelta.dy;
+
+      if (snapEnabled) {
+        if (initialBox.collapsed) {
+          const origin =
+            initialBox.collapsedPosition ??
+            initialBox.anchorPosition ??
+            { x: 0, y: 0 };
+          const snapped = snapPointToGrid({
+            x: origin.x + totalDelta.dx,
+            y: origin.y + totalDelta.dy,
+          });
+          dx = snapped.x - origin.x;
+          dy = snapped.y - origin.y;
+        } else {
+          const origin = initialBox.bounds
+            ? { x: initialBox.bounds.x, y: initialBox.bounds.y }
+            : (initialBox.anchorPosition ?? { x: 0, y: 0 });
+          const snapped = snapBoxTopLeftToGrid({
+            x: origin.x + totalDelta.dx,
+            y: origin.y + totalDelta.dy,
+          });
+          dx = snapped.x - origin.x;
+          dy = snapped.y - origin.y;
+        }
+      }
+
+      const containedCharacterIds = new Set(contents.characterIds);
+      const containedFloatingTextIds = new Set(contents.floatingTextIds);
+
+      set((s) => ({
+        characters: s.characters.map((c) => {
+          if (!containedCharacterIds.has(c.id)) return c;
+          const start = initialChars[c.id] ?? c.position;
+          return {
+            ...c,
+            position: { x: start.x + dx, y: start.y + dy },
+          };
+        }),
+        floatingTexts: s.floatingTexts.map((t) => {
+          if (!containedFloatingTextIds.has(t.id)) return t;
+          const start = initialTexts[t.id] ?? t.position;
+          return {
+            ...t,
+            position: { x: start.x + dx, y: start.y + dy },
+          };
+        }),
+        boxes: s.boxes.map((b) => {
+          if (b.id !== id) return b;
+          const next: Box = { ...b };
+          if (initialBox.bounds) {
+            next.bounds = {
+              ...initialBox.bounds,
+              x: initialBox.bounds.x + dx,
+              y: initialBox.bounds.y + dy,
+            };
+          }
+          if (initialBox.anchorPosition) {
+            next.anchorPosition = {
+              x: initialBox.anchorPosition.x + dx,
+              y: initialBox.anchorPosition.y + dy,
+            };
+          }
+          if (initialBox.collapsedPosition) {
+            next.collapsedPosition = {
+              x: initialBox.collapsedPosition.x + dx,
+              y: initialBox.collapsedPosition.y + dy,
+            };
+          }
+          return next;
+        }),
+      }));
+      return;
+    }
+
     set((s) => {
       const box = s.boxes.find((b) => b.id === id);
       if (!box) return {};
@@ -1161,9 +1600,12 @@ export const useDiagramStore = create<DiagramState>()(
 
   addFloatingTextAt: (position) => {
     get().captureHistory();
+    const pos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
     const floatingText: FloatingText = {
       id: uuidv4(),
-      position,
+      position: pos,
       text: "",
       color: { ...get().diagramAppearance.defaultFloatingTextColor },
       fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
@@ -1171,7 +1613,8 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       floatingTexts: [...s.floatingTexts, floatingText],
       selection: { type: "floatingText", id: floatingText.id },
-      selectionDetailsOpen: false,
+      selectionDetailsOpen: true,
+      editingFloatingTextId: floatingText.id,
     }));
   },
 
@@ -1189,14 +1632,27 @@ export const useDiagramStore = create<DiagramState>()(
     set((s) => ({
       floatingTexts: s.floatingTexts.filter((t) => t.id !== id),
       selection: selectionAfterRemovingItem(s.selection, "floatingText", id),
+      editingFloatingTextId:
+        s.editingFloatingTextId === id ? null : s.editingFloatingTextId,
     }));
   },
 
   moveFloatingText: (id, position, options) => {
+    const nextPos = get().snapToGridEnabled
+      ? snapPointToGrid(position)
+      : position;
+    const current = get().floatingTexts.find((t) => t.id === id);
+    if (
+      current &&
+      current.position.x === nextPos.x &&
+      current.position.y === nextPos.y
+    ) {
+      return;
+    }
     if (options?.recordHistory !== false) get().captureHistory();
     set((s) => ({
       floatingTexts: s.floatingTexts.map((t) =>
-        t.id === id ? { ...t, position } : t,
+        t.id === id ? { ...t, position: nextPos } : t,
       ),
     }));
   },
@@ -1323,6 +1779,11 @@ export const useDiagramStore = create<DiagramState>()(
     setAppPreferences({ lineLabelContrastWithBackground: enabled });
   },
 
+  setSnapToGridEnabled: (enabled) => {
+    set({ snapToGridEnabled: enabled });
+    setAppPreferences({ snapToGridEnabled: enabled });
+  },
+
   openBookmarkEdit: (id) => {
     if (!get().bookmarks.some((b) => b.id === id)) return;
     set({
@@ -1414,10 +1875,56 @@ export const useDiagramStore = create<DiagramState>()(
     }));
   },
 
-  goToBookmark: (id) => {
+  goToBookmark: (id, options) => {
     const bookmark = get().bookmarks.find((b) => b.id === id);
     if (!bookmark) return;
+    if (options?.keepZoom) {
+      const { viewport, stageSize } = get();
+      set({
+        viewport: viewportFromCenterAndScale(
+          bookmark.anchor,
+          viewport.scale,
+          stageSize,
+        ),
+      });
+      return;
+    }
     set({ viewport: { ...bookmark.viewport } });
+  },
+
+  focusSelection: (selection, options) => {
+    const keepZoom = options?.keepZoom ?? true;
+    const state = get();
+    const { stageSize, viewport } = state;
+
+    get().setSelection(selection, { openDetails: false });
+
+    let center: { x: number; y: number } | null = null;
+    if (selection.type === "group") {
+      const group = state.groups.find((entry) => entry.id === selection.id);
+      if (group) {
+        center = getGroupHubPosition(group, state.characters, state.boxes);
+      }
+    } else {
+      center = getSelectionAnchorWorld(selection, get().getDiagram());
+    }
+
+    if (!center) return;
+
+    if (keepZoom) {
+      set({
+        viewport: viewportFromCenterAndScale(
+          center,
+          viewport.scale,
+          stageSize,
+        ),
+      });
+      return;
+    }
+
+    set({
+      viewport: viewportFromCenterAndScale(center, viewport.scale, stageSize),
+    });
   },
 
   deleteSelected: () => {
@@ -1465,6 +1972,7 @@ export const useDiagramStore = create<DiagramState>()(
           })),
           selection: null,
           selectionDetailsOpen: false,
+          editingFloatingTextId: null,
         };
       });
       return;
@@ -1514,6 +2022,7 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       bookmarks: normalizeBookmarks(diagram.bookmarks),
+      diagramId: diagram.id,
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: liveShowHeader,
@@ -1538,6 +2047,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle: liveGridStyle,
       selection: null,
       selectionDetailsOpen: false,
+      editingFloatingTextId: null,
       connectFrom: null,
       connectDrag: null,
       toolMode: "select",
@@ -1560,6 +2070,7 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts,
       viewport,
       bookmarks,
+      diagramId,
       diagramTitle,
       diagramSubtitle,
       showDiagramHeader,
@@ -1571,6 +2082,7 @@ export const useDiagramStore = create<DiagramState>()(
     } = get();
     return {
       schemaVersion: 3 as const,
+      id: diagramId,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
       showHeader: showDiagramHeader ? undefined : false,

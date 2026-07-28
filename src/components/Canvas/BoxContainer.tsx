@@ -11,6 +11,8 @@ import {
   COLLAPSED_BOX_SIZE,
   BOX_HEADER_HEIGHT,
   BOX_RESIZE_HANDLE_SCREEN_SIZE,
+  blendRgbOver,
+  contrastingInk,
   rgbToCss,
 } from "../../models/types";
 import {
@@ -39,6 +41,11 @@ import {
   RoundedRectSelectionPulse,
   shouldShowAura,
 } from "./HoverAura";
+import { DEFAULT_DIAGRAM_BACKGROUND } from "../../utils/diagramBackground";
+import {
+  captureMultiDragSnapshot,
+  type MultiDragSnapshot,
+} from "../../utils/snapToGrid";
 
 interface BoxContainerProps {
   box: BoxType;
@@ -52,6 +59,12 @@ interface BoxContainerProps {
   onMoveByDelta: (
     delta: { dx: number; dy: number },
     contents: { characterIds: string[]; floatingTextIds: string[] },
+    snapOptions?: {
+      initialBox: BoxType;
+      initialCharacterPositions: Record<string, { x: number; y: number }>;
+      initialFloatingTextPositions: Record<string, { x: number; y: number }>;
+      totalDelta: { dx: number; dy: number };
+    },
   ) => void;
   onResizeStart: () => void;
   onResizeEnd: () => void;
@@ -60,6 +73,9 @@ interface BoxContainerProps {
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   /** Split render: background below relationship lines, foreground above. */
   part?: "full" | "background" | "foreground";
+  /** Shared hover across background/foreground parts (and collapse remounts). */
+  hovered?: boolean;
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 interface ResizeDragStart {
@@ -69,10 +85,14 @@ interface ResizeDragStart {
 }
 
 interface MoveDragStart {
-  pointer: { x: number; y: number };
+  /** Pointer position at drag start (world). Total delta is measured from this. */
   origin: { x: number; y: number };
   characterIds: string[];
   floatingTextIds: string[];
+  initialBox: BoxType;
+  initialCharacterPositions: Record<string, { x: number; y: number }>;
+  initialFloatingTextPositions: Record<string, { x: number; y: number }>;
+  multiSnapshot: MultiDragSnapshot | null;
 }
 
 const RESIZE_EDGES: BoxResizeEdge[] = [
@@ -86,6 +106,9 @@ const RESIZE_EDGES: BoxResizeEdge[] = [
   "sw",
 ];
 
+/** Fill opacity for the collapsed box body (over the diagram background). */
+const COLLAPSED_BOX_FILL_ALPHA = 0.15;
+
 function getResizeHandleLayout(
   bounds: Bounds,
   edge: BoxResizeEdge,
@@ -98,7 +121,7 @@ function getResizeHandleLayout(
     case "n":
       return {
         x,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width,
         height: handleSize,
       };
@@ -111,14 +134,14 @@ function getResizeHandleLayout(
     case "ne":
       return {
         x: x + width - half,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width: handleSize,
         height: handleSize,
       };
     case "nw":
       return {
         x: x - half,
-        y: y + BOX_HEADER_HEIGHT - half,
+        y: y - half,
         width: handleSize,
         height: handleSize,
       };
@@ -155,8 +178,13 @@ export function BoxContainer({
   onDragEnd,
   onConnectHandleDown,
   part = "full",
+  hovered: hoveredProp,
+  onHoverChange,
 }: BoxContainerProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
+  const diagramBackgroundColor = useDiagramStore(
+    (s) => s.diagramBackgroundColor,
+  );
   const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const setSelection = useDiagramStore((s) => s.setSelection);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
@@ -171,7 +199,12 @@ export function BoxContainer({
   const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
   const clickGuard = useClickWithoutDrag();
   const gestureClearedSelectionRef = useRef(false);
-  const [hovered, setHovered] = useState(false);
+  const [localHovered, setLocalHovered] = useState(false);
+  const hovered = hoveredProp ?? localHovered;
+  const setHovered = (value: boolean) => {
+    if (onHoverChange) onHoverChange(value);
+    else setLocalHovered(value);
+  };
   const [resizing, setResizing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -197,6 +230,12 @@ export function BoxContainer({
     characters,
     diagramFontFamily,
   ).length;
+
+  const handleToggleCollapse = () => {
+    // Keep hover through the expanded↔collapsed remount so the chevron stays.
+    setHovered(true);
+    onToggleCollapse();
+  };
 
   useEffect(() => {
     if (!resizing) return;
@@ -282,20 +321,37 @@ export function BoxContainer({
         moveHistoryCapturedRef.current = true;
         captureHistory();
       }
-      const delta = {
-        dx: pointer.x - dragStart.pointer.x,
-        dy: pointer.y - dragStart.pointer.y,
+      const totalDelta = {
+        dx: pointer.x - dragStart.origin.x,
+        dy: pointer.y - dragStart.origin.y,
       };
       const selection = useDiagramStore.getState().selection;
       if (isIdInMultiSelection(selection, "box", box.id)) {
-        moveMultiSelectionByDelta(delta, { recordHistory: false });
+        if (dragStart.multiSnapshot) {
+          moveMultiSelectionByDelta(totalDelta, {
+            recordHistory: false,
+            initialSnapshot: dragStart.multiSnapshot,
+            totalDelta,
+          });
+        } else {
+          moveMultiSelectionByDelta(totalDelta, { recordHistory: false });
+        }
       } else {
-        onMoveByDeltaRef.current(delta, {
-          characterIds: dragStart.characterIds,
-          floatingTextIds: dragStart.floatingTextIds,
-        });
+        onMoveByDeltaRef.current(
+          totalDelta,
+          {
+            characterIds: dragStart.characterIds,
+            floatingTextIds: dragStart.floatingTextIds,
+          },
+          {
+            initialBox: dragStart.initialBox,
+            initialCharacterPositions: dragStart.initialCharacterPositions,
+            initialFloatingTextPositions:
+              dragStart.initialFloatingTextPositions,
+            totalDelta,
+          },
+        );
       }
-      dragStart.pointer = pointer;
     };
 
     const onUp = () => {
@@ -353,19 +409,75 @@ export function BoxContainer({
     const world = screenToWorld(pointer);
     gestureClearedSelectionRef.current = false;
     moveHistoryCapturedRef.current = false;
+
+    const characterIds = getCharactersContainedInBox(
+      box,
+      characters,
+      diagramFontFamily,
+    ).map((c) => c.id);
+    const floatingTextIds = getFloatingTextsContainedInBox(
+      box,
+      floatingTexts,
+      diagramFontFamily,
+    ).map((t) => t.id);
+
+    const initialCharacterPositions: Record<string, { x: number; y: number }> =
+      {};
+    for (const c of characters) {
+      if (characterIds.includes(c.id)) {
+        initialCharacterPositions[c.id] = { ...c.position };
+      }
+    }
+    const initialFloatingTextPositions: Record<
+      string,
+      { x: number; y: number }
+    > = {};
+    for (const t of floatingTexts) {
+      if (floatingTextIds.includes(t.id)) {
+        initialFloatingTextPositions[t.id] = { ...t.position };
+      }
+    }
+
+    const state = useDiagramStore.getState();
+    const multiSnapshot = isIdInMultiSelection(state.selection, "box", box.id)
+      ? captureMultiDragSnapshot(
+          state.selection,
+          state.characters,
+          state.boxes,
+          state.floatingTexts,
+          state.diagramFontFamily,
+          (b) => ({
+            characterIds: getCharactersContainedInBox(
+              b,
+              state.characters,
+              state.diagramFontFamily,
+            ).map((c) => c.id),
+            floatingTextIds: getFloatingTextsContainedInBox(
+              b,
+              state.floatingTexts,
+              state.diagramFontFamily,
+            ).map((t) => t.id),
+          }),
+        )
+      : null;
+
     moveStartRef.current = {
-      pointer: world,
       origin: world,
-      characterIds: getCharactersContainedInBox(
-        box,
-        characters,
-        diagramFontFamily,
-      ).map((c) => c.id),
-      floatingTextIds: getFloatingTextsContainedInBox(
-        box,
-        floatingTexts,
-        diagramFontFamily,
-      ).map((t) => t.id),
+      characterIds,
+      floatingTextIds,
+      initialBox: {
+        ...box,
+        bounds: box.bounds ? { ...box.bounds } : undefined,
+        anchorPosition: box.anchorPosition
+          ? { ...box.anchorPosition }
+          : undefined,
+        collapsedPosition: box.collapsedPosition
+          ? { ...box.collapsedPosition }
+          : undefined,
+      },
+      initialCharacterPositions,
+      initialFloatingTextPositions,
+      multiSnapshot,
     };
     document.body.style.cursor = "grabbing";
     setDragging(true);
@@ -395,6 +507,12 @@ export function BoxContainer({
     const size = COLLAPSED_BOX_SIZE;
     const connectHandlePos = getCollapsedBoxConnectHandlePosition(size);
     const collapseControlPos = getCollapsedBoxCollapseControlPosition(size);
+    const countSurface = blendRgbOver(
+      box.borderColor,
+      COLLAPSED_BOX_FILL_ALPHA,
+      diagramBackgroundColor ?? DEFAULT_DIAGRAM_BACKGROUND,
+    );
+    const countFill = rgbToCss(contrastingInk(countSurface));
 
     return (
       <Group
@@ -437,7 +555,7 @@ export function BoxContainer({
           height={size * 2}
           stroke={color}
           strokeWidth={3}
-          fill={rgbaWithAlpha(box.borderColor, 0.15)}
+          fill={rgbaWithAlpha(box.borderColor, COLLAPSED_BOX_FILL_ALPHA)}
           cornerRadius={4}
         />
         <PillLabel
@@ -453,7 +571,7 @@ export function BoxContainer({
           text={`${containedCount}`}
           fontFamily={formatFontForCanvas(diagramFontFamily)}
           fontSize={22}
-          fill="#555"
+          fill={countFill}
           align="center"
           width={size * 2}
           offsetX={size}
@@ -466,7 +584,7 @@ export function BoxContainer({
             y={collapseControlPos.y}
             collapsed
             viewportScale={viewportScale}
-            onToggle={onToggleCollapse}
+            onToggle={handleToggleCollapse}
           />
         )}
         {showConnectHandle && (
@@ -530,34 +648,19 @@ export function BoxContainer({
           strokeWidth={2}
           fill={rgbaWithAlpha(box.borderColor, 0.08)}
           cornerRadius={12}
-          listening={false}
+          onMouseEnter={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "grab";
+            }
+          }}
+          onMouseLeave={() => {
+            if (!resizing && !dragging) {
+              document.body.style.cursor = "";
+            }
+          }}
+          onMouseDown={beginMove}
         />
       )}
-      {showForeground &&
-        RESIZE_EDGES.map((edge) => {
-          const layout = getResizeHandleLayout(bounds, edge, handleSize);
-          return (
-            <Rect
-              key={edge}
-              x={layout.x}
-              y={layout.y}
-              width={layout.width}
-              height={layout.height}
-              fill="transparent"
-              onMouseEnter={() => {
-                if (!resizing && !dragging) {
-                  document.body.style.cursor = cursorForBoxResizeEdge(edge);
-                }
-              }}
-              onMouseLeave={() => {
-                if (!resizing && !dragging) {
-                  document.body.style.cursor = "";
-                }
-              }}
-              onMouseDown={(e) => beginResize(e, edge, bounds)}
-            />
-          );
-        })}
       {showForeground && (
         <Rect
           x={bounds.x}
@@ -593,13 +696,38 @@ export function BoxContainer({
           selected={selected}
         />
       )}
+      {showForeground &&
+        RESIZE_EDGES.map((edge) => {
+          const layout = getResizeHandleLayout(bounds, edge, handleSize);
+          return (
+            <Rect
+              key={edge}
+              x={layout.x}
+              y={layout.y}
+              width={layout.width}
+              height={layout.height}
+              fill="transparent"
+              onMouseEnter={() => {
+                if (!resizing && !dragging) {
+                  document.body.style.cursor = cursorForBoxResizeEdge(edge);
+                }
+              }}
+              onMouseLeave={() => {
+                if (!resizing && !dragging) {
+                  document.body.style.cursor = "";
+                }
+              }}
+              onMouseDown={(e) => beginResize(e, edge, bounds)}
+            />
+          );
+        })}
       {showForeground && showCollapseControl && (
         <BoxCollapseControl
           x={collapseControlPos.x}
           y={collapseControlPos.y}
           collapsed={false}
           viewportScale={viewportScale}
-          onToggle={onToggleCollapse}
+          onToggle={handleToggleCollapse}
         />
       )}
       {showForeground && showConnectHandle && (

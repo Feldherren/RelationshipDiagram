@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DiagramAppearance } from "../../models/types";
+import { useDiagramStore } from "../../store/diagramStore";
 import {
   getAppPreferences,
   setAppPreferences,
@@ -23,6 +24,8 @@ import {
   type DiagramThemeDocument,
   type DiagramThemePreference,
 } from "../../utils/diagramAppearance";
+import { countRemappableElements } from "../../utils/remapDiagramThemeColors";
+import { ApplyDiagramThemeDialog } from "./ApplyDiagramThemeDialog";
 
 function resolveThemeName(
   preference: DiagramThemePreference,
@@ -42,8 +45,17 @@ export interface DiagramThemeLibraryControlsProps {
   prefs?: AppPreferences;
   onPrefsChange?: (prefs: AppPreferences) => void;
   /** When set, shows Apply and confirms before writing to the open diagram. */
-  onApplyAppearance?: (appearance: DiagramAppearance) => void;
+  onApplyAppearance?: (
+    appearance: DiagramAppearance,
+    options?: { remapDefaultColors?: boolean },
+  ) => void;
   hintKey?: string;
+}
+
+interface PendingThemeApply {
+  appearance: DiagramAppearance;
+  themeName: string;
+  remappableCount: number;
 }
 
 export function DiagramThemeLibraryControls({
@@ -74,6 +86,13 @@ export function DiagramThemeLibraryControls({
   const [createBase, setCreateBase] =
     useState<DiagramThemePreference>("default");
   const [status, setStatus] = useState<string | null>(null);
+  const [pendingThemeApply, setPendingThemeApply] =
+    useState<PendingThemeApply | null>(null);
+  const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
+  const characters = useDiagramStore((s) => s.characters);
+  const lines = useDiagramStore((s) => s.lines);
+  const boxes = useDiagramStore((s) => s.boxes);
+  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
 
   useEffect(() => {
     const prefs = readPrefs();
@@ -189,9 +208,32 @@ export function DiagramThemeLibraryControls({
 
   const handleApplyToDiagram = () => {
     if (!onApplyAppearance) return;
-    if (!window.confirm(t("appSettings.diagramThemeApplyConfirm"))) return;
-    onApplyAppearance(cloneDiagramAppearance(appearance));
+    const prefs = readPrefs();
+    const remappableCount = countRemappableElements(
+      { characters, lines, boxes, floatingTexts },
+      diagramAppearance,
+    );
+    setPendingThemeApply({
+      appearance: cloneDiagramAppearance(appearance),
+      themeName: resolveThemeName(
+        prefs.diagramThemePreference,
+        prefs.customDiagramThemes,
+        builtInLabel,
+        defaultName,
+      ),
+      remappableCount,
+    });
+  };
+
+  const handleApplyThemeConfirm = (remapDefaultColors: boolean) => {
+    if (!onApplyAppearance || !pendingThemeApply) return;
+    onApplyAppearance(pendingThemeApply.appearance, { remapDefaultColors });
+    setPendingThemeApply(null);
     setStatus(t("diagramAppearance.themeAppliedFeedback"));
+  };
+
+  const handleApplyThemeCancel = () => {
+    setPendingThemeApply(null);
   };
 
   const handleExport = () => {
@@ -337,8 +379,9 @@ export function DiagramThemeLibraryControls({
   );
 
   return (
-    <div className="diagram-theme-library">
-      <p className="hint">{t(hintKey)}</p>
+    <>
+      <div className="diagram-theme-library">
+        <p className="hint">{t(hintKey)}</p>
 
       {prefs.customDiagramThemes.length > 0 && (
         <ul className="custom-theme-list">
@@ -492,6 +535,15 @@ export function DiagramThemeLibraryControls({
       </div>
 
       {status && <p className="hint diagram-theme-status">{status}</p>}
-    </div>
+      </div>
+
+      <ApplyDiagramThemeDialog
+        open={pendingThemeApply !== null}
+        themeName={pendingThemeApply?.themeName ?? ""}
+        remappableCount={pendingThemeApply?.remappableCount ?? 0}
+        onCancel={handleApplyThemeCancel}
+        onConfirm={handleApplyThemeConfirm}
+      />
+    </>
   );
 }

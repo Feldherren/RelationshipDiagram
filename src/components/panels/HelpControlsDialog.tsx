@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { getAppPreferences } from "../../utils/appPreferences";
 
 interface HelpControlsDialogProps {
   open: boolean;
@@ -34,6 +35,11 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
 
   if (!open) return null;
 
+  const swapBookmarkClicks =
+    getAppPreferences().swapBookmarkClickBehaviour;
+  const bookmarkGoDetail = t("help.bookmarkDetail");
+  const bookmarkCentreDetail = t("help.bookmarkCentreDetail");
+
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div
@@ -62,8 +68,28 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
               detail: t("help.zoomDetail"),
             },
             {
+              keys: t("help.zoomPresetKeys"),
+              detail: t("help.zoomPresetDetail"),
+            },
+            {
               keys: t("help.fitKeys"),
               detail: t("help.fitDetail"),
+            },
+            {
+              keys: t("help.bookmarkKeys"),
+              detail: swapBookmarkClicks
+                ? bookmarkCentreDetail
+                : bookmarkGoDetail,
+            },
+            {
+              keys: t("help.bookmarkCentreKeys"),
+              detail: swapBookmarkClicks
+                ? bookmarkGoDetail
+                : bookmarkCentreDetail,
+            },
+            {
+              keys: t("help.findKeys"),
+              detail: t("help.findDetail"),
             },
           ]}
         />
@@ -120,6 +146,10 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
             {
               keys: t("help.deleteKeys"),
               detail: t("help.deleteDetail"),
+            },
+            {
+              keys: t("help.editTextKeys"),
+              detail: t("help.editTextDetail"),
             },
             {
               keys: t("help.propertiesKeys"),

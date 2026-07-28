@@ -2,7 +2,11 @@ import { Group, Rect, RegularPolygon, Circle, Text } from "react-konva";
 import { useRef, useState } from "react";
 import type Konva from "konva";
 import type { Character } from "../../models/types";
-import { CHARACTER_BORDER_STROKE_WIDTH, rgbToCss } from "../../models/types";
+import {
+  CHARACTER_BORDER_CORNER_RADIUS,
+  CHARACTER_BORDER_STROKE_WIDTH,
+  rgbToCss,
+} from "../../models/types";
 import { getCharacterInitials } from "../../store/diagramStore";
 import { CharacterImage } from "./CharacterImage";
 import {
@@ -28,7 +32,17 @@ import {
   MembershipChips,
   type MembershipChipItem,
 } from "./MembershipChips";
+import { CharacterLinkChip } from "./CharacterLinkChip";
 import { isIdInMultiSelection } from "../../utils/selectionMulti";
+import {
+  captureMultiDragSnapshot,
+  snapPointToGrid,
+  type MultiDragSnapshot,
+} from "../../utils/snapToGrid";
+import {
+  getCharactersContainedInBox,
+  getFloatingTextsContainedInBox,
+} from "../../utils/geometry";
 
 interface CharacterNodeProps {
   character: Character;
@@ -72,7 +86,7 @@ function ShapeOutline({
           y={-size}
           width={size * 2}
           height={size * 2}
-          cornerRadius={4}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );
@@ -83,6 +97,7 @@ function ShapeOutline({
           y={0}
           sides={5}
           radius={size}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );
@@ -93,6 +108,7 @@ function ShapeOutline({
           y={0}
           sides={6}
           radius={size}
+          cornerRadius={CHARACTER_BORDER_CORNER_RADIUS}
           {...props}
         />
       );
@@ -120,13 +136,21 @@ export function CharacterNode({
   const [hovered, setHovered] = useState(false);
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
-  const multiDragLastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const multiDragOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const multiDragSnapshotRef = useRef<MultiDragSnapshot | null>(null);
+  /**
+   * While dragging, drive Group x/y from this local position so React props
+   * never fight Konva's drag tracker (which caused snap points to be skipped).
+   */
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const selection = useDiagramStore((s) => s.selection);
   const selectionPulseEnabled = useDiagramStore((s) => s.selectionPulseEnabled);
+  const snapToGridEnabled = useDiagramStore((s) => s.snapToGridEnabled);
   const captureHistory = useDiagramStore((s) => s.captureHistory);
   const moveMultiSelectionByDelta = useDiagramStore(
     (s) => s.moveMultiSelectionByDelta,
   );
+  const inMulti = isIdInMultiSelection(selection, "character", character.id);
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
@@ -173,8 +197,8 @@ export function CharacterNode({
 
   return (
     <Group
-      x={character.position.x}
-      y={character.position.y}
+      x={dragPos?.x ?? character.position.x}
+      y={dragPos?.y ?? character.position.y}
       opacity={dimmed ? 0.28 : 1}
       draggable={draggable}
       onMouseDown={(e) => {
@@ -203,30 +227,78 @@ export function CharacterNode({
         // Dragging is layout, not inspect — keep selection, close the float.
         captureHistory();
         useDiagramStore.setState({ selectionDetailsOpen: false });
-        multiDragLastPosRef.current = {
+        const start = {
           x: character.position.x,
           y: character.position.y,
         };
+        multiDragOriginRef.current = start;
+        setDragPos(start);
+        if (inMulti) {
+          const state = useDiagramStore.getState();
+          multiDragSnapshotRef.current = captureMultiDragSnapshot(
+            state.selection,
+            state.characters,
+            state.boxes,
+            state.floatingTexts,
+            state.diagramFontFamily,
+            (b) => ({
+              characterIds: getCharactersContainedInBox(
+                b,
+                state.characters,
+                state.diagramFontFamily,
+              ).map((c) => c.id),
+              floatingTextIds: getFloatingTextsContainedInBox(
+                b,
+                state.floatingTexts,
+                state.diagramFontFamily,
+              ).map((t) => t.id),
+            }),
+          );
+        } else {
+          multiDragSnapshotRef.current = null;
+        }
       }}
       onDragMove={(e) => {
-        const pos = { x: e.target.x(), y: e.target.y() };
-        if (isIdInMultiSelection(selection, "character", character.id)) {
-          const last = multiDragLastPosRef.current ?? pos;
-          const dx = pos.x - last.x;
-          const dy = pos.y - last.y;
-          multiDragLastPosRef.current = pos;
-          if (dx !== 0 || dy !== 0) {
-            moveMultiSelectionByDelta({ dx, dy }, { recordHistory: false });
+        let pos = { x: e.target.x(), y: e.target.y() };
+        if (inMulti) {
+          const origin = multiDragOriginRef.current ?? pos;
+          const totalDelta = {
+            dx: pos.x - origin.x,
+            dy: pos.y - origin.y,
+          };
+          const snapshot = multiDragSnapshotRef.current;
+          if (snapshot) {
+            moveMultiSelectionByDelta(totalDelta, {
+              recordHistory: false,
+              initialSnapshot: snapshot,
+              totalDelta,
+            });
+          } else if (totalDelta.dx !== 0 || totalDelta.dy !== 0) {
+            moveMultiSelectionByDelta(totalDelta, { recordHistory: false });
           }
+          setDragPos(pos);
           return;
         }
+        if (snapToGridEnabled) {
+          pos = snapPointToGrid(pos);
+          e.target.position(pos);
+        }
+        setDragPos((prev) =>
+          prev && prev.x === pos.x && prev.y === pos.y ? prev : pos,
+        );
         onDragMove(pos);
       }}
       onDragEnd={(e) => {
-        const pos = { x: e.target.x(), y: e.target.y() };
-        multiDragLastPosRef.current = null;
-        if (isIdInMultiSelection(selection, "character", character.id)) {
+        let pos = { x: e.target.x(), y: e.target.y() };
+        multiDragOriginRef.current = null;
+        multiDragSnapshotRef.current = null;
+        setDragPos(null);
+        if (inMulti) {
           return;
+        }
+        if (snapToGridEnabled) {
+          pos = snapPointToGrid(pos);
+          e.target.position(pos);
         }
         onDragEnd(pos);
       }}
@@ -289,6 +361,14 @@ export function CharacterNode({
         characterY={character.position.y}
         highlightedGroupId={highlightedGroupId}
         onChipClick={onSelectGroup}
+      />
+      <CharacterLinkChip
+        characterId={character.id}
+        link={character.link}
+        characterSize={size}
+        borderShape={character.borderShape}
+        characterX={character.position.x}
+        characterY={character.position.y}
       />
       {character.name && (
         <PillLabel

@@ -48,6 +48,11 @@ export type ExportBoundsMode = "auto" | "custom";
 export interface AppPreferences {
   autosaveEnabled: boolean;
   confirmBeforeNewDiagram: boolean;
+  /**
+   * When true, hovering a character link chip shows the full URI.
+   * Independent of the per-diagram open confirmation.
+   */
+  showExternalLinkChipTooltip: boolean;
   defaultBackgroundMode: DiagramBackgroundMode;
   defaultShowHeader: boolean;
   defaultBackgroundColor: RGB | null;
@@ -69,6 +74,11 @@ export interface AppPreferences {
   /** Whether bookmark flags are shown on the canvas. */
   bookmarksVisible: boolean;
   /**
+   * When true, plain click centres on a bookmark without changing zoom and
+   * Ctrl/Cmd+click restores pan+zoom. When false (default), the reverse.
+   */
+  swapBookmarkClickBehaviour: boolean;
+  /**
    * Group hub canvas eye: all hubs+corridors, connected badges only, or none.
    * Legacy prefs may still store `groupsVisible` boolean (migrated on load).
    */
@@ -80,11 +90,17 @@ export interface AppPreferences {
    * background. When false (default), label text matches the line colour.
    */
   lineLabelContrastWithBackground: boolean;
+  /**
+   * When true, characters/boxes/text snap to grid intersections while
+   * dragging or being placed. Independent of grid background visibility.
+   */
+  snapToGridEnabled: boolean;
 }
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autosaveEnabled: true,
   confirmBeforeNewDiagram: true,
+  showExternalLinkChipTooltip: true,
   defaultBackgroundMode: "grid",
   defaultShowHeader: true,
   defaultBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
@@ -101,9 +117,11 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiScale: 1,
   customThemes: [],
   bookmarksVisible: true,
+  swapBookmarkClickBehaviour: false,
   groupsCanvasMode: "full",
   selectionPulseEnabled: true,
   lineLabelContrastWithBackground: false,
+  snapToGridEnabled: false,
 };
 
 function isBackgroundMode(value: unknown): value is DiagramBackgroundMode {
@@ -288,6 +306,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.confirmBeforeNewDiagram === "boolean"
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
+    showExternalLinkChipTooltip:
+      typeof stored.showExternalLinkChipTooltip === "boolean"
+        ? stored.showExternalLinkChipTooltip
+        : defaults.showExternalLinkChipTooltip,
     defaultBackgroundMode: diagramAppearance.backgroundMode,
     defaultShowHeader: diagramAppearance.showHeader,
     defaultBackgroundColor: diagramAppearance.backgroundColor,
@@ -319,6 +341,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.bookmarksVisible === "boolean"
         ? stored.bookmarksVisible
         : defaults.bookmarksVisible,
+    swapBookmarkClickBehaviour:
+      typeof stored.swapBookmarkClickBehaviour === "boolean"
+        ? stored.swapBookmarkClickBehaviour
+        : defaults.swapBookmarkClickBehaviour,
     groupsCanvasMode: parseGroupsCanvasMode(
       stored.groupsCanvasMode,
       stored.groupsVisible,
@@ -331,6 +357,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.lineLabelContrastWithBackground === "boolean"
         ? stored.lineLabelContrastWithBackground
         : defaults.lineLabelContrastWithBackground,
+    snapToGridEnabled:
+      typeof stored.snapToGridEnabled === "boolean"
+        ? stored.snapToGridEnabled
+        : defaults.snapToGridEnabled,
   };
 }
 

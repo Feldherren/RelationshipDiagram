@@ -49,9 +49,28 @@ This project includes a [Tauri](https://v2.tauri.app/) shell for running as a na
 
 #### Prerequisites
 
-1. [Node.js](https://nodejs.org/) (for the frontend)
-2. [Rust](https://www.rust-lang.org/tools/install) (`rustup` is recommended)
-3. **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled on Windows 10/11)
+All platforms need:
+
+1. [Node.js](https://nodejs.org/) (LTS recommended) for the frontend
+2. [Rust](https://www.rust-lang.org/tools/install) via `rustup`
+
+Plus the platform-specific tools below. See also [Tauri’s prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+##### Windows
+
+1. [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) — during install, select **Desktop development with C++**
+2. [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) — usually preinstalled on Windows 10/11; otherwise install the Evergreen Bootstrapper
+3. Optional: if building an MSI fails with `light.exe` errors, enable the **VBSCRIPT** optional Windows feature (Settings → Apps → Optional features → More Windows features)
+
+##### macOS
+
+For desktop builds only, [Xcode Command Line Tools](https://developer.apple.com/xcode/) are enough:
+
+```bash
+xcode-select --install
+```
+
+Full [Xcode](https://developer.apple.com/xcode/) from the Mac App Store is only required if you later target iOS. After installing either, open Xcode once so it can finish setup. You must build on a Mac (or a macOS CI runner); Windows and Linux cannot produce macOS installers.
 
 #### Run in development
 
@@ -144,17 +163,21 @@ Bookmark Filled: https://www.svgrepo.com/svg/472457/bookmark-filled (jtblabs, [M
 
 Droplet: https://www.svgrepo.com/svg/349008/droplet (Open Iconic, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
+External Link: https://www.svgrepo.com/svg/506476/external-link (primefaces, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
+
 Eye: https://www.svgrepo.com/svg/528962/eye (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
 Eye Closed: https://www.svgrepo.com/svg/528958/eye-closed (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
 Flame Symbol: https://www.svgrepo.com/svg/499167/flame-symbol (nagoshiashumari, [GPL License](https://www.svgrepo.com/page/licensing/#GPL))
 
+Glitter 2: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+
 Music Note: https://www.svgrepo.com/svg/526059/music-note (Solar Icons, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 
 Skull: https://www.svgrepo.com/svg/510199/skull (zest, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
-Glitter 2: https://www.svgrepo.com/svg/477652/glitter-2 (Icooon Mono, [Public Domain](https://www.svgrepo.com/page/licensing/#PD))
+Snap To Grid: https://www.svgrepo.com/svg/451326/snap-to-grid (Esri, [MIT License](https://www.svgrepo.com/page/licensing/#MIT))
 
 Stone Block: https://www.svgrepo.com/svg/321503/stone-block (game-icons.net, [CC Attribution License](https://www.svgrepo.com/page/licensing/#CC%20Attribution))
 

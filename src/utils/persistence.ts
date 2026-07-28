@@ -16,12 +16,24 @@ import type {
   RGB,
 } from "../models/types";
 import {
+  clampCharacterSize,
+  DEFAULT_CHARACTER_SIZE,
   DEFAULT_FLOATING_TEXT_COLOR,
   DEFAULT_FLOATING_TEXT_FONT_SIZE,
+  FLOATING_TEXT_ALIGNS,
   MAX_FLOATING_TEXT_FONT_SIZE,
   MIN_FLOATING_TEXT_FONT_SIZE,
+  MIN_FLOATING_TEXT_HEIGHT,
+  MIN_FLOATING_TEXT_WIDTH,
   normalizeMembershipAppearance,
+  type Character,
+  type FloatingTextAlign,
 } from "../models/types";
+import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import {
+  isCharacterGeometricallyInBox,
+  isFloatingTextGeometricallyInBox,
+} from "./geometry";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -126,6 +138,26 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
   });
 }
 
+function normalizeFloatingTextAlign(
+  value: unknown,
+): FloatingTextAlign | undefined {
+  if (
+    typeof value === "string" &&
+    (FLOATING_TEXT_ALIGNS as string[]).includes(value)
+  ) {
+    return value as FloatingTextAlign;
+  }
+  return undefined;
+}
+
+function normalizeFloatingTextDimension(
+  value: unknown,
+  min: number,
+): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(min, Math.round(value));
+}
+
 function normalizeFloatingTexts(
   texts: Diagram["floatingTexts"],
 ): FloatingText[] {
@@ -141,6 +173,15 @@ function normalizeFloatingTexts(
             Math.max(MIN_FLOATING_TEXT_FONT_SIZE, Math.round(partial.fontSize)),
           )
         : DEFAULT_FLOATING_TEXT_FONT_SIZE;
+    const textAlign = normalizeFloatingTextAlign(partial.textAlign);
+    const width = normalizeFloatingTextDimension(
+      partial.width,
+      MIN_FLOATING_TEXT_WIDTH,
+    );
+    const height = normalizeFloatingTextDimension(
+      partial.height,
+      MIN_FLOATING_TEXT_HEIGHT,
+    );
     return {
       id: partial.id,
       position: { x: partial.position.x, y: partial.position.y },
@@ -149,18 +190,54 @@ function normalizeFloatingTexts(
         ? { ...partial.color }
         : { ...DEFAULT_FLOATING_TEXT_COLOR },
       fontSize,
+      ...(textAlign ? { textAlign } : {}),
+      ...(width != null ? { width } : {}),
+      ...(height != null ? { height } : {}),
     };
   });
 }
 
-/** Normalize any supported diagram payload to the current schema (v3). */
+function normalizeCharacters(
+  characters: Diagram["characters"],
+): Character[] {
+  return (characters ?? []).map((c) => {
+    const link =
+      typeof c.link === "string" && c.link.trim().length > 0
+        ? c.link.trim()
+        : undefined;
+    return {
+      ...c,
+      size:
+        typeof c.size === "number" && Number.isFinite(c.size)
+          ? clampCharacterSize(c.size)
+          : DEFAULT_CHARACTER_SIZE,
+      link,
+    };
+  });
+}
+
+function normalizeDiagramId(id: unknown): string {
+  if (typeof id === "string" && id.trim().length > 0) {
+    return id.trim();
+  }
+  return uuidv4();
+}
+
 function normalizeDiagram(
-  data: Omit<Diagram, "schemaVersion"> & { schemaVersion?: number },
+  data: Omit<Diagram, "schemaVersion" | "id"> & {
+    schemaVersion?: number;
+    id?: string;
+  },
 ): Diagram {
+  const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const characters = normalizeCharacters(data.characters);
+  const floatingTexts = normalizeFloatingTexts(data.floatingTexts);
+
   return {
     ...data,
     schemaVersion: 3,
-    characters: data.characters,
+    id: normalizeDiagramId(data.id),
+    characters,
     lines: normalizeLines(data.lines ?? []),
     groups: (data.groups ?? []).map((g) => ({
       id: g.id,
@@ -176,16 +253,35 @@ function normalizeDiagram(
         ? { hubPosition: { x: g.hubPosition.x, y: g.hubPosition.y } }
         : {}),
     })),
-    boxes: (data.boxes ?? []).map((b) => ({
-      id: b.id,
-      name: b.name,
-      borderColor: b.borderColor,
-      collapsed: b.collapsed ?? false,
-      collapsedPosition: b.collapsedPosition,
-      anchorPosition: b.anchorPosition,
-      bounds: b.bounds,
-    })),
-    floatingTexts: normalizeFloatingTexts(data.floatingTexts),
+    boxes: (data.boxes ?? []).map((b) => {
+      const collapsed = b.collapsed ?? false;
+      const box: Box = {
+        id: b.id,
+        name: b.name,
+        borderColor: b.borderColor,
+        collapsed,
+        collapsedPosition: b.collapsedPosition,
+        anchorPosition: b.anchorPosition,
+        bounds: b.bounds,
+      };
+      if (!collapsed) return box;
+
+      // Prefer persisted freeze; backfill from geometry for older files.
+      box.containedCharacterIds = Array.isArray(b.containedCharacterIds)
+        ? [...b.containedCharacterIds]
+        : characters
+            .filter((c) => isCharacterGeometricallyInBox(c, box))
+            .map((c) => c.id);
+      box.containedFloatingTextIds = Array.isArray(b.containedFloatingTextIds)
+        ? [...b.containedFloatingTextIds]
+        : floatingTexts
+            .filter((t) =>
+              isFloatingTextGeometricallyInBox(t, box, fontFamily),
+            )
+            .map((t) => t.id);
+      return box;
+    }),
+    floatingTexts,
     showGrid: data.showGrid ?? true,
     gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
     appearance: data.appearance,

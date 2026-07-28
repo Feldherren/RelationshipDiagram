@@ -3,7 +3,6 @@ import type {
   BorderShape,
   Group as MembershipGroup,
   MembershipAppearance,
-  Point,
 } from "../../models/types";
 import {
   MEMBERSHIP_CHIP_MAX_VISIBLE,
@@ -11,6 +10,7 @@ import {
   rgbToCss,
 } from "../../models/types";
 import { formatFontForCanvas } from "../../utils/diagramFont";
+import { membershipChipPositionOnBorder } from "../../utils/borderChipPosition";
 import { useDiagramStore } from "../../store/diagramStore";
 import {
   getMembershipChipTooltip,
@@ -33,40 +33,6 @@ interface MembershipChipsProps {
   characterY: number;
   highlightedGroupId?: string | null;
   onChipClick?: (groupId: string) => void;
-}
-
-function chipPositionOnBorder(
-  index: number,
-  size: number,
-  shape: BorderShape,
-): Point {
-  // First chip at upper-left; each next chip is one step counter-clockwise.
-  // Konva y is down, so visual CCW decreases angle.
-  const startAngle = (-3 * Math.PI) / 4;
-  const spacing =
-    MEMBERSHIP_CHIP_RADIUS * 2 + Math.max(2, MEMBERSHIP_CHIP_RADIUS * 0.25);
-  const angleStep = spacing / Math.max(size, 1);
-  const angle = startAngle - index * angleStep;
-
-  let radius = size;
-  if (shape === "square") {
-    const c = Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
-    radius = size / (c || 1);
-  } else if (shape === "pentagon" || shape === "hexagon") {
-    const sides = shape === "pentagon" ? 5 : 6;
-    const step = (2 * Math.PI) / sides;
-    const start = -Math.PI / 2;
-    let rel = angle - start;
-    rel = ((rel % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-    const sectorMid = start + Math.floor(rel / step) * step + step / 2;
-    const alpha = angle - sectorMid;
-    radius = (size * Math.cos(Math.PI / sides)) / Math.cos(alpha);
-  }
-
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-  };
 }
 
 /** Matches relationship-line stroke; reads closer to character borders on small chips. */
@@ -184,7 +150,11 @@ export function MembershipChips({
   return (
     <Group listening>
       {visible.map((group, index) => {
-        const pos = chipPositionOnBorder(index, characterSize, borderShape);
+        const pos = membershipChipPositionOnBorder(
+          index,
+          characterSize,
+          borderShape,
+        );
         return (
           <MembershipChipHitTarget
             key={group.id}
@@ -201,10 +171,18 @@ export function MembershipChips({
       {overflow > 0 && (
         <Group
           x={
-            chipPositionOnBorder(visible.length, characterSize, borderShape).x
+            membershipChipPositionOnBorder(
+              visible.length,
+              characterSize,
+              borderShape,
+            ).x
           }
           y={
-            chipPositionOnBorder(visible.length, characterSize, borderShape).y
+            membershipChipPositionOnBorder(
+              visible.length,
+              characterSize,
+              borderShape,
+            ).y
           }
           listening={false}
         >

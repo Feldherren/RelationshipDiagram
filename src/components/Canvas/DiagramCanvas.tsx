@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { CharacterNode } from "./CharacterNode";
 import { FloatingTextNode } from "./FloatingTextNode";
+import { FloatingTextEditor } from "./FloatingTextEditor";
 import { LineEdge } from "./LineEdge";
 import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
@@ -119,6 +120,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     boxes,
     floatingTexts,
     selection,
+    editingFloatingTextId,
     toolMode,
     connectFrom,
     connectDrag,
@@ -128,6 +130,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     diagramBackgroundColor,
     diagramAppearance,
     diagramFontFamily,
+    diagramId,
     stageSize,
     setStageSize,
     setSelection,
@@ -143,6 +146,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     updateConnectDrag,
     endConnectDrag,
     updateLine,
+    beginEditingFloatingText,
   } = useDiagramStore(
     useShallow((s) => ({
       characters: s.characters,
@@ -151,6 +155,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       boxes: s.boxes,
       floatingTexts: s.floatingTexts,
       selection: s.selection,
+      editingFloatingTextId: s.editingFloatingTextId,
       toolMode: s.toolMode,
       connectFrom: s.connectFrom,
       connectDrag: s.connectDrag,
@@ -160,6 +165,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       diagramBackgroundColor: s.diagramBackgroundColor,
       diagramAppearance: s.diagramAppearance,
       diagramFontFamily: s.diagramFontFamily,
+      diagramId: s.diagramId,
       stageSize: s.stageSize,
       setStageSize: s.setStageSize,
       setSelection: s.setSelection,
@@ -175,6 +181,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       updateConnectDrag: s.updateConnectDrag,
       endConnectDrag: s.endConnectDrag,
       updateLine: s.updateLine,
+      beginEditingFloatingText: s.beginEditingFloatingText,
     })),
   );
 
@@ -257,8 +264,46 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const [isDraggingBox, setIsDraggingBox] = useState(false);
   const isInteractingWithBox = isResizingBox || isDraggingBox;
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
+  const [hoveredBoxId, setHoveredBoxId] = useState<string | null>(null);
+  /** Ignore leave briefly after collapse so remount doesn't drop hover. */
+  const boxHoverStickyUntilRef = useRef(0);
+  const boxHoverClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [addObjectMenu, setAddObjectMenu] =
     useState<CanvasAddObjectMenuState | null>(null);
+
+  const setBoxHovered = useCallback((boxId: string, hovered: boolean) => {
+    if (boxHoverClearTimerRef.current != null) {
+      clearTimeout(boxHoverClearTimerRef.current);
+      boxHoverClearTimerRef.current = null;
+    }
+    if (hovered) {
+      setHoveredBoxId(boxId);
+      return;
+    }
+    if (performance.now() < boxHoverStickyUntilRef.current) {
+      return;
+    }
+    // Defer clear so moving between background/foreground parts doesn't flicker.
+    boxHoverClearTimerRef.current = setTimeout(() => {
+      boxHoverClearTimerRef.current = null;
+      setHoveredBoxId((current) => (current === boxId ? null : current));
+    }, 0);
+  }, []);
+
+  const handleToggleBoxCollapse = useCallback(
+    (boxId: string) => {
+      if (boxHoverClearTimerRef.current != null) {
+        clearTimeout(boxHoverClearTimerRef.current);
+        boxHoverClearTimerRef.current = null;
+      }
+      boxHoverStickyUntilRef.current = performance.now() + 100;
+      setHoveredBoxId(boxId);
+      toggleBoxCollapse(boxId);
+    },
+    [toggleBoxCollapse],
+  );
 
   const SAME_MENU_SPOT_PX = 8;
 
@@ -288,6 +333,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       connectFrom,
       connectDragFrom: connectDrag?.from ?? null,
       lines,
+      groups,
+      characters,
+      boxes,
+      fontFamily: diagramFontFamily,
     }),
     [
       groupsCanvasMode,
@@ -296,6 +345,10 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       connectFrom,
       connectDrag,
       lines,
+      groups,
+      characters,
+      boxes,
+      diagramFontFamily,
     ],
   );
 
@@ -306,6 +359,14 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     };
     window.addEventListener("mouseup", clearBoxInteraction);
     return () => window.removeEventListener("mouseup", clearBoxInteraction);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (boxHoverClearTimerRef.current != null) {
+        clearTimeout(boxHoverClearTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -608,6 +669,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
   const diagram = useMemo(
     () => ({
       schemaVersion: 3 as const,
+      id: diagramId,
       characters,
       lines,
       groups,
@@ -615,7 +677,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       floatingTexts,
       fontFamily: diagramFontFamily,
     }),
-    [characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
+    [diagramId, characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
   );
 
   const membershipByCharacterId = useMemo(
@@ -716,12 +778,15 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -732,6 +797,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 part="background"
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 
@@ -915,12 +982,15 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -931,6 +1001,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   kind: "box",
                 })}
                 part="foreground"
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 
@@ -953,12 +1025,15 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                     { openDetails: true },
                   )
                 }
-                onToggleCollapse={() => toggleBoxCollapse(box.id)}
+                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
                 onBoundsChange={(bounds) =>
                   updateBox(box.id, { bounds }, { recordHistory: false })
                 }
-                onMoveByDelta={(delta, contents) =>
-                  moveBox(box.id, delta, contents, { recordHistory: false })
+                onMoveByDelta={(delta, contents, snapOptions) =>
+                  moveBox(box.id, delta, contents, {
+                    recordHistory: false,
+                    ...snapOptions,
+                  })
                 }
                 onResizeStart={() => setIsResizingBox(true)}
                 onResizeEnd={() => setIsResizingBox(false)}
@@ -968,6 +1043,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   id: box.id,
                   kind: "box",
                 })}
+                hovered={hoveredBoxId === box.id}
+                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
               />
             ))}
 
@@ -990,10 +1067,12 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 "floatingText",
                 floatingText.id,
               )}
+              editing={editingFloatingTextId === floatingText.id}
               draggable={
                 toolMode !== "exportBounds" &&
                 toolMode !== "editGroupMembers" &&
-                !connectDrag
+                !connectDrag &&
+                editingFloatingTextId !== floatingText.id
               }
               onSelect={() =>
                 setSelection(
@@ -1001,12 +1080,8 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                   { openDetails: false },
                 )
               }
-              onOpenDetails={() =>
-                setSelection(
-                  { type: "floatingText", id: floatingText.id },
-                  { openDetails: true },
-                )
-              }
+              onStartEdit={() => beginEditingFloatingText(floatingText.id)}
+              onOpenDetails={() => beginEditingFloatingText(floatingText.id)}
               onDragMove={(pos) =>
                 moveFloatingText(floatingText.id, pos, {
                   recordHistory: false,
@@ -1039,6 +1114,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         menu={addObjectMenu}
         onClose={() => setAddObjectMenu(null)}
       />
+      <FloatingTextEditor />
     </div>
   );
 }

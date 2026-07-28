@@ -9,6 +9,24 @@ interface ToolbarProps {
   onDiagramProperties: () => void;
   onHelp: () => void;
   onSettings: () => void;
+  onFind: () => void;
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+      />
+    </svg>
+  );
 }
 
 function HelpIcon() {
@@ -103,6 +121,30 @@ function RedoIcon() {
   );
 }
 
+function SnapToGridIcon() {
+  // Integer 16×16 geometry keeps fills sharp at the toolbar's 16px size.
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      {/* Hash grid */}
+      <path
+        fill="currentColor"
+        d="M2 0h1v16H2V0zm4 0h1v16H6V0zM0 2h9v1H0V2zm0 4h9v1H0V6zm0 4h9v1H0v-1zm0 4h9v1H0v-1z"
+      />
+      {/* Magnet: pole tips + horseshoe arms + base */}
+      <path
+        fill="currentColor"
+        d="M10 3h1v1h-1zm3 0h1v1h-1zM9 5h2v6H9V5zm4 0h2v6h-2zM9 10h6v1.5c0 1.4-1.1 2.5-3 2.5s-3-1.1-3-2.5V10z"
+      />
+    </svg>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
@@ -111,6 +153,7 @@ export function Toolbar({
   onDiagramProperties,
   onHelp,
   onSettings,
+  onFind,
 }: ToolbarProps) {
   const { t } = useTranslation();
   const fitViewportToContent = useDiagramStore((s) => s.fitViewportToContent);
@@ -118,6 +161,8 @@ export function Toolbar({
   const redo = useDiagramStore((s) => s.redo);
   const canUndo = useDiagramStore((s) => s.undoStack.length > 0);
   const canRedo = useDiagramStore((s) => s.redoStack.length > 0);
+  const snapToGridEnabled = useDiagramStore((s) => s.snapToGridEnabled);
+  const setSnapToGridEnabled = useDiagramStore((s) => s.setSnapToGridEnabled);
 
   return (
     <header className="toolbar">
@@ -179,7 +224,37 @@ export function Toolbar({
         </button>
       </div>
 
+      <div
+        className="toolbar-group toolbar-group-separated"
+        role="group"
+        aria-label={t("toolbar.snapToGrid")}
+      >
+        <button
+          type="button"
+          className={
+            snapToGridEnabled
+              ? "toolbar-icon-button active"
+              : "toolbar-icon-button"
+          }
+          aria-pressed={snapToGridEnabled}
+          aria-label={t("toolbar.snapToGrid")}
+          title={t("toolbar.snapToGridTitle")}
+          onClick={() => setSnapToGridEnabled(!snapToGridEnabled)}
+        >
+          <SnapToGridIcon />
+        </button>
+      </div>
+
       <div className="toolbar-group toolbar-right">
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={onFind}
+          aria-label={t("toolbar.findAria")}
+          title={t("toolbar.find")}
+        >
+          <SearchIcon />
+        </button>
         <button type="button" onClick={onDiagramProperties}>
           {t("toolbar.diagramProperties")}
         </button>

@@ -16,6 +16,7 @@ import {
   getBoxEdgePoint,
   getCharacterById,
   getCharacterEdgePoint,
+  getCharacterShapeBounds,
   getCollapsedBoxSquareBounds,
   getFloatingTextBounds,
   getFloatingTextById,
@@ -270,6 +271,55 @@ function getBookmarkMarkerWorldBounds(
 const LINE_LABEL_FONT_SIZE = 12;
 /** Padding around the label midpoint when a line has no visible pill. */
 const UNLABELED_LINE_HIT = 14;
+
+/**
+ * World bounds of the selected object to keep the detail panel clear of.
+ * Returns null for group/multi (not world-anchored while open).
+ */
+export function getSelectionAvoidBounds(
+  selection: NonNullable<Selection>,
+  diagram: Diagram,
+  viewportScale = 1,
+): Bounds | null {
+  if (selection.type === "character") {
+    const character = getCharacterById(diagram, selection.id);
+    if (!character) return null;
+    return getCharacterShapeBounds(character);
+  }
+
+  if (selection.type === "box") {
+    const box = getBoxById(diagram, selection.id);
+    if (!box) return null;
+    if (box.collapsed) {
+      const center = box.collapsedPosition ?? { x: 0, y: 0 };
+      return getCollapsedBoxSquareBounds(center);
+    }
+    return resolveBoxBounds(box);
+  }
+
+  if (selection.type === "floatingText") {
+    const floatingText = getFloatingTextById(diagram, selection.id);
+    if (!floatingText) return null;
+    return getFloatingTextBounds(
+      floatingText,
+      diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT,
+    );
+  }
+
+  if (selection.type === "line") {
+    const line = diagram.lines.find((l) => l.id === selection.id);
+    if (!line) return null;
+    return getLineSelectionAvoidBounds(line, diagram);
+  }
+
+  if (selection.type === "bookmark") {
+    const bookmark = diagram.bookmarks?.find((b) => b.id === selection.id);
+    if (!bookmark) return null;
+    return getBookmarkMarkerWorldBounds(bookmark.anchor, viewportScale);
+  }
+
+  return null;
+}
 
 /** World bounds of the line label (or a small pad at the mid-curve) to keep clear of. */
 export function getLineSelectionAvoidBounds(

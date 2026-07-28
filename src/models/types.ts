@@ -34,6 +34,8 @@ export interface Character {
   borderShape: BorderShape;
   borderColor: RGB;
   size: number;
+  /** External URI (https://, obsidian://, mailto:, etc.) shown as a link chip on the node. */
+  link?: string;
 }
 
 export interface Line {
@@ -191,9 +193,14 @@ export interface Box {
   borderColor: RGB;
   collapsed: boolean;
   collapsedPosition?: { x: number; y: number };
+  /** Frozen at collapse; while collapsed, only these members are hidden/moved. */
+  containedCharacterIds?: string[];
+  containedFloatingTextIds?: string[];
   anchorPosition?: { x: number; y: number };
   bounds?: Bounds;
 }
+
+export type FloatingTextAlign = "left" | "center" | "right";
 
 /** Freestanding canvas annotation — not connected to characters, boxes, or lines. */
 export interface FloatingText {
@@ -202,12 +209,26 @@ export interface FloatingText {
   text: string;
   color: RGB;
   fontSize: number;
+  /** Horizontal alignment within the text area. Defaults to center. */
+  textAlign?: FloatingTextAlign;
+  /** Explicit area width after the user resizes; omit for content-sized width. */
+  width?: number;
+  /** Explicit area height after the user resizes; omit for content-sized height. */
+  height?: number;
 }
 
 export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
 export const DEFAULT_FLOATING_TEXT_FONT_SIZE = 15;
+export const DEFAULT_FLOATING_TEXT_ALIGN: FloatingTextAlign = "center";
 export const MIN_FLOATING_TEXT_FONT_SIZE = 10;
 export const MAX_FLOATING_TEXT_FONT_SIZE = 72;
+export const MIN_FLOATING_TEXT_WIDTH = 40;
+export const MIN_FLOATING_TEXT_HEIGHT = 24;
+export const FLOATING_TEXT_ALIGNS: FloatingTextAlign[] = [
+  "left",
+  "center",
+  "right",
+];
 
 export interface Viewport {
   x: number;
@@ -284,6 +305,11 @@ export interface DiagramAppearance {
 
 export interface Diagram {
   schemaVersion: 3;
+  /**
+   * Stable diagram identity for local per-diagram preferences.
+   * Present in the save file; preferences keyed by this id are not.
+   */
+  id: string;
   title?: string;
   subtitle?: string;
   /** Title text colour; omit for default export-matching dark grey. */
@@ -338,7 +364,16 @@ export interface Point {
 export const DEFAULT_CHARACTER_SIZE = 40;
 export const MIN_CHARACTER_SIZE = 24;
 export const MAX_CHARACTER_SIZE = 80;
+
+export function clampCharacterSize(size: number): number {
+  return Math.min(
+    MAX_CHARACTER_SIZE,
+    Math.max(MIN_CHARACTER_SIZE, Math.round(size)),
+  );
+}
 export const CHARACTER_BORDER_STROKE_WIDTH = 4;
+/** Corner radius for square / polygon character borders (matches square Rect). */
+export const CHARACTER_BORDER_CORNER_RADIUS = 4;
 export const BOX_PADDING = 48;
 export const BOX_HEADER_HEIGHT = 28;
 export const COLLAPSED_BOX_SIZE = 44;
@@ -419,4 +454,15 @@ export function contrastingInk(background: RGB): RGB {
   return isLightColor(background)
     ? { ...CONTRASTING_INK_DARK }
     : { ...CONTRASTING_INK_LIGHT };
+}
+
+/** Standard source-over composite of `fg` at `alpha` onto opaque `bg`. */
+export function blendRgbOver(fg: RGB, alpha: number, bg: RGB): RGB {
+  const a = Math.min(1, Math.max(0, alpha));
+  const inv = 1 - a;
+  return {
+    r: Math.round(fg.r * a + bg.r * inv),
+    g: Math.round(fg.g * a + bg.g * inv),
+    b: Math.round(fg.b * a + bg.b * inv),
+  };
 }

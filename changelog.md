@@ -29,7 +29,7 @@
 	- Works for web links (http://, https://), app protocols (obsidian://, vscode://, etc), other common schemes (mailto:, tel:, ftp://).
 	- Default behaviour is for a safety prompt to confirm the link the user is about to visit. This can be disabled per-diagram, per device.
 	- Settings option to disable the link-reveal-on-mouseover over the external link chip.
-- When changing themes, user is now prompted to update colours that haven't been changed from the current theme's defaults to the new theme's defaults, even when elements are individually-customisable.
+- When changing themes, user can now choose whether they want to update colours that haven't been changed from the current theme's defaults to the new theme's defaults, even when elements are individually-customisable.
 - Stopped fake searchbox from showing up in browsers, desktop version.
 	- Now we have proper search functionality, accessible via ctrl+f.
 - I can't personally compile for Mac, but for Mac users I've updated shortcut tooltips.

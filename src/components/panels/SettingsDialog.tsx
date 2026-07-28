@@ -13,7 +13,7 @@ import {
   type AppPreferences,
   type ExportBoundsMode,
 } from "../../utils/appPreferences";
-import { clearAutosave } from "../../utils/autosaveStorage";
+import { clearAutosave } from "../../store/openDocumentsAutosave";
 import { useDiagramStore } from "../../store/diagramStore";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
 import {

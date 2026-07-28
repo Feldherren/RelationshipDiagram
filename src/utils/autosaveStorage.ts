@@ -22,7 +22,7 @@ export function createAutosaveSnapshot(diagram: Diagram): AutosaveSnapshot {
   };
 }
 
-function parseAutosaveSnapshot(data: unknown): AutosaveSnapshot {
+export function parseAutosaveSnapshot(data: unknown): AutosaveSnapshot {
   const record = data as AutosaveSnapshot;
   if (record.schemaVersion !== 1 || !record.diagram) {
     throw new Error("Invalid autosave format");
@@ -69,15 +69,5 @@ export async function loadAutosave(): Promise<AutosaveSnapshot | null> {
       }
     };
     request.onerror = () => reject(request.error);
-  });
-}
-
-export async function clearAutosave(): Promise<void> {
-  const db = await openDiagramDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(AUTOSAVE_STORE, "readwrite");
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.objectStore(AUTOSAVE_STORE).delete(AUTOSAVE_KEY);
   });
 }

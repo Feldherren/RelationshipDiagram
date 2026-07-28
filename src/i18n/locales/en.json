@@ -25,6 +25,16 @@
     "newConfirm": "Start a new diagram? Your current diagram will be replaced.",
     "name": "Character Relationship Diagram Creator"
   },
+  "tabs": {
+    "listAria": "Open diagrams",
+    "untitled": "Untitled",
+    "unsaved": "Unsaved changes",
+    "close": "Close",
+    "closeAria": "Close {{title}}",
+    "closeDirtyConfirm": "This diagram has unsaved changes. Close it anyway?",
+    "new": "New tab",
+    "newAria": "Open a new empty diagram tab"
+  },
   "context": {
     "addToolbar": "Add objects",
     "addCharacter": "Add character",
@@ -251,9 +261,9 @@
     "defaultFolderClear": "Clear",
     "defaultFolderUnset": "Not set (use system default)",
     "defaultFolderDesktopOnly": "Default folders can only be set in the desktop app.",
-    "clearAutosaveHint": "Clears the locally saved autosave used for restoring work after reopening the app. It does not delete the diagram currently open on screen or any files you have saved manually.",
+    "clearAutosaveHint": "Clears the locally saved autosave used for restoring open diagram tabs after reopening the app. It does not delete diagrams currently open on screen or any files you have saved manually.",
     "clearAutosaveData": "Clear autosave data",
-    "clearAutosaveConfirm": "Delete the locally saved autosave? Your current diagram on screen is not affected.",
+    "clearAutosaveConfirm": "Delete the locally saved autosave (all tab slots)? Your current diagrams on screen are not affected.",
     "clearAutosaveDone": "Autosave data cleared.",
     "aboutSection": "About",
     "version": "Version {{version}}",

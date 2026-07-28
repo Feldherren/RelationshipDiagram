@@ -377,7 +377,7 @@ async function saveTextWithTauriDialog(
   suggestedName: string,
   filter: { name: string; extensions: string[] },
   directory?: string | null,
-): Promise<boolean> {
+): Promise<string | null> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
 
@@ -385,29 +385,80 @@ async function saveTextWithTauriDialog(
     defaultPath: buildDefaultDialogPath(directory, suggestedName),
     filters: [filter],
   });
-  if (path === null) return false;
+  if (path === null) return null;
 
   await writeTextFile(path, content);
-  return true;
+  return path;
 }
 
-export async function saveDiagramToFile(diagram: Diagram, filename?: string): Promise<void> {
+export type DiagramSaveResult = {
+  cancelled: boolean;
+  filePath?: string;
+  fileHandle?: FileSystemFileHandle;
+};
+
+export type DiagramLoadResult = {
+  diagram: Diagram;
+  filePath?: string;
+  fileHandle?: FileSystemFileHandle;
+};
+
+async function writeDiagramToTauriPath(
+  content: string,
+  path: string,
+): Promise<void> {
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  await writeTextFile(path, content);
+}
+
+async function writeDiagramToFileHandle(
+  content: string,
+  handle: FileSystemFileHandle,
+): Promise<void> {
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+export async function saveDiagramToFile(
+  diagram: Diagram,
+  options?: {
+    filename?: string;
+    filePath?: string;
+    fileHandle?: FileSystemFileHandle;
+  },
+): Promise<DiagramSaveResult> {
   const content = serializeDiagram(diagram);
-  const suggestedName = filename ?? getDefaultDiagramFilename(diagram);
+  const suggestedName =
+    options?.filename ?? getDefaultDiagramFilename(diagram);
   const diagramFilter = {
     name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
   };
 
   if (isTauriApp()) {
+    if (options?.filePath) {
+      await writeDiagramToTauriPath(content, options.filePath);
+      return { cancelled: false, filePath: options.filePath };
+    }
     const { defaultDiagramDirectory } = getAppPreferences();
-    await saveTextWithTauriDialog(
+    const path = await saveTextWithTauriDialog(
       content,
       suggestedName,
       diagramFilter,
       defaultDiagramDirectory,
     );
-    return;
+    if (path === null) return { cancelled: true };
+    return { cancelled: false, filePath: path };
+  }
+
+  if (options?.fileHandle) {
+    try {
+      await writeDiagramToFileHandle(content, options.fileHandle);
+      return { cancelled: false, fileHandle: options.fileHandle };
+    } catch {
+      // Fall through to picker if the handle is no longer writable.
+    }
   }
 
   if ("showSaveFilePicker" in window) {
@@ -421,12 +472,12 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
           },
         ],
       });
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
-      return;
+      await writeDiagramToFileHandle(content, handle);
+      return { cancelled: false, fileHandle: handle };
     } catch (err) {
-      if ((err as DOMException).name === "AbortError") return;
+      if ((err as DOMException).name === "AbortError") {
+        return { cancelled: true };
+      }
       throw err;
     }
   }
@@ -435,9 +486,10 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
   const url = URL.createObjectURL(blob);
   triggerAnchorDownload(url, suggestedName);
   URL.revokeObjectURL(url);
+  return { cancelled: false };
 }
 
-export async function loadDiagramFromFile(): Promise<Diagram> {
+export async function loadDiagramFromFile(): Promise<DiagramLoadResult> {
   const diagramFilter = {
     name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
@@ -461,7 +513,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
     }
 
     const text = await readTextFile(path);
-    return parseDiagram(text);
+    return { diagram: parseDiagram(text), filePath: path };
   }
 
   if ("showOpenFilePicker" in window) {
@@ -477,7 +529,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       });
       const file = await handle.getFile();
       const text = await file.text();
-      return parseDiagram(text);
+      return { diagram: parseDiagram(text), fileHandle: handle };
     } catch (err) {
       if ((err as DOMException).name === "AbortError") {
         throw new Error("cancelled");
@@ -498,7 +550,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       }
       try {
         const text = await file.text();
-        resolve(parseDiagram(text));
+        resolve({ diagram: parseDiagram(text) });
       } catch (e) {
         reject(e);
       }

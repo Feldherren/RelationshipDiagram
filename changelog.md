@@ -1,3 +1,5 @@
+# v0.8.0
+- Tabs! You can now have more than one diagram open at once.
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.

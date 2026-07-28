@@ -58,14 +58,13 @@ import {
 } from "../utils/lineEndpoints";
 import {
   createAutosaveSnapshot,
-  loadAutosave,
-  saveAutosave,
 } from "../utils/autosaveStorage";
 import {
   createEmptyDiagram,
   type PersistedDiagramState,
   pickPersistedState,
 } from "./autosaveState";
+import type { DiagramEditorSessionState } from "./diagramSession";
 import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
@@ -163,6 +162,8 @@ interface DiagramState {
   diagramAppearance: DiagramAppearance;
   /** Stable id from Diagram.id; used for local per-diagram preferences. */
   diagramId: string;
+  /** True when the active diagram has unsaved edits since last save/load. */
+  dirty: boolean;
   autosaveEnabled: boolean;
   undoStack: PersistedDiagramState[];
   redoStack: PersistedDiagramState[];
@@ -297,8 +298,14 @@ interface DiagramState {
   endConnectDrag: (point: { x: number; y: number }) => void;
   cancelConnect: () => void;
   deleteSelected: () => void;
-  loadDiagram: (diagram: Diagram) => Promise<void>;
+  loadDiagram: (
+    diagram: Diagram,
+    options?: { dirty?: boolean; preserveHistory?: boolean },
+  ) => Promise<void>;
   getDiagram: () => Diagram;
+  captureSession: () => DiagramEditorSessionState;
+  applySession: (session: DiagramEditorSessionState) => Promise<void>;
+  setDirty: (dirty: boolean) => void;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
 }
@@ -456,6 +463,7 @@ export const useDiagramStore = create<DiagramState>()(
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   diagramId: uuidv4(),
+  dirty: false,
   autosaveEnabled: false,
   undoStack: [],
   redoStack: [],
@@ -469,8 +477,10 @@ export const useDiagramStore = create<DiagramState>()(
     if (!bounds) return;
     set({ viewport: computeViewportForBounds(bounds, stageSize) });
   },
+  setDirty: (dirty) => set({ dirty }),
   captureHistory: () =>
     set((s) => ({
+      dirty: true,
       undoStack: [
         ...s.undoStack.slice(-(HISTORY_LIMIT - 1)),
         pickPersistedState(s),
@@ -484,6 +494,7 @@ export const useDiagramStore = create<DiagramState>()(
     const current = pickPersistedState(get());
     set((s) => ({
       ...restoreHistorySnapshot(previous, s.viewport),
+      dirty: true,
       undoStack: s.undoStack.slice(0, -1),
       redoStack: [...s.redoStack, current],
     }));
@@ -495,6 +506,7 @@ export const useDiagramStore = create<DiagramState>()(
     const current = pickPersistedState(get());
     set((s) => ({
       ...restoreHistorySnapshot(next, s.viewport),
+      dirty: true,
       undoStack: [...s.undoStack, current],
       redoStack: s.redoStack.slice(0, -1),
     }));
@@ -796,7 +808,12 @@ export const useDiagramStore = create<DiagramState>()(
   setDiagramBackgroundMode: (mode) => {
     get().setDiagramAppearance({ backgroundMode: mode });
   },
-  setAutosaveEnabled: (enabled) => set({ autosaveEnabled: enabled }),
+  setAutosaveEnabled: (enabled) => {
+    set({ autosaveEnabled: enabled });
+    if (enabled) {
+      void get().flushAutosave();
+    }
+  },
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
   setDiagramTitle: (title) => {
@@ -973,27 +990,15 @@ export const useDiagramStore = create<DiagramState>()(
     await hydrateAppPreferenceWallpapers();
     const prefs = getAppPreferences();
     cancelScheduledAutosave();
-    set({ autosaveEnabled: false });
-
-    if (prefs.autosaveEnabled) {
-      const snapshot = await loadAutosave();
-      if (snapshot) {
-        await get().loadDiagram(snapshot.diagram);
-      } else {
-        await get().initializeFonts();
-      }
-    } else {
-      await get().initializeFonts();
-    }
-
     set({
-      autosaveEnabled: prefs.autosaveEnabled,
+      autosaveEnabled: false,
       bookmarksVisible: prefs.bookmarksVisible,
       groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
       snapToGridEnabled: prefs.snapToGridEnabled,
     });
+    await get().initializeFonts();
   },
 
   getAutosaveSnapshot: () => createAutosaveSnapshot(get().getDiagram()),
@@ -1001,9 +1006,14 @@ export const useDiagramStore = create<DiagramState>()(
   flushAutosave: async () => {
     if (!get().autosaveEnabled) return;
     try {
+      const { flushOpenDocumentsAutosave } = await import(
+        "./openDocumentsStore"
+      );
       await performAutosave(
         () => get().getAutosaveSnapshot(),
-        saveAutosave,
+        async () => {
+          await flushOpenDocumentsAutosave();
+        },
       );
     } catch (err) {
       console.error("Autosave failed:", err);
@@ -1041,7 +1051,7 @@ export const useDiagramStore = create<DiagramState>()(
         backgroundColor: background.backgroundColor,
       }),
     };
-    await get().loadDiagram(diagram);
+    await get().loadDiagram(diagram, { dirty: false });
     set({ undoStack: [], redoStack: [] });
     set({ autosaveEnabled: prefs.autosaveEnabled });
     if (prefs.autosaveEnabled) {
@@ -1987,7 +1997,7 @@ export const useDiagramStore = create<DiagramState>()(
     if (selection.type === "bookmark") get().deleteBookmark(selection.id);
   },
 
-  loadDiagram: async (diagram) => {
+  loadDiagram: async (diagram, options) => {
     cancelScheduledAutosave();
     await cleanupDeprecatedFonts();
 
@@ -2014,6 +2024,7 @@ export const useDiagramStore = create<DiagramState>()(
     const liveFontFamily = resolvedFamily ?? fontFamily;
     const liveShowHeader =
       diagram.showHeader ?? resolvedAppearance.showHeader ?? true;
+    const dirty = options?.dirty ?? false;
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -2023,6 +2034,7 @@ export const useDiagramStore = create<DiagramState>()(
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       bookmarks: normalizeBookmarks(diagram.bookmarks),
       diagramId: diagram.id,
+      dirty,
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: liveShowHeader,
@@ -2052,13 +2064,82 @@ export const useDiagramStore = create<DiagramState>()(
       connectDrag: null,
       toolMode: "select",
       exportBounds: null,
-      undoStack: [],
-      redoStack: [],
+      ...(options?.preserveHistory
+        ? {}
+        : { undoStack: [] as PersistedDiagramState[], redoStack: [] as PersistedDiagramState[] }),
     });
 
     if (get().autosaveEnabled) {
       await get().flushAutosave();
     }
+  },
+
+  captureSession: () => {
+    const s = get();
+    const toolMode =
+      s.toolMode === "exportBounds"
+        ? "select"
+        : s.toolMode === "editGroupMembers" && s.selection?.type === "group"
+          ? "editGroupMembers"
+          : s.toolMode === "editGroupMembers"
+            ? "select"
+            : s.toolMode;
+    return {
+      document: pickPersistedState(s),
+      diagramId: s.diagramId,
+      dirty: s.dirty,
+      undoStack: s.undoStack,
+      redoStack: s.redoStack,
+      selection: s.selection,
+      selectionDetailsOpen: s.selectionDetailsOpen,
+      editingFloatingTextId: s.editingFloatingTextId,
+      toolMode,
+      connectFrom: null,
+    };
+  },
+
+  applySession: async (session) => {
+    cancelScheduledAutosave();
+    await cleanupDeprecatedFonts();
+
+    const doc = session.document;
+    let fontFamily = doc.diagramFontFamily || DEFAULT_DIAGRAM_FONT;
+    if (isDeprecatedFontFamily(fontFamily)) {
+      fontFamily = DEFAULT_DIAGRAM_FONT;
+    }
+    const resolvedFamily = await ensureFontLoaded(fontFamily);
+    const liveFontFamily = resolvedFamily ?? fontFamily;
+
+    const toolMode =
+      session.toolMode === "editGroupMembers" &&
+      session.selection?.type === "group"
+        ? "editGroupMembers"
+        : session.toolMode === "exportBounds"
+          ? "select"
+          : session.toolMode === "editGroupMembers"
+            ? "select"
+            : session.toolMode;
+
+    set({
+      ...doc,
+      diagramFontFamily: liveFontFamily,
+      diagramAppearance: {
+        ...doc.diagramAppearance,
+        fontFamily: liveFontFamily,
+      },
+      fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
+      diagramId: session.diagramId,
+      dirty: session.dirty,
+      undoStack: session.undoStack,
+      redoStack: session.redoStack,
+      selection: session.selection,
+      selectionDetailsOpen: session.selectionDetailsOpen,
+      editingFloatingTextId: session.editingFloatingTextId,
+      toolMode,
+      connectFrom: null,
+      connectDrag: null,
+      exportBounds: null,
+    });
   },
 
   getDiagram: () => {

@@ -2100,15 +2100,12 @@ export const useDiagramStore = create<DiagramState>()(
 
   applySession: async (session) => {
     cancelScheduledAutosave();
-    await cleanupDeprecatedFonts();
 
     const doc = session.document;
     let fontFamily = doc.diagramFontFamily || DEFAULT_DIAGRAM_FONT;
     if (isDeprecatedFontFamily(fontFamily)) {
       fontFamily = DEFAULT_DIAGRAM_FONT;
     }
-    const resolvedFamily = await ensureFontLoaded(fontFamily);
-    const liveFontFamily = resolvedFamily ?? fontFamily;
 
     const toolMode =
       session.toolMode === "editGroupMembers" &&
@@ -2120,14 +2117,16 @@ export const useDiagramStore = create<DiagramState>()(
             ? "select"
             : session.toolMode;
 
+    // Apply document state synchronously so tab titles / dirty flags update
+    // immediately when switching — before any font I/O.
     set({
       ...doc,
-      diagramFontFamily: liveFontFamily,
+      diagramFontFamily: fontFamily,
       diagramAppearance: {
         ...doc.diagramAppearance,
-        fontFamily: liveFontFamily,
+        fontFamily,
       },
-      fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
+      fontMissing: !isDefaultDiagramFont(fontFamily),
       diagramId: session.diagramId,
       dirty: session.dirty,
       undoStack: session.undoStack,
@@ -2139,6 +2138,20 @@ export const useDiagramStore = create<DiagramState>()(
       connectFrom: null,
       connectDrag: null,
       exportBounds: null,
+    });
+
+    await cleanupDeprecatedFonts();
+    const resolvedFamily = await ensureFontLoaded(fontFamily);
+    const liveFontFamily = resolvedFamily ?? fontFamily;
+    // Only patch fonts if this session is still the live buffer.
+    if (get().diagramId !== session.diagramId) return;
+    set({
+      diagramFontFamily: liveFontFamily,
+      diagramAppearance: {
+        ...get().diagramAppearance,
+        fontFamily: liveFontFamily,
+      },
+      fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
     });
   },
 

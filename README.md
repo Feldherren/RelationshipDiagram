@@ -49,10 +49,28 @@ This project includes a [Tauri](https://v2.tauri.app/) shell for running as a na
 
 #### Prerequisites
 
-1. [Node.js](https://nodejs.org/) (for the frontend)
-2. [Rust](https://www.rust-lang.org/tools/install) (`rustup` is recommended)
-3. **Windows**: [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually preinstalled on Windows 10/11)
-4. **Mac**: You will need to have [Xcode](https://developer.apple.com/xcode/) installed in order to compile for Mac.
+All platforms need:
+
+1. [Node.js](https://nodejs.org/) (LTS recommended) for the frontend
+2. [Rust](https://www.rust-lang.org/tools/install) via `rustup`
+
+Plus the platform-specific tools below. See also [Tauri’s prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+##### Windows
+
+1. [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) — during install, select **Desktop development with C++**
+2. [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) — usually preinstalled on Windows 10/11; otherwise install the Evergreen Bootstrapper
+3. Optional: if building an MSI fails with `light.exe` errors, enable the **VBSCRIPT** optional Windows feature (Settings → Apps → Optional features → More Windows features)
+
+##### macOS
+
+For desktop builds only, [Xcode Command Line Tools](https://developer.apple.com/xcode/) are enough:
+
+```bash
+xcode-select --install
+```
+
+Full [Xcode](https://developer.apple.com/xcode/) from the Mac App Store is only required if you later target iOS. After installing either, open Xcode once so it can finish setup. You must build on a Mac (or a macOS CI runner); Windows and Linux cannot produce macOS installers.
 
 #### Run in development
 

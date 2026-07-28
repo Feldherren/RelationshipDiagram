@@ -87,6 +87,10 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
                 ? bookmarkGoDetail
                 : bookmarkCentreDetail,
             },
+            {
+              keys: t("help.findKeys"),
+              detail: t("help.findDetail"),
+            },
           ]}
         />
 

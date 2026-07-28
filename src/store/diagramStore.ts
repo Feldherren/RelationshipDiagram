@@ -94,6 +94,8 @@ import {
   computeViewportForBounds,
   viewportFromCenterAndScale,
 } from "../utils/viewportFit";
+import { getGroupHubPosition } from "../utils/groupHub";
+import { getSelectionAnchorWorld } from "../utils/selectionAnchor";
 import { randomPastelColor } from "../utils/pastelPalette";
 import { remapDiagramElementColors } from "../utils/remapDiagramThemeColors";
 import type { GroupsCanvasMode } from "../utils/groupHub";
@@ -223,6 +225,10 @@ interface DiagramState {
   ) => void;
   deleteBookmark: (id: string) => void;
   goToBookmark: (id: string, options?: { keepZoom?: boolean }) => void;
+  focusSelection: (
+    selection: Exclude<Selection, null | { type: "multi" }>,
+    options?: { keepZoom?: boolean },
+  ) => void;
   initializeFonts: () => Promise<void>;
   bootstrapApp: () => Promise<void>;
   getAutosaveSnapshot: () => ReturnType<typeof createAutosaveSnapshot>;
@@ -1884,6 +1890,41 @@ export const useDiagramStore = create<DiagramState>()(
       return;
     }
     set({ viewport: { ...bookmark.viewport } });
+  },
+
+  focusSelection: (selection, options) => {
+    const keepZoom = options?.keepZoom ?? true;
+    const state = get();
+    const { stageSize, viewport } = state;
+
+    get().setSelection(selection, { openDetails: false });
+
+    let center: { x: number; y: number } | null = null;
+    if (selection.type === "group") {
+      const group = state.groups.find((entry) => entry.id === selection.id);
+      if (group) {
+        center = getGroupHubPosition(group, state.characters, state.boxes);
+      }
+    } else {
+      center = getSelectionAnchorWorld(selection, get().getDiagram());
+    }
+
+    if (!center) return;
+
+    if (keepZoom) {
+      set({
+        viewport: viewportFromCenterAndScale(
+          center,
+          viewport.scale,
+          stageSize,
+        ),
+      });
+      return;
+    }
+
+    set({
+      viewport: viewportFromCenterAndScale(center, viewport.scale, stageSize),
+    });
   },
 
   deleteSelected: () => {

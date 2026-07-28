@@ -15,7 +15,9 @@
     "settings": "Settings",
     "settingsAria": "Application settings",
     "snapToGrid": "Snap to grid",
-    "snapToGridTitle": "Snap objects to grid intersections while dragging"
+    "snapToGridTitle": "Snap objects to grid intersections while dragging",
+    "find": "Find",
+    "findAria": "Find in diagram (Ctrl+F)"
   },
   "app": {
     "saveFailed": "Failed to save diagram.",
@@ -410,6 +412,8 @@
     "bookmarkDetail": "Restore that bookmark’s pan and zoom",
     "bookmarkCentreKeys": "Ctrl+click bookmark",
     "bookmarkCentreDetail": "Centre on the bookmark without changing zoom",
+    "findKeys": "Ctrl+F / Cmd+F",
+    "findDetail": "Search diagram content and jump to matches",
     "select": "Select",
     "clickSelectKeys": "Click",
     "clickSelectDetail": "Select a character, box, line, or text",
@@ -465,6 +469,15 @@
     "right": "Right",
     "noVerticalCrop": "No vertical crop room for this image.",
     "noHorizontalCrop": "No horizontal crop room for this image."
+  },
+  "find": {
+    "label": "Find in diagram",
+    "placeholder": "Search characters, groups, labels…",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "noResults": "No matches",
+    "matchCount": "{{current}} / {{total}}"
   },
   "font": {
     "search": "Search fonts",

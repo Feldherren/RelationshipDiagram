@@ -9,6 +9,24 @@ interface ToolbarProps {
   onDiagramProperties: () => void;
   onHelp: () => void;
   onSettings: () => void;
+  onFind: () => void;
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      className="toolbar-icon"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+      />
+    </svg>
+  );
 }
 
 function HelpIcon() {
@@ -135,6 +153,7 @@ export function Toolbar({
   onDiagramProperties,
   onHelp,
   onSettings,
+  onFind,
 }: ToolbarProps) {
   const { t } = useTranslation();
   const fitViewportToContent = useDiagramStore((s) => s.fitViewportToContent);
@@ -227,6 +246,15 @@ export function Toolbar({
       </div>
 
       <div className="toolbar-group toolbar-right">
+        <button
+          type="button"
+          className="toolbar-icon-button"
+          onClick={onFind}
+          aria-label={t("toolbar.findAria")}
+          title={t("toolbar.find")}
+        >
+          <SearchIcon />
+        </button>
         <button type="button" onClick={onDiagramProperties}>
           {t("toolbar.diagramProperties")}
         </button>

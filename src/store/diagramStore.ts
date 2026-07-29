@@ -164,6 +164,8 @@ interface DiagramState {
   diagramId: string;
   /** True when the active diagram has unsaved edits since last save/load. */
   dirty: boolean;
+  /** JSON of persisted document when last marked clean (save / clean load). */
+  cleanJson: string | null;
   autosaveEnabled: boolean;
   undoStack: PersistedDiagramState[];
   redoStack: PersistedDiagramState[];
@@ -174,6 +176,8 @@ interface DiagramState {
   captureHistory: () => void;
   undo: () => void;
   redo: () => void;
+  setDirty: (dirty: boolean) => void;
+  markClean: () => void;
   setToolMode: (mode: ToolMode) => void;
   setSelection: (
     selection: Selection,
@@ -305,7 +309,6 @@ interface DiagramState {
   getDiagram: () => Diagram;
   captureSession: () => DiagramEditorSessionState;
   applySession: (session: DiagramEditorSessionState) => Promise<void>;
-  setDirty: (dirty: boolean) => void;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
 }
@@ -414,6 +417,15 @@ function normalizeBookmarks(raw: unknown): ViewBookmark[] {
 
 const HISTORY_LIMIT = 100;
 
+/** Document fingerprint for dirty checks — viewport excluded (pan/zoom are not "unsaved"). */
+function dirtyFingerprint(state: PersistedDiagramState): string {
+  const {
+    viewport: _viewport,
+    ...rest
+  } = pickPersistedState(state);
+  return JSON.stringify(rest);
+}
+
 function restoreHistorySnapshot(
   snapshot: PersistedDiagramState,
   viewport: Viewport,
@@ -429,6 +441,22 @@ function restoreHistorySnapshot(
     toolMode: "select" as const,
     exportBounds: null,
   };
+}
+
+function recomputeDirtyFromCleanJson(
+  get: () => DiagramState,
+  set: (
+    partial:
+      | Partial<DiagramState>
+      | ((state: DiagramState) => Partial<DiagramState>),
+  ) => void,
+): void {
+  const s = get();
+  if (s.cleanJson == null) {
+    set({ dirty: true });
+    return;
+  }
+  set({ dirty: dirtyFingerprint(s) !== s.cleanJson });
 }
 
 export const useDiagramStore = create<DiagramState>()(
@@ -464,6 +492,7 @@ export const useDiagramStore = create<DiagramState>()(
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   diagramId: uuidv4(),
   dirty: false,
+  cleanJson: null,
   autosaveEnabled: false,
   undoStack: [],
   redoStack: [],
@@ -477,16 +506,29 @@ export const useDiagramStore = create<DiagramState>()(
     if (!bounds) return;
     set({ viewport: computeViewportForBounds(bounds, stageSize) });
   },
-  setDirty: (dirty) => set({ dirty }),
-  captureHistory: () =>
+  setDirty: (dirty) => {
+    if (dirty) {
+      set({ dirty: true, cleanJson: null });
+      return;
+    }
+    get().markClean();
+  },
+  markClean: () =>
+    set({
+      dirty: false,
+      cleanJson: dirtyFingerprint(get()),
+    }),
+  captureHistory: () => {
     set((s) => ({
-      dirty: true,
       undoStack: [
         ...s.undoStack.slice(-(HISTORY_LIMIT - 1)),
         pickPersistedState(s),
       ],
       redoStack: [],
-    })),
+    }));
+    // After the mutation that follows captureHistory, compare to last save.
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
+  },
   undo: () => {
     const { undoStack } = get();
     const previous = undoStack.at(-1);
@@ -494,10 +536,10 @@ export const useDiagramStore = create<DiagramState>()(
     const current = pickPersistedState(get());
     set((s) => ({
       ...restoreHistorySnapshot(previous, s.viewport),
-      dirty: true,
       undoStack: s.undoStack.slice(0, -1),
       redoStack: [...s.redoStack, current],
     }));
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
   },
   redo: () => {
     const { redoStack } = get();
@@ -506,10 +548,10 @@ export const useDiagramStore = create<DiagramState>()(
     const current = pickPersistedState(get());
     set((s) => ({
       ...restoreHistorySnapshot(next, s.viewport),
-      dirty: true,
       undoStack: [...s.undoStack, current],
       redoStack: s.redoStack.slice(0, -1),
     }));
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
   },
   setToolMode: (mode) => {
     if (mode === "editGroupMembers" && get().selection?.type !== "group") {
@@ -1999,6 +2041,10 @@ export const useDiagramStore = create<DiagramState>()(
 
   loadDiagram: async (diagram, options) => {
     cancelScheduledAutosave();
+
+    // Set title immediately so tabs don't flicker the previous name.
+    set({ diagramTitle: diagram.title ?? "" });
+
     await cleanupDeprecatedFonts();
 
     const resolvedAppearance = mergeLegacyHeaderColors(
@@ -2035,6 +2081,7 @@ export const useDiagramStore = create<DiagramState>()(
       bookmarks: normalizeBookmarks(diagram.bookmarks),
       diagramId: diagram.id,
       dirty,
+      cleanJson: null,
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: liveShowHeader,
@@ -2068,6 +2115,9 @@ export const useDiagramStore = create<DiagramState>()(
         ? {}
         : { undoStack: [] as PersistedDiagramState[], redoStack: [] as PersistedDiagramState[] }),
     });
+    if (!dirty) {
+      get().markClean();
+    }
 
     if (get().autosaveEnabled) {
       await get().flushAutosave();
@@ -2129,6 +2179,7 @@ export const useDiagramStore = create<DiagramState>()(
       fontMissing: !isDefaultDiagramFont(fontFamily),
       diagramId: session.diagramId,
       dirty: session.dirty,
+      cleanJson: null,
       undoStack: session.undoStack,
       redoStack: session.redoStack,
       selection: session.selection,
@@ -2153,6 +2204,9 @@ export const useDiagramStore = create<DiagramState>()(
       },
       fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
     });
+    if (!session.dirty) {
+      get().markClean();
+    }
   },
 
   getDiagram: () => {

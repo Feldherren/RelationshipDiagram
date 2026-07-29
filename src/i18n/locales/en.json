@@ -28,7 +28,7 @@
   "tabs": {
     "listAria": "Open diagrams",
     "untitled": "Untitled",
-    "unsaved": "Unsaved changes",
+    "unsaved": "Unsaved changes since last save",
     "close": "Close",
     "closeAria": "Close {{title}}",
     "closeDirtyConfirm": "This diagram has unsaved changes. Close it anyway?",

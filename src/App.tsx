@@ -37,7 +37,6 @@ function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const findActionsRef = useRef<FindBarActions | null>(null);
-  const getDiagram = useDiagramStore((s) => s.getDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const bootstrapDocuments = useOpenDocumentsStore((s) => s.bootstrap);
@@ -46,6 +45,9 @@ function App() {
   const markActiveSaved = useOpenDocumentsStore((s) => s.markActiveSaved);
   const activeFilePath = useOpenDocumentsStore((s) => s.activeFilePath);
   const activeFileHandle = useOpenDocumentsStore((s) => s.activeFileHandle);
+  const activePathScopeGranted = useOpenDocumentsStore(
+    (s) => s.activePathScopeGranted,
+  );
   const documentsReady = useOpenDocumentsStore((s) => s.ready);
 
   useAutosave();
@@ -74,14 +76,20 @@ function App() {
 
   const handleSave = async () => {
     try {
-      const result = await saveDiagramToFile(getDiagram(), {
-        filePath: activeFilePath,
-        fileHandle: activeFileHandle,
-      });
+      const result = await saveDiagramToFile(
+        useDiagramStore.getState().getDiagram(),
+        {
+          filePath: activeFilePath,
+          fileHandle: activeFileHandle,
+          pathScopeGranted: activePathScopeGranted,
+        },
+      );
       if (result.cancelled) return;
+      useDiagramStore.getState().markClean();
       markActiveSaved({
         filePath: result.filePath,
         fileHandle: result.fileHandle,
+        pathScopeGranted: result.pathScopeGranted,
       });
       if (useDiagramStore.getState().autosaveEnabled) {
         await useDiagramStore.getState().flushAutosave();
@@ -98,6 +106,7 @@ function App() {
       await openDiagramInTab(loaded.diagram, {
         filePath: loaded.filePath,
         fileHandle: loaded.fileHandle,
+        pathScopeGranted: loaded.pathScopeGranted,
       });
     } catch (err) {
       if ((err as Error).message === "cancelled") return;

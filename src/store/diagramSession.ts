@@ -26,6 +26,8 @@ export interface OpenDiagramSession extends DiagramEditorSessionState {
   title: string;
   filePath?: string;
   fileHandle?: FileSystemFileHandle;
+  /** Tauri: path was selected via native dialog this session and may be written directly. */
+  pathScopeGranted?: boolean;
   /** Diagram serialization for autosaving inactive tabs. */
   savedDiagram: Diagram;
 }
@@ -48,4 +50,5 @@ export function basenameFromPath(path: string | undefined): string | undefined {
 export type DiagramFileAssociation = {
   filePath?: string;
   fileHandle?: FileSystemFileHandle;
+  pathScopeGranted?: boolean;
 };

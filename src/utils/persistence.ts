@@ -377,12 +377,15 @@ async function saveTextWithTauriDialog(
   suggestedName: string,
   filter: { name: string; extensions: string[] },
   directory?: string | null,
+  defaultPathOverride?: string,
 ): Promise<string | null> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
 
   const path = await save({
-    defaultPath: buildDefaultDialogPath(directory, suggestedName),
+    defaultPath:
+      defaultPathOverride ??
+      buildDefaultDialogPath(directory, suggestedName),
     filters: [filter],
   });
   if (path === null) return null;
@@ -395,18 +398,24 @@ export type DiagramSaveResult = {
   cancelled: boolean;
   filePath?: string;
   fileHandle?: FileSystemFileHandle;
+  /** True when the path was chosen via a native dialog this session (Tauri fs scope). */
+  pathScopeGranted?: boolean;
 };
 
 export type DiagramLoadResult = {
   diagram: Diagram;
   filePath?: string;
   fileHandle?: FileSystemFileHandle;
+  pathScopeGranted?: boolean;
 };
 
 async function writeDiagramToTauriPath(
   content: string,
   path: string,
 ): Promise<void> {
+  if (content.length < 2) {
+    throw new Error("Refusing to write empty diagram content");
+  }
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
   await writeTextFile(path, content);
 }
@@ -426,9 +435,14 @@ export async function saveDiagramToFile(
     filename?: string;
     filePath?: string;
     fileHandle?: FileSystemFileHandle;
+    /** When false, Tauri must use the save dialog to acquire fs scope for the path. */
+    pathScopeGranted?: boolean;
   },
 ): Promise<DiagramSaveResult> {
   const content = serializeDiagram(diagram);
+  if (content.length < 2) {
+    throw new Error("Refusing to save empty diagram content");
+  }
   const suggestedName =
     options?.filename ?? getDefaultDiagramFilename(diagram);
   const diagramFilter = {
@@ -437,25 +451,43 @@ export async function saveDiagramToFile(
   };
 
   if (isTauriApp()) {
-    if (options?.filePath) {
-      await writeDiagramToTauriPath(content, options.filePath);
-      return { cancelled: false, filePath: options.filePath };
-    }
     const { defaultDiagramDirectory } = getAppPreferences();
+    const dialogDefaultPath =
+      options?.filePath ??
+      buildDefaultDialogPath(defaultDiagramDirectory, suggestedName);
+
+    if (options?.filePath && options.pathScopeGranted) {
+      try {
+        await writeDiagramToTauriPath(content, options.filePath);
+        return {
+          cancelled: false,
+          filePath: options.filePath,
+          pathScopeGranted: true,
+        };
+      } catch (err) {
+        console.warn("Direct save failed, falling back to save dialog:", err);
+      }
+    }
+
     const path = await saveTextWithTauriDialog(
       content,
       suggestedName,
       diagramFilter,
       defaultDiagramDirectory,
+      dialogDefaultPath,
     );
     if (path === null) return { cancelled: true };
-    return { cancelled: false, filePath: path };
+    return { cancelled: false, filePath: path, pathScopeGranted: true };
   }
 
   if (options?.fileHandle) {
     try {
       await writeDiagramToFileHandle(content, options.fileHandle);
-      return { cancelled: false, fileHandle: options.fileHandle };
+      return {
+        cancelled: false,
+        fileHandle: options.fileHandle,
+        pathScopeGranted: true,
+      };
     } catch {
       // Fall through to picker if the handle is no longer writable.
     }
@@ -473,7 +505,7 @@ export async function saveDiagramToFile(
         ],
       });
       await writeDiagramToFileHandle(content, handle);
-      return { cancelled: false, fileHandle: handle };
+      return { cancelled: false, fileHandle: handle, pathScopeGranted: true };
     } catch (err) {
       if ((err as DOMException).name === "AbortError") {
         return { cancelled: true };
@@ -513,7 +545,7 @@ export async function loadDiagramFromFile(): Promise<DiagramLoadResult> {
     }
 
     const text = await readTextFile(path);
-    return { diagram: parseDiagram(text), filePath: path };
+    return { diagram: parseDiagram(text), filePath: path, pathScopeGranted: true };
   }
 
   if ("showOpenFilePicker" in window) {
@@ -529,7 +561,7 @@ export async function loadDiagramFromFile(): Promise<DiagramLoadResult> {
       });
       const file = await handle.getFile();
       const text = await file.text();
-      return { diagram: parseDiagram(text), fileHandle: handle };
+      return { diagram: parseDiagram(text), fileHandle: handle, pathScopeGranted: true };
     } catch (err) {
       if ((err as DOMException).name === "AbortError") {
         throw new Error("cancelled");

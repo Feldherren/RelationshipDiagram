@@ -46,6 +46,7 @@ function buildActiveSessionSnapshot(): OpenDiagramSession {
     title: live.diagramTitle,
     filePath: docs.activeFilePath,
     fileHandle: docs.activeFileHandle,
+    pathScopeGranted: docs.activePathScopeGranted,
     savedDiagram: live.getDiagram(),
   };
 }
@@ -70,6 +71,7 @@ async function sessionFromAutosaveRecord(
     sessionId: record.sessionId,
     title: record.diagram.title ?? "",
     filePath: record.filePath,
+    pathScopeGranted: false,
     savedDiagram: useDiagramStore.getState().getDiagram(),
     dirty: record.dirty,
   };
@@ -139,6 +141,7 @@ interface OpenDocumentsState {
   stashed: Record<string, OpenDiagramSession>;
   activeFilePath?: string;
   activeFileHandle?: FileSystemFileHandle;
+  activePathScopeGranted: boolean;
 
   buildActiveSessionSnapshot: () => OpenDiagramSession;
   bootstrap: () => Promise<void>;
@@ -161,6 +164,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
   stashed: {},
   activeFilePath: undefined,
   activeFileHandle: undefined,
+  activePathScopeGranted: false,
 
   buildActiveSessionSnapshot,
 
@@ -198,6 +202,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
           stashed: rest,
           activeFilePath: active.filePath,
           activeFileHandle: undefined,
+          activePathScopeGranted: false,
         });
         await useDiagramStore.getState().applySession(active);
         await enableAutosaveAfterLoad();
@@ -213,6 +218,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
       stashed: {},
       activeFilePath: undefined,
       activeFileHandle: undefined,
+      activePathScopeGranted: false,
     });
     await useDiagramStore.getState().newDiagram();
     set({
@@ -240,6 +246,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
       activeSessionId: sessionId,
       activeFilePath: target.filePath,
       activeFileHandle: target.fileHandle,
+      activePathScopeGranted: target.pathScopeGranted ?? false,
       stashed: { ...rest, [outgoing.sessionId]: outgoing },
     });
 
@@ -256,6 +263,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
       set({
         activeFilePath: undefined,
         activeFileHandle: undefined,
+        activePathScopeGranted: false,
       });
       return;
     }
@@ -272,16 +280,19 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
       activeSessionId: sessionId,
       activeFilePath: undefined,
       activeFileHandle: undefined,
+      activePathScopeGranted: false,
     }));
     await useDiagramStore.getState().newDiagram();
   },
 
   openDiagramInTab: async (diagram, association) => {
+    const pathScopeGranted = association?.pathScopeGranted ?? false;
     if (isActiveTabReusable()) {
       await useDiagramStore.getState().loadDiagram(diagram, { dirty: false });
       set({
         activeFilePath: association?.filePath,
         activeFileHandle: association?.fileHandle,
+        activePathScopeGranted: pathScopeGranted,
       });
       if (useDiagramStore.getState().autosaveEnabled) {
         await useDiagramStore.getState().flushAutosave();
@@ -301,6 +312,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
       activeSessionId: sessionId,
       activeFilePath: association?.filePath,
       activeFileHandle: association?.fileHandle,
+      activePathScopeGranted: pathScopeGranted,
     }));
     await useDiagramStore.getState().loadDiagram(diagram, { dirty: false });
     if (useDiagramStore.getState().autosaveEnabled) {
@@ -328,6 +340,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
         stashed: {},
         activeFilePath: undefined,
         activeFileHandle: undefined,
+        activePathScopeGranted: false,
       });
       if (useDiagramStore.getState().autosaveEnabled) {
         await flush();
@@ -348,6 +361,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
         activeSessionId: nextId,
         activeFilePath: next.filePath,
         activeFileHandle: next.fileHandle,
+        activePathScopeGranted: next.pathScopeGranted ?? false,
         stashed: rest,
       });
       await useDiagramStore.getState().applySession(next);
@@ -366,11 +380,13 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
   },
 
   markActiveSaved: (association) => {
-    useDiagramStore.getState().setDirty(false);
+    useDiagramStore.getState().markClean();
     if (association) {
       set({
         activeFilePath: association.filePath ?? get().activeFilePath,
         activeFileHandle: association.fileHandle ?? get().activeFileHandle,
+        activePathScopeGranted:
+          association.pathScopeGranted ?? get().activePathScopeGranted,
       });
     }
   },
@@ -379,6 +395,7 @@ export const useOpenDocumentsStore = create<OpenDocumentsState>((set, get) => ({
     set({
       activeFilePath: association.filePath,
       activeFileHandle: association.fileHandle,
+      activePathScopeGranted: association.pathScopeGranted ?? false,
     });
   },
 }));

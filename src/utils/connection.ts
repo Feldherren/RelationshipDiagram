@@ -117,13 +117,16 @@ export function findConnectionTargetAt(
   return bestBox?.ref ?? null;
 }
 
-export const CONNECT_HANDLE_SCREEN_RADIUS = 14;
+/** World-space radius for the connection + handle (scales with zoom). */
+export const CONNECT_HANDLE_RADIUS = 14;
 export const CONNECT_HANDLE_FONT_SIZE = 18;
+/** Screen-space radius for box collapse/expand chrome (stays ~14px on screen). */
+export const BOX_COLLAPSE_CONTROL_SCREEN_RADIUS = 14;
 
 export function getConnectHandleOffset(size: number): Point {
   // Sit on the top-right diagonal so the handle rim straddles the shape border.
   const centerDistance =
-    size + CONNECT_HANDLE_SCREEN_RADIUS * 0.5;
+    size + CONNECT_HANDLE_RADIUS * 0.5;
   const axisOffset = centerDistance / Math.SQRT2;
   return { x: axisOffset, y: -axisOffset };
 }

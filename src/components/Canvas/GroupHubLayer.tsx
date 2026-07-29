@@ -312,7 +312,6 @@ function GroupHubNode({
           <ConnectHandle
             x={handleOffset.x}
             y={handleOffset.y}
-            viewportScale={viewportScale}
             isConnectSource={connectSource}
             onMouseDown={onConnectHandleDown}
           />

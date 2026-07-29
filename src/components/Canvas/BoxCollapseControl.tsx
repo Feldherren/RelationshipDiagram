@@ -1,7 +1,7 @@
 import { Circle, Group, Path } from "react-konva";
 import type Konva from "konva";
 import {
-  CONNECT_HANDLE_SCREEN_RADIUS,
+  BOX_COLLAPSE_CONTROL_SCREEN_RADIUS,
 } from "../../utils/connection";
 import { EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME } from "../../utils/export";
 
@@ -24,7 +24,7 @@ export function BoxCollapseControl({
   viewportScale,
   onToggle,
 }: BoxCollapseControlProps) {
-  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+  const handleRadius = BOX_COLLAPSE_CONTROL_SCREEN_RADIUS / viewportScale;
   // Slightly smaller than the circle so the chevron has padding.
   const glyphScale = (handleRadius * 1.35) / 6;
 

@@ -31,7 +31,7 @@ import {
   getPillLabelSize,
 } from "./labelMetrics";
 import { getGroupHubPosition } from "./groupHub";
-import { getConnectHandleOffset, CONNECT_HANDLE_SCREEN_RADIUS } from "./connection";
+import { getConnectHandleOffset, CONNECT_HANDLE_RADIUS } from "./connection";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
@@ -123,7 +123,7 @@ export function getCharacterShapeBounds(character: Character): Bounds {
 export function getCharacterBounds(
   character: Character,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
-  viewportScale = 1,
+  _viewportScale = 1,
   options?: { includeConnectHandle?: boolean },
 ): Bounds {
   const includeConnectHandle = options?.includeConnectHandle !== false;
@@ -137,7 +137,7 @@ export function getCharacterBounds(
   let maxY = shape.y + shape.height;
 
   if (includeConnectHandle) {
-    const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+    const handleRadius = CONNECT_HANDLE_RADIUS;
     const handleOffset = getConnectHandleOffset(size);
     const handleX = x + handleOffset.x;
     const handleY = y + handleOffset.y;

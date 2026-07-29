@@ -161,7 +161,6 @@ export function CharacterNode({
     CHARACTER_LABEL_PADDING_Y,
   );
   const labelGap = CHARACTER_LABEL_GAP;
-  const viewportScale = useDiagramStore((s) => s.viewport.scale);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const nameLabel = useDiagramStore(
     (s) => s.diagramAppearance.characterNameLabel,
@@ -413,7 +412,6 @@ export function CharacterNode({
         <ConnectHandle
           x={handleOffset.x}
           y={handleOffset.y}
-          viewportScale={viewportScale}
           isConnectSource={isConnectSource}
           onMouseDown={onConnectHandleDown}
         />

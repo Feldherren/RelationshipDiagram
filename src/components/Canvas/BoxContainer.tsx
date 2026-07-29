@@ -591,7 +591,6 @@ export function BoxContainer({
           <ConnectHandle
             x={connectHandlePos.x}
             y={connectHandlePos.y}
-            viewportScale={viewportScale}
             isConnectSource={isConnectSource}
             onMouseDown={onConnectHandleDown}
           />
@@ -734,7 +733,6 @@ export function BoxContainer({
         <ConnectHandle
           x={connectHandlePos.x}
           y={connectHandlePos.y}
-          viewportScale={viewportScale}
           isConnectSource={isConnectSource}
           onMouseDown={onConnectHandleDown}
         />

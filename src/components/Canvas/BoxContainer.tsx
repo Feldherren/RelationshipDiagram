@@ -583,7 +583,6 @@ export function BoxContainer({
             x={collapseControlPos.x}
             y={collapseControlPos.y}
             collapsed
-            viewportScale={viewportScale}
             onToggle={handleToggleCollapse}
           />
         )}
@@ -725,7 +724,6 @@ export function BoxContainer({
           x={collapseControlPos.x}
           y={collapseControlPos.y}
           collapsed={false}
-          viewportScale={viewportScale}
           onToggle={handleToggleCollapse}
         />
       )}

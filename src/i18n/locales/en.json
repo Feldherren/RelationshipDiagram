@@ -1,9 +1,14 @@
 {
   "toolbar": {
+    "file": "File",
+    "fileMenuAria": "File menu",
     "new": "New",
-    "open": "Open",
+    "open": "Open…",
     "save": "Save",
-    "export": "Export",
+    "saveTitle": "Save (Ctrl+S / Cmd+S)",
+    "saveAs": "Save As…",
+    "saveAsTitle": "Save As (Ctrl+Shift+S / Cmd+Shift+S)",
+    "export": "Export…",
     "history": "History",
     "undo": "Undo",
     "undoTitle": "Undo (Ctrl+Z / Cmd+Z)",
@@ -21,6 +26,7 @@
   },
   "app": {
     "saveFailed": "Failed to save diagram.",
+    "saveDownloadFallback": "Saved to your browser Downloads folder. To choose a location, use Chrome or Edge, or the desktop app.",
     "openFailed": "Failed to open diagram file.",
     "newConfirm": "Start a new diagram? Your current diagram will be replaced.",
     "name": "Character Relationship Diagram Creator"
@@ -256,7 +262,7 @@
     "defaultExportDirectoryHint": "When set, the PNG export dialog opens in this folder.",
     "dataSection": "Data",
     "defaultDiagramDirectory": "Default diagram folder",
-    "defaultDiagramDirectoryHint": "When set, save and open dialogs start in this folder.",
+    "defaultDiagramDirectoryHint": "Desktop app only. When set, save and open dialogs start in this folder.",
     "defaultFolderChoose": "Choose…",
     "defaultFolderClear": "Clear",
     "defaultFolderUnset": "Not set (use system default)",

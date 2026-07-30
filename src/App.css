@@ -209,6 +209,49 @@ body,
   display: block;
 }
 
+.file-menu-anchor {
+  position: relative;
+}
+
+.file-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 10rem;
+  padding: 0.375rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+  background: var(--ui-surface);
+  box-shadow: 0 0.125rem 0.5rem var(--ui-shadow);
+}
+
+.toolbar .file-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolbar .file-menu-item:hover:not(:disabled) {
+  background: var(--ui-surface-hover);
+}
+
+.file-menu-separator {
+  height: 1px;
+  margin: 0.25rem 0.35rem;
+  background: var(--ui-border-strong);
+}
+
 .toolbar-checkbox {
   display: flex;
   align-items: center;

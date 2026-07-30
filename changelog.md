@@ -1,6 +1,8 @@
 # v0.8.0
 - Tabs! You can now have more than one diagram open at once.
 - Connection button/handle on characters is now a defined size and affected by zooming in and out, rather than remaining a constant size on screen.
+- Moved the New/Save/Load/Export buttons into a File menu
+- Added Save As functionality.
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.

@@ -1,9 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../store/diagramStore";
 
 interface ToolbarProps {
   onNew: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
   onOpen: () => void;
   onExport: () => void;
   onDiagramProperties: () => void;
@@ -145,9 +147,122 @@ function SnapToGridIcon() {
   );
 }
 
+function FileMenu({
+  onNew,
+  onOpen,
+  onSave,
+  onSaveAs,
+  onExport,
+}: {
+  onNew: () => void;
+  onOpen: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
+  onExport: () => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const run = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="file-menu-anchor" ref={rootRef}>
+      <button
+        type="button"
+        className={open ? "active" : undefined}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("toolbar.fileMenuAria")}
+        title={t("toolbar.file")}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t("toolbar.file")}
+      </button>
+      {open && (
+        <div
+          className="file-menu"
+          role="menu"
+          aria-label={t("toolbar.fileMenuAria")}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="file-menu-item"
+            onClick={() => run(onNew)}
+          >
+            {t("toolbar.new")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="file-menu-item"
+            onClick={() => run(onOpen)}
+          >
+            {t("toolbar.open")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="file-menu-item"
+            title={t("toolbar.saveTitle")}
+            onClick={() => run(onSave)}
+          >
+            {t("toolbar.save")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="file-menu-item"
+            title={t("toolbar.saveAsTitle")}
+            onClick={() => run(onSaveAs)}
+          >
+            {t("toolbar.saveAs")}
+          </button>
+          <div className="file-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="file-menu-item"
+            onClick={() => run(onExport)}
+          >
+            {t("toolbar.export")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
+  onSaveAs,
   onOpen,
   onExport,
   onDiagramProperties,
@@ -167,18 +282,13 @@ export function Toolbar({
   return (
     <header className="toolbar">
       <div className="toolbar-group">
-        <button type="button" onClick={onNew}>
-          {t("toolbar.new")}
-        </button>
-        <button type="button" onClick={onOpen}>
-          {t("toolbar.open")}
-        </button>
-        <button type="button" onClick={onSave}>
-          {t("toolbar.save")}
-        </button>
-        <button type="button" onClick={onExport}>
-          {t("toolbar.export")}
-        </button>
+        <FileMenu
+          onNew={onNew}
+          onOpen={onOpen}
+          onSave={onSave}
+          onSaveAs={onSaveAs}
+          onExport={onExport}
+        />
       </div>
 
       <div

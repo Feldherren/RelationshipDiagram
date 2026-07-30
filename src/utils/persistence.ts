@@ -400,6 +400,8 @@ export type DiagramSaveResult = {
   fileHandle?: FileSystemFileHandle;
   /** True when the path was chosen via a native dialog this session (Tauri fs scope). */
   pathScopeGranted?: boolean;
+  /** True when the browser fell back to an `<a download>` (Downloads folder only). */
+  usedDownloadFallback?: boolean;
 };
 
 export type DiagramLoadResult = {
@@ -437,6 +439,8 @@ export async function saveDiagramToFile(
     fileHandle?: FileSystemFileHandle;
     /** When false, Tauri must use the save dialog to acquire fs scope for the path. */
     pathScopeGranted?: boolean;
+    /** When true, always prompt for a location (Save As). */
+    forcePicker?: boolean;
   },
 ): Promise<DiagramSaveResult> {
   const content = serializeDiagram(diagram);
@@ -449,6 +453,7 @@ export async function saveDiagramToFile(
     name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
   };
+  const forcePicker = options?.forcePicker === true;
 
   if (isTauriApp()) {
     const { defaultDiagramDirectory } = getAppPreferences();
@@ -456,7 +461,11 @@ export async function saveDiagramToFile(
       options?.filePath ??
       buildDefaultDialogPath(defaultDiagramDirectory, suggestedName);
 
-    if (options?.filePath && options.pathScopeGranted) {
+    if (
+      !forcePicker &&
+      options?.filePath &&
+      options.pathScopeGranted
+    ) {
       try {
         await writeDiagramToTauriPath(content, options.filePath);
         return {
@@ -480,7 +489,7 @@ export async function saveDiagramToFile(
     return { cancelled: false, filePath: path, pathScopeGranted: true };
   }
 
-  if (options?.fileHandle) {
+  if (!forcePicker && options?.fileHandle) {
     try {
       await writeDiagramToFileHandle(content, options.fileHandle);
       return {
@@ -510,7 +519,10 @@ export async function saveDiagramToFile(
       if ((err as DOMException).name === "AbortError") {
         return { cancelled: true };
       }
-      throw err;
+      // Restricted embeds (e.g. some in-IDE browsers) reject the picker.
+      if ((err as DOMException).name !== "NotAllowedError") {
+        throw err;
+      }
     }
   }
 
@@ -518,7 +530,7 @@ export async function saveDiagramToFile(
   const url = URL.createObjectURL(blob);
   triggerAnchorDownload(url, suggestedName);
   URL.revokeObjectURL(url);
-  return { cancelled: false };
+  return { cancelled: false, usedDownloadFallback: true };
 }
 
 export async function loadDiagramFromFile(): Promise<DiagramLoadResult> {

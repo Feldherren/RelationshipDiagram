@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import { useTranslation } from "react-i18next";
 import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
@@ -18,11 +18,13 @@ import { AddObjectControls } from "./components/panels/AddObjectControls";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useFindShortcuts } from "./hooks/useFindShortcuts";
+import { useFileShortcuts } from "./hooks/useFileShortcuts";
 import { useDiagramStore } from "./store/diagramStore";
 import { useOpenDocumentsStore } from "./store/openDocumentsStore";
 import {
   loadDiagramFromFile,
   saveDiagramToFile,
+  type DiagramSaveResult,
 } from "./utils/persistence";
 import "./App.css";
 
@@ -74,16 +76,8 @@ function App() {
     setDiagramPropertiesOpen(false);
   }, [activeSessionId]);
 
-  const handleSave = async () => {
-    try {
-      const result = await saveDiagramToFile(
-        useDiagramStore.getState().getDiagram(),
-        {
-          filePath: activeFilePath,
-          fileHandle: activeFileHandle,
-          pathScopeGranted: activePathScopeGranted,
-        },
-      );
+  const finishSave = useCallback(
+    async (result: DiagramSaveResult) => {
       if (result.cancelled) return;
       useDiagramStore.getState().markClean();
       markActiveSaved({
@@ -94,11 +88,60 @@ function App() {
       if (useDiagramStore.getState().autosaveEnabled) {
         await useDiagramStore.getState().flushAutosave();
       }
+      if (result.usedDownloadFallback) {
+        alert(t("app.saveDownloadFallback"));
+      }
+    },
+    [markActiveSaved, t],
+  );
+
+  const handleSave = useCallback(async () => {
+    try {
+      const result = await saveDiagramToFile(
+        useDiagramStore.getState().getDiagram(),
+        {
+          filePath: activeFilePath,
+          fileHandle: activeFileHandle,
+          pathScopeGranted: activePathScopeGranted,
+        },
+      );
+      await finishSave(result);
     } catch (err) {
       console.error(err);
       alert(t("app.saveFailed"));
     }
-  };
+  }, [
+    activeFileHandle,
+    activeFilePath,
+    activePathScopeGranted,
+    finishSave,
+    t,
+  ]);
+
+  const handleSaveAs = useCallback(async () => {
+    try {
+      const result = await saveDiagramToFile(
+        useDiagramStore.getState().getDiagram(),
+        {
+          filePath: activeFilePath,
+          forcePicker: true,
+        },
+      );
+      await finishSave(result);
+    } catch (err) {
+      console.error(err);
+      alert(t("app.saveFailed"));
+    }
+  }, [activeFilePath, finishSave, t]);
+
+  useFileShortcuts({
+    onSave: () => {
+      void handleSave();
+    },
+    onSaveAs: () => {
+      void handleSaveAs();
+    },
+  });
 
   const handleOpen = async () => {
     try {
@@ -139,6 +182,7 @@ function App() {
       <Toolbar
         onNew={handleNew}
         onSave={handleSave}
+        onSaveAs={handleSaveAs}
         onOpen={handleOpen}
         onExport={handleExport}
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}

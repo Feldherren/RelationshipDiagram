@@ -8,6 +8,7 @@ import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog, type SettingsSectionId } from "./components/panels/SettingsDialog";
 import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
+import { AboutDialog } from "./components/panels/AboutDialog";
 import { ExternalLinkConfirmHost } from "./components/panels/ExternalLinkConfirmHost";
 import { FindBar, type FindBarActions } from "./components/panels/FindBar";
 import { Toolbar } from "./components/Toolbar";
@@ -37,6 +38,7 @@ function App() {
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>("appearance");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const findActionsRef = useRef<FindBarActions | null>(null);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
@@ -186,7 +188,8 @@ function App() {
         onOpen={handleOpen}
         onExport={handleExport}
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}
-        onHelp={() => setHelpOpen(true)}
+        onControls={() => setHelpOpen(true)}
+        onAbout={() => setAboutOpen(true)}
         onSettings={() => openSettings()}
         onFind={() => setFindOpen(true)}
       />
@@ -224,6 +227,7 @@ function App() {
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
       />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

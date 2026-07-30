@@ -209,11 +209,11 @@ body,
   display: block;
 }
 
-.file-menu-anchor {
+.toolbar-menu-anchor {
   position: relative;
 }
 
-.file-menu {
+.toolbar-menu {
   position: absolute;
   top: calc(100% + 0.25rem);
   left: 0;
@@ -229,7 +229,7 @@ body,
   box-shadow: 0 0.125rem 0.5rem var(--ui-shadow);
 }
 
-.toolbar .file-menu-item {
+.toolbar .toolbar-menu-item {
   display: block;
   width: 100%;
   padding: 0.375rem 0.75rem;
@@ -242,11 +242,11 @@ body,
   cursor: pointer;
 }
 
-.toolbar .file-menu-item:hover:not(:disabled) {
+.toolbar .toolbar-menu-item:hover:not(:disabled) {
   background: var(--ui-surface-hover);
 }
 
-.file-menu-separator {
+.toolbar-menu-separator {
   height: 1px;
   margin: 0.25rem 0.35rem;
   background: var(--ui-border-strong);
@@ -2024,6 +2024,10 @@ body,
 
 .dialog.dialog-help {
   width: min(32rem, 94vw);
+}
+
+.dialog.dialog-about {
+  width: min(24rem, 94vw);
 }
 
 .help-section {

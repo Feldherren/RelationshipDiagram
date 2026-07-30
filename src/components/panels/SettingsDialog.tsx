@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import packageJson from "../../../package.json";
 import {
   SUPPORTED_LOCALES,
   SYSTEM_LANGUAGE,
@@ -61,8 +60,7 @@ export type SettingsSectionId =
   | "accessibility"
   | "editing"
   | "export"
-  | "data"
-  | "about";
+  | "data";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -320,7 +318,6 @@ export function SettingsDialog({
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "export", label: t("appSettings.exportSection") },
     { id: "data", label: t("appSettings.dataSection") },
-    { id: "about", label: t("appSettings.aboutSection") },
   ] as const;
 
   let content = null;
@@ -645,26 +642,6 @@ export function SettingsDialog({
           >
             {t("appSettings.clearAutosaveData")}
           </button>
-        </>
-      );
-      break;
-    case "about":
-      content = (
-        <>
-          <p>{t("app.name")}</p>
-          <p className="hint">
-            {t("appSettings.version", { version: packageJson.version })}
-          </p>
-          <p>
-            <a
-              className="text-link"
-              href="https://github.com/Feldherren/RelationshipDiagram"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("appSettings.githubRepo")}
-            </a>
-          </p>
         </>
       );
       break;

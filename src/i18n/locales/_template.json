@@ -15,8 +15,11 @@
     "redo": "Redo",
     "redoTitle": "Redo (Ctrl+Y / Cmd+Shift+Z)",
     "diagramProperties": "Diagram properties",
+    "helpMenu": "Help",
+    "helpMenuAria": "Help menu",
     "help": "Controls",
     "helpAria": "Canvas controls and shortcuts",
+    "about": "About",
     "settings": "Settings",
     "settingsAria": "Application settings",
     "snapToGrid": "Snap to grid",
@@ -30,6 +33,10 @@
     "openFailed": "Failed to open diagram file.",
     "newConfirm": "Start a new diagram? Your current diagram will be replaced.",
     "name": "Character Relationship Diagram Creator"
+  },
+  "about": {
+    "title": "About",
+    "close": "Close"
   },
   "tabs": {
     "listAria": "Open diagrams",
@@ -268,7 +275,6 @@
     "clearAutosaveData": "Clear autosave data",
     "clearAutosaveConfirm": "Delete the locally saved autosave (all tab slots)? Your current diagrams on screen are not affected.",
     "clearAutosaveDone": "Autosave data cleared.",
-    "aboutSection": "About",
     "version": "Version {{version}}",
     "githubRepo": "GitHub repository",
     "done": "Done"

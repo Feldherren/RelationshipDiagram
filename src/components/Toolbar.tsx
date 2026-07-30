@@ -9,7 +9,8 @@ interface ToolbarProps {
   onOpen: () => void;
   onExport: () => void;
   onDiagramProperties: () => void;
-  onHelp: () => void;
+  onControls: () => void;
+  onAbout: () => void;
   onSettings: () => void;
   onFind: () => void;
 }
@@ -27,30 +28,6 @@ function SearchIcon() {
         fill="currentColor"
         d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
       />
-    </svg>
-  );
-}
-
-function HelpIcon() {
-  return (
-    <svg
-      className="toolbar-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      aria-hidden="true"
-    >
-      <text
-        x="12"
-        y="12"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize="18"
-        fontWeight="700"
-        fill="currentColor"
-      >
-        ?
-      </text>
     </svg>
   );
 }
@@ -192,7 +169,7 @@ function FileMenu({
   };
 
   return (
-    <div className="file-menu-anchor" ref={rootRef}>
+    <div className="toolbar-menu-anchor" ref={rootRef}>
       <button
         type="button"
         className={open ? "active" : undefined}
@@ -206,14 +183,14 @@ function FileMenu({
       </button>
       {open && (
         <div
-          className="file-menu"
+          className="toolbar-menu"
           role="menu"
           aria-label={t("toolbar.fileMenuAria")}
         >
           <button
             type="button"
             role="menuitem"
-            className="file-menu-item"
+            className="toolbar-menu-item"
             onClick={() => run(onNew)}
           >
             {t("toolbar.new")}
@@ -221,7 +198,7 @@ function FileMenu({
           <button
             type="button"
             role="menuitem"
-            className="file-menu-item"
+            className="toolbar-menu-item"
             onClick={() => run(onOpen)}
           >
             {t("toolbar.open")}
@@ -229,7 +206,7 @@ function FileMenu({
           <button
             type="button"
             role="menuitem"
-            className="file-menu-item"
+            className="toolbar-menu-item"
             title={t("toolbar.saveTitle")}
             onClick={() => run(onSave)}
           >
@@ -238,20 +215,99 @@ function FileMenu({
           <button
             type="button"
             role="menuitem"
-            className="file-menu-item"
+            className="toolbar-menu-item"
             title={t("toolbar.saveAsTitle")}
             onClick={() => run(onSaveAs)}
           >
             {t("toolbar.saveAs")}
           </button>
-          <div className="file-menu-separator" role="separator" />
+          <div className="toolbar-menu-separator" role="separator" />
           <button
             type="button"
             role="menuitem"
-            className="file-menu-item"
+            className="toolbar-menu-item"
             onClick={() => run(onExport)}
           >
             {t("toolbar.export")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HelpMenu({
+  onControls,
+  onAbout,
+}: {
+  onControls: () => void;
+  onAbout: () => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const run = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="toolbar-menu-anchor" ref={rootRef}>
+      <button
+        type="button"
+        className={open ? "active" : undefined}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("toolbar.helpMenuAria")}
+        title={t("toolbar.helpMenu")}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t("toolbar.helpMenu")}
+      </button>
+      {open && (
+        <div
+          className="toolbar-menu"
+          role="menu"
+          aria-label={t("toolbar.helpMenuAria")}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onControls)}
+          >
+            {t("toolbar.help")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onAbout)}
+          >
+            {t("toolbar.about")}
           </button>
         </div>
       )}
@@ -266,7 +322,8 @@ export function Toolbar({
   onOpen,
   onExport,
   onDiagramProperties,
-  onHelp,
+  onControls,
+  onAbout,
   onSettings,
   onFind,
 }: ToolbarProps) {
@@ -289,6 +346,7 @@ export function Toolbar({
           onSaveAs={onSaveAs}
           onExport={onExport}
         />
+        <HelpMenu onControls={onControls} onAbout={onAbout} />
       </div>
 
       <div
@@ -376,15 +434,6 @@ export function Toolbar({
           title={t("toolbar.settings")}
         >
           <SettingsGearIcon />
-        </button>
-        <button
-          type="button"
-          className="toolbar-icon-button"
-          onClick={onHelp}
-          aria-label={t("toolbar.helpAria")}
-          title={t("toolbar.help")}
-        >
-          <HelpIcon />
         </button>
       </div>
     </header>

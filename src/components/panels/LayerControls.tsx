@@ -28,6 +28,7 @@ export function LayerControls() {
 
   // UI lists top (front) first; storage is back → front.
   const displayLayers = [...layers].reverse();
+  const activeLayer = layers.find((l) => l.id === activeLayerId);
 
   useEffect(() => {
     if (!open) return;
@@ -169,26 +170,49 @@ export function LayerControls() {
             setDropInsertIndex(null);
           }}
         >
-          <button
-            type="button"
-            className="layer-strip-add"
-            title={t("layers.add")}
-            aria-label={t("layers.add")}
-            onClick={() => addLayer()}
-            onDragOver={(e) => {
-              if (dragDisplayIndex == null) return;
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "move";
-              setDropInsertIndex(0);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleDropAtInsert(0);
-            }}
-          >
-            <LayerAddIcon className="viewport-control-icon" size={20} />
-          </button>
+          <div className="layer-strip-actions">
+            <button
+              type="button"
+              className="layer-strip-add"
+              title={t("layers.add")}
+              aria-label={t("layers.add")}
+              onClick={() => addLayer()}
+              onDragOver={(e) => {
+                if (dragDisplayIndex == null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDropInsertIndex(0);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDropAtInsert(0);
+              }}
+            >
+              <LayerAddIcon className="viewport-control-icon" size={20} />
+            </button>
+            <button
+              type="button"
+              className="layer-strip-delete"
+              title={
+                layers.length <= 1
+                  ? t("layers.deleteLastBlocked")
+                  : t("layers.delete")
+              }
+              aria-label={
+                activeLayer
+                  ? t("layers.deleteAria", { name: activeLayer.name })
+                  : t("layers.delete")
+              }
+              disabled={layers.length <= 1 || !activeLayerId}
+              onClick={() => {
+                if (!activeLayerId) return;
+                void deleteLayer(activeLayerId);
+              }}
+            >
+              ×
+            </button>
+          </div>
           {displayLayers.map((layer, displayIndex) => {
             const active = layer.id === activeLayerId;
             const isEditing = editingId === layer.id;
@@ -304,24 +328,6 @@ export function LayerControls() {
                         size={16}
                       />
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    className="viewport-control-button layer-row-button layer-delete"
-                    title={
-                      layers.length <= 1
-                        ? t("layers.deleteLastBlocked")
-                        : t("layers.delete")
-                    }
-                    aria-label={t("layers.deleteAria", {
-                      name: layer.name,
-                    })}
-                    disabled={layers.length <= 1}
-                    onClick={() => {
-                      void deleteLayer(layer.id);
-                    }}
-                  >
-                    ×
                   </button>
                 </div>
               </div>

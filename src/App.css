@@ -825,14 +825,21 @@ body,
   cursor: not-allowed;
 }
 
-.layer-strip-add {
+.layer-strip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-bottom: 0.125rem;
+}
+
+.layer-strip-add,
+.layer-strip-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
   width: 2.25rem;
   height: 2.25rem;
-  margin-bottom: 0.125rem;
   padding: 0;
   border: 1px dashed var(--ui-border);
   border-radius: 0.5rem;
@@ -841,9 +848,20 @@ body,
   cursor: pointer;
 }
 
-.layer-strip-add:hover {
+.layer-strip-delete {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.layer-strip-add:hover,
+.layer-strip-delete:hover:not(:disabled) {
   background: var(--ui-surface-hover);
   border-style: solid;
+}
+
+.layer-strip-delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .add-object-controls-row {

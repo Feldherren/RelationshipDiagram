@@ -9,6 +9,7 @@ import type {
   ConnectDrag,
   Diagram,
   DiagramAppearance,
+  DiagramLayer,
   FloatingText,
   GridStyle,
   Group,
@@ -59,6 +60,15 @@ import {
 import {
   createAutosaveSnapshot,
 } from "../utils/autosaveStorage";
+import {
+  countLayerObjects,
+  createDefaultLayer,
+  ensureLayers,
+  layerHasObjects,
+  moveArrayItem,
+  resolveActiveLayerId,
+} from "../utils/layers";
+import { confirmDialog } from "../utils/confirmDialog";
 import {
   createEmptyDiagram,
   type PersistedDiagramState,
@@ -133,6 +143,8 @@ interface DiagramState {
   floatingTexts: FloatingText[];
   viewport: Viewport;
   bookmarks: ViewBookmark[];
+  layers: DiagramLayer[];
+  activeLayerId: string;
   bookmarksVisible: boolean;
   /** Group hub eye: full hubs+corridors, connected badges only, or hidden. */
   groupsCanvasMode: GroupsCanvasMode;
@@ -230,6 +242,21 @@ interface DiagramState {
   ) => void;
   deleteBookmark: (id: string) => void;
   goToBookmark: (id: string, options?: { keepZoom?: boolean }) => void;
+  addLayer: (name?: string) => void;
+  renameLayer: (id: string, name: string) => void;
+  setLayerVisible: (id: string, visible: boolean) => void;
+  reorderLayers: (fromIndex: number, toIndex: number) => void;
+  setActiveLayer: (id: string) => void;
+  deleteLayer: (id: string) => Promise<boolean>;
+  setEntityLayer: (
+    type: "character" | "line" | "group" | "box" | "floatingText",
+    id: string,
+    layerId: string,
+  ) => void;
+  setMultiEntityLayer: (
+    items: MultiSelectableItem[],
+    layerId: string,
+  ) => void;
   focusSelection: (
     selection: Exclude<Selection, null | { type: "multi" }>,
     options?: { keepZoom?: boolean },
@@ -316,6 +343,7 @@ interface DiagramState {
 function createDefaultCharacter(
   position: { x: number; y: number },
   borderColor: RGB,
+  layerId: string,
 ): Character {
   return {
     id: uuidv4(),
@@ -324,6 +352,7 @@ function createDefaultCharacter(
     borderShape: "circle",
     borderColor: { ...borderColor },
     size: DEFAULT_CHARACTER_SIZE,
+    layerId,
   };
 }
 
@@ -417,10 +446,11 @@ function normalizeBookmarks(raw: unknown): ViewBookmark[] {
 
 const HISTORY_LIMIT = 100;
 
-/** Document fingerprint for dirty checks — viewport excluded (pan/zoom are not "unsaved"). */
+/** Document fingerprint for dirty checks — viewport / active layer excluded (UI chrome). */
 function dirtyFingerprint(state: PersistedDiagramState): string {
   const {
     viewport: _viewport,
+    activeLayerId: _activeLayerId,
     ...rest
   } = pickPersistedState(state);
   return JSON.stringify(rest);
@@ -460,7 +490,9 @@ function recomputeDirtyFromCleanJson(
 }
 
 export const useDiagramStore = create<DiagramState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set, get) => {
+  const initialLayer = createDefaultLayer();
+  return {
   characters: [],
   lines: [],
   groups: [],
@@ -468,6 +500,8 @@ export const useDiagramStore = create<DiagramState>()(
   floatingTexts: [],
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
+  layers: [initialLayer],
+  activeLayerId: initialLayer.id,
   bookmarksVisible: true,
   groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
@@ -1122,9 +1156,11 @@ export const useDiagramStore = create<DiagramState>()(
     const pos = get().snapToGridEnabled
       ? snapPointToGrid(position)
       : position;
+    const layerId = resolveActiveLayerId(get().layers, get().activeLayerId);
     const character = createDefaultCharacter(
       pos,
       get().diagramAppearance.defaultCharacterBorderColor,
+      layerId,
     );
     set((s) => ({
       characters: [...s.characters, character],
@@ -1196,6 +1232,7 @@ export const useDiagramStore = create<DiagramState>()(
       bend: self
         ? initialSelfLoopBend(routeIndex)
         : initialBendForRouteIndex(routeIndex),
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       lines: [...s.lines, line],
@@ -1232,6 +1269,7 @@ export const useDiagramStore = create<DiagramState>()(
       name: name?.trim() || i18n.t("defaults.groupName", { n: groups.length + 1 }),
       memberCharacterIds: [],
       appearance: defaultMembershipAppearance(),
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       groups: [...s.groups, group],
@@ -1351,6 +1389,7 @@ export const useDiagramStore = create<DiagramState>()(
       collapsedPosition: anchor,
       bounds,
       borderColor: { ...diagramAppearance.defaultBoxBorderColor },
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
 
     set((s) => ({
@@ -1661,6 +1700,7 @@ export const useDiagramStore = create<DiagramState>()(
       text: "",
       color: { ...get().diagramAppearance.defaultFloatingTextColor },
       fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       floatingTexts: [...s.floatingTexts, floatingText],
@@ -1763,18 +1803,21 @@ export const useDiagramStore = create<DiagramState>()(
     ),
 
   endConnectDrag: (point) => {
-    const { connectDrag, characters, boxes, groups } = get();
+    const { connectDrag, characters, boxes, groups, layers } = get();
     if (!connectDrag) return;
 
+    const visibleLayerIds = new Set(
+      layers.filter((l) => l.visible).map((l) => l.id),
+    );
     const moved = Math.hypot(
       point.x - connectDrag.startX,
       point.y - connectDrag.startY,
     );
     const target = findConnectionTargetAt(
       point,
-      characters,
-      boxes,
-      groups,
+      characters.filter((c) => visibleLayerIds.has(c.layerId)),
+      boxes.filter((b) => visibleLayerIds.has(b.layerId)),
+      groups.filter((g) => visibleLayerIds.has(g.layerId)),
     );
 
     if (target) {
@@ -1944,6 +1987,245 @@ export const useDiagramStore = create<DiagramState>()(
     set({ viewport: { ...bookmark.viewport } });
   },
 
+  addLayer: (name) => {
+    get().captureHistory();
+    const { layers } = get();
+    const layer = createDefaultLayer(
+      name?.trim() ||
+        i18n.t("layers.defaultName", { n: layers.length + 1 }),
+    );
+    set((s) => ({
+      layers: [...s.layers, layer],
+      activeLayerId: layer.id,
+    }));
+  },
+
+  renameLayer: (id, name) => {
+    const trimmed = name.trim().slice(0, 80);
+    if (!trimmed) return;
+    get().captureHistory();
+    set((s) => ({
+      layers: s.layers.map((l) =>
+        l.id === id ? { ...l, name: trimmed } : l,
+      ),
+    }));
+  },
+
+  setLayerVisible: (id, visible) => {
+    get().captureHistory();
+    set((s) => ({
+      layers: s.layers.map((l) =>
+        l.id === id ? { ...l, visible } : l,
+      ),
+    }));
+  },
+
+  reorderLayers: (fromIndex, toIndex) => {
+    const { layers } = get();
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= layers.length ||
+      toIndex >= layers.length ||
+      fromIndex === toIndex
+    ) {
+      return;
+    }
+    get().captureHistory();
+    set({ layers: moveArrayItem(layers, fromIndex, toIndex) });
+  },
+
+  setActiveLayer: (id) => {
+    if (!get().layers.some((l) => l.id === id)) return;
+    set({ activeLayerId: id });
+  },
+
+  deleteLayer: async (id) => {
+    const state = get();
+    if (state.layers.length <= 1) return false;
+    if (!state.layers.some((l) => l.id === id)) return false;
+
+    const hasObjects = layerHasObjects(id, state);
+    if (hasObjects && getAppPreferences().confirmBeforeDeleteLayer) {
+      const count = countLayerObjects(id, state);
+      const layer = state.layers.find((l) => l.id === id);
+      const confirmed = await confirmDialog(
+        i18n.t("layers.deleteConfirm", {
+          name: layer?.name ?? "",
+          count,
+        }),
+        { title: i18n.t("layers.deleteConfirmTitle") },
+      );
+      if (!confirmed) return false;
+    }
+
+    get().captureHistory();
+    set((s) => {
+      const remaining = s.layers.filter((l) => l.id !== id);
+      const nextActive =
+        s.activeLayerId === id
+          ? remaining[remaining.length - 1].id
+          : s.activeLayerId;
+
+      const removedCharacterIds = new Set(
+        s.characters.filter((c) => c.layerId === id).map((c) => c.id),
+      );
+      const removedBoxIds = new Set(
+        s.boxes.filter((b) => b.layerId === id).map((b) => b.id),
+      );
+      const removedGroupIds = new Set(
+        s.groups.filter((g) => g.layerId === id).map((g) => g.id),
+      );
+      const removedFloatingTextIds = new Set(
+        s.floatingTexts.filter((t) => t.layerId === id).map((t) => t.id),
+      );
+
+      const characters = s.characters.filter((c) => c.layerId !== id);
+      const boxes = s.boxes.filter((b) => b.layerId !== id);
+      const groups = s.groups
+        .filter((g) => g.layerId !== id)
+        .map((g) => ({
+          ...g,
+          memberCharacterIds: g.memberCharacterIds.filter(
+            (mid) => !removedCharacterIds.has(mid),
+          ),
+        }));
+      const floatingTexts = s.floatingTexts.filter((t) => t.layerId !== id);
+      const lines = s.lines.filter((l) => {
+        if (l.layerId === id) return false;
+        const fromGone =
+          (l.from.kind === "character" &&
+            removedCharacterIds.has(l.from.id)) ||
+          (l.from.kind === "box" && removedBoxIds.has(l.from.id)) ||
+          (l.from.kind === "group" && removedGroupIds.has(l.from.id));
+        const toGone =
+          (l.to.kind === "character" && removedCharacterIds.has(l.to.id)) ||
+          (l.to.kind === "box" && removedBoxIds.has(l.to.id)) ||
+          (l.to.kind === "group" && removedGroupIds.has(l.to.id));
+        return !fromGone && !toGone;
+      });
+
+      let selection = s.selection;
+      if (selection) {
+        if (selection.type === "character" && removedCharacterIds.has(selection.id)) {
+          selection = null;
+        } else if (selection.type === "box" && removedBoxIds.has(selection.id)) {
+          selection = null;
+        } else if (selection.type === "group" && removedGroupIds.has(selection.id)) {
+          selection = null;
+        } else if (
+          selection.type === "floatingText" &&
+          removedFloatingTextIds.has(selection.id)
+        ) {
+          selection = null;
+        } else if (
+          selection.type === "line" &&
+          !lines.some((l) => l.id === selection.id)
+        ) {
+          selection = null;
+        } else if (selection.type === "multi") {
+          const nextItems = selection.items.filter((item) => {
+            if (item.type === "character") return !removedCharacterIds.has(item.id);
+            if (item.type === "box") return !removedBoxIds.has(item.id);
+            if (item.type === "floatingText")
+              return !removedFloatingTextIds.has(item.id);
+            return true;
+          });
+          selection =
+            nextItems.length === 0
+              ? null
+              : nextItems.length === 1
+                ? { type: nextItems[0].type, id: nextItems[0].id }
+                : { type: "multi", items: nextItems };
+        }
+      }
+
+      const deletingEditedGroup =
+        s.toolMode === "editGroupMembers" &&
+        s.selection?.type === "group" &&
+        removedGroupIds.has(s.selection.id);
+
+      return {
+        layers: remaining,
+        activeLayerId: nextActive,
+        characters,
+        boxes,
+        groups,
+        floatingTexts,
+        lines,
+        selection,
+        selectionDetailsOpen: selection ? s.selectionDetailsOpen : false,
+        editingFloatingTextId:
+          s.editingFloatingTextId &&
+          removedFloatingTextIds.has(s.editingFloatingTextId)
+            ? null
+            : s.editingFloatingTextId,
+        ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
+      };
+    });
+    return true;
+  },
+
+  setEntityLayer: (type, id, layerId) => {
+    if (!get().layers.some((l) => l.id === layerId)) return;
+    get().captureHistory();
+    set((s) => {
+      if (type === "character") {
+        return {
+          characters: s.characters.map((c) =>
+            c.id === id ? { ...c, layerId } : c,
+          ),
+        };
+      }
+      if (type === "line") {
+        return {
+          lines: s.lines.map((l) => (l.id === id ? { ...l, layerId } : l)),
+        };
+      }
+      if (type === "group") {
+        return {
+          groups: s.groups.map((g) =>
+            g.id === id ? { ...g, layerId } : g,
+          ),
+        };
+      }
+      if (type === "box") {
+        return {
+          boxes: s.boxes.map((b) => (b.id === id ? { ...b, layerId } : b)),
+        };
+      }
+      return {
+        floatingTexts: s.floatingTexts.map((t) =>
+          t.id === id ? { ...t, layerId } : t,
+        ),
+      };
+    });
+  },
+
+  setMultiEntityLayer: (items, layerId) => {
+    if (!get().layers.some((l) => l.id === layerId)) return;
+    if (items.length === 0) return;
+    get().captureHistory();
+    const characterIds = new Set(
+      items.filter((i) => i.type === "character").map((i) => i.id),
+    );
+    const boxIds = new Set(items.filter((i) => i.type === "box").map((i) => i.id));
+    const floatingTextIds = new Set(
+      items.filter((i) => i.type === "floatingText").map((i) => i.id),
+    );
+    set((s) => ({
+      characters: s.characters.map((c) =>
+        characterIds.has(c.id) ? { ...c, layerId } : c,
+      ),
+      boxes: s.boxes.map((b) =>
+        boxIds.has(b.id) ? { ...b, layerId } : b,
+      ),
+      floatingTexts: s.floatingTexts.map((t) =>
+        floatingTextIds.has(t.id) ? { ...t, layerId } : t,
+      ),
+    }));
+  },
+
   focusSelection: (selection, options) => {
     const keepZoom = options?.keepZoom ?? true;
     const state = get();
@@ -2071,6 +2353,7 @@ export const useDiagramStore = create<DiagramState>()(
     const liveShowHeader =
       diagram.showHeader ?? resolvedAppearance.showHeader ?? true;
     const dirty = options?.dirty ?? false;
+    const ensured = ensureLayers(diagram.layers, diagram.activeLayerId);
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -2079,6 +2362,8 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       bookmarks: normalizeBookmarks(diagram.bookmarks),
+      layers: ensured.layers,
+      activeLayerId: ensured.activeLayerId,
       diagramId: diagram.id,
       dirty,
       cleanJson: null,
@@ -2218,6 +2503,8 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts,
       viewport,
       bookmarks,
+      layers,
+      activeLayerId,
       diagramId,
       diagramTitle,
       diagramSubtitle,
@@ -2229,7 +2516,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle,
     } = get();
     return {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       id: diagramId,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
@@ -2247,11 +2534,14 @@ export const useDiagramStore = create<DiagramState>()(
       groups,
       boxes,
       floatingTexts: floatingTexts.length > 0 ? floatingTexts : undefined,
+      layers,
+      activeLayerId,
       viewport,
       bookmarks: bookmarks.length > 0 ? bookmarks : undefined,
     };
   },
-  })),
+  };
+  }),
 );
 
 export function getCharacterInitials(name: string): string {

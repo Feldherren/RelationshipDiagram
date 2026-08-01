@@ -4,6 +4,7 @@
 - Moved the New/Save/Load/Export buttons into a File menu.
 - Added Save As functionality.
 - Moved Controls and About into a Help menu.
+- Layers!
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.

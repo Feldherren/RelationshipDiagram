@@ -34,20 +34,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
   const diagramId = useDiagramStore((s) => s.diagramId);
-  const diagram = {
-    schemaVersion: 3 as const,
-    id: diagramId,
-    title: diagramTitle || undefined,
-    subtitle: diagramSubtitle || undefined,
-    fontFamily: isDefaultDiagramFont(diagramFontFamily)
-      ? undefined
-      : diagramFontFamily,
-    characters,
-    lines,
-    groups,
-    boxes,
-    floatingTexts,
-  };
+  const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagram = getDiagram();
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const showGrid = useDiagramStore((s) => s.showGrid);

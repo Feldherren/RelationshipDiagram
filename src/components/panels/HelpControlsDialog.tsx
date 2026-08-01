@@ -123,6 +123,10 @@ export function HelpControlsDialog({ open, onClose }: HelpControlsDialogProps) {
               keys: t("help.addObjectDblClickKeys"),
               detail: t("help.addObjectDblClickDetail"),
             },
+            {
+              keys: t("help.layersKeys"),
+              detail: t("help.layersDetail"),
+            },
           ]}
         />
 

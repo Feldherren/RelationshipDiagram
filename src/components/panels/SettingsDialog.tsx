@@ -549,6 +549,20 @@ export function SettingsDialog({
           <label className="field checkbox">
             <input
               type="checkbox"
+              checked={prefs.confirmBeforeDeleteLayer}
+              onChange={(e) =>
+                updatePrefs({ confirmBeforeDeleteLayer: e.target.checked })
+              }
+            />
+            <span>{t("appSettings.confirmBeforeDeleteLayer")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.confirmBeforeDeleteLayerHint")}
+          </p>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
               checked={prefs.showExternalLinkChipTooltip}
               onChange={(e) =>
                 updatePrefs({

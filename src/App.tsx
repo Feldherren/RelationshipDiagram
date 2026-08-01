@@ -15,7 +15,7 @@ import { Toolbar } from "./components/Toolbar";
 import { EditorTabs } from "./components/EditorTabs";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
-import { AddObjectControls } from "./components/panels/AddObjectControls";
+import { LayerControls } from "./components/panels/LayerControls";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useFindShortcuts } from "./hooks/useFindShortcuts";
@@ -201,7 +201,7 @@ function App() {
               <DiagramCanvas stageRef={stageRef} />
               <SelectionFloat />
               <ViewportControls />
-              <AddObjectControls />
+              <LayerControls />
               <GroupsListPopup />
               <ZoomIndicator />
               <FindBar

@@ -12,6 +12,11 @@ import {
 } from "./geometry";
 import { getLineBounds } from "./lineRouting";
 import { shouldRenderLine } from "./lineEndpoints";
+import { isLayerVisible } from "./layers";
+
+function isEntityLayerVisible(diagram: Diagram, layerId: string): boolean {
+  return isLayerVisible(diagram.layers ?? [], layerId);
+}
 
 export function collectContentObstacles(
   diagram: Diagram,
@@ -21,6 +26,7 @@ export function collectContentObstacles(
   const obstacles: Bounds[] = [];
 
   for (const character of diagram.characters) {
+    if (!isEntityLayerVisible(diagram, character.layerId)) continue;
     const inCollapsedBox = diagram.boxes.some(
       (b) =>
         b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
@@ -30,6 +36,7 @@ export function collectContentObstacles(
   }
 
   for (const box of diagram.boxes) {
+    if (!isEntityLayerVisible(diagram, box.layerId)) continue;
     if (box.collapsed) {
       obstacles.push(getCollapsedBoxBounds(box, fontFamily));
     } else {
@@ -39,12 +46,14 @@ export function collectContentObstacles(
   }
 
   for (const line of diagram.lines) {
+    if (!isEntityLayerVisible(diagram, line.layerId)) continue;
     if (!shouldRenderLine(line, diagram)) continue;
     const bounds = getLineBounds(line, diagram, fontFamily);
     if (bounds) obstacles.push(bounds);
   }
 
   for (const floatingText of diagram.floatingTexts ?? []) {
+    if (!isEntityLayerVisible(diagram, floatingText.layerId)) continue;
     const inCollapsedBox = diagram.boxes.some(
       (b) =>
         b.collapsed &&
@@ -65,6 +74,7 @@ export function computeContentBounds(
   let result: Bounds | null = null;
 
   for (const character of diagram.characters) {
+    if (!isEntityLayerVisible(diagram, character.layerId)) continue;
     const inCollapsedBox = diagram.boxes.some(
       (b) =>
         b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
@@ -75,6 +85,7 @@ export function computeContentBounds(
   }
 
   for (const box of diagram.boxes) {
+    if (!isEntityLayerVisible(diagram, box.layerId)) continue;
     if (box.collapsed) {
       const bounds = getCollapsedBoxBounds(box, fontFamily);
       result = result ? mergeBounds(result, bounds) : bounds;
@@ -85,12 +96,14 @@ export function computeContentBounds(
   }
 
   for (const line of diagram.lines) {
+    if (!isEntityLayerVisible(diagram, line.layerId)) continue;
     if (!shouldRenderLine(line, diagram)) continue;
     const bounds = getLineBounds(line, diagram, fontFamily);
     if (bounds) result = result ? mergeBounds(result, bounds) : bounds;
   }
 
   for (const floatingText of diagram.floatingTexts ?? []) {
+    if (!isEntityLayerVisible(diagram, floatingText.layerId)) continue;
     const inCollapsedBox = diagram.boxes.some(
       (b) =>
         b.collapsed &&

@@ -34,6 +34,7 @@ import {
   isCharacterGeometricallyInBox,
   isFloatingTextGeometricallyInBox,
 } from "./geometry";
+import { ensureLayers, normalizeLayers } from "./layers";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -89,17 +90,9 @@ function migrateV1Lines(lines: Line[]): Line[] {
   }));
 }
 
-function normalizeLines(lines: Line[]): Line[] {
-  return lines.map((line) => ({
-    ...line,
-    from: normalizeNodeRef(line.from),
-    to: normalizeNodeRef(line.to),
-  }));
-}
-
 function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
-  const boxes: Box[] = [];
-  const groups: Group[] = [];
+  const boxes: Omit<Box, "layerId">[] = [];
+  const groups: Omit<Group, "layerId">[] = [];
 
   for (const g of data.groups ?? []) {
     boxes.push({
@@ -123,16 +116,16 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
   }
 
   return normalizeDiagram({
-    schemaVersion: 3,
+    schemaVersion: 4,
     title: data.title,
     subtitle: data.subtitle,
     showHeader: data.showHeader,
     fontFamily: data.fontFamily,
     backgroundColor: data.backgroundColor,
-    characters: data.characters,
-    lines: migrateV1Lines(data.lines ?? []),
-    groups,
-    boxes,
+    characters: data.characters as Diagram["characters"],
+    lines: migrateV1Lines(data.lines ?? []) as Diagram["lines"],
+    groups: groups as Group[],
+    boxes: boxes as Box[],
     floatingTexts: [],
     viewport: data.viewport,
   });
@@ -158,8 +151,21 @@ function normalizeFloatingTextDimension(
   return Math.max(min, Math.round(value));
 }
 
+function resolveEntityLayerId(
+  layerId: unknown,
+  fallbackLayerId: string,
+  validIds: Set<string>,
+): string {
+  if (typeof layerId === "string" && validIds.has(layerId)) {
+    return layerId;
+  }
+  return fallbackLayerId;
+}
+
 function normalizeFloatingTexts(
   texts: Diagram["floatingTexts"],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
 ): FloatingText[] {
   return (texts ?? []).map((t) => {
     const partial = t as Partial<FloatingText> & {
@@ -190,6 +196,11 @@ function normalizeFloatingTexts(
         ? { ...partial.color }
         : { ...DEFAULT_FLOATING_TEXT_COLOR },
       fontSize,
+      layerId: resolveEntityLayerId(
+        partial.layerId,
+        fallbackLayerId,
+        validLayerIds,
+      ),
       ...(textAlign ? { textAlign } : {}),
       ...(width != null ? { width } : {}),
       ...(height != null ? { height } : {}),
@@ -199,6 +210,8 @@ function normalizeFloatingTexts(
 
 function normalizeCharacters(
   characters: Diagram["characters"],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
 ): Character[] {
   return (characters ?? []).map((c) => {
     const link =
@@ -212,8 +225,30 @@ function normalizeCharacters(
           ? clampCharacterSize(c.size)
           : DEFAULT_CHARACTER_SIZE,
       link,
+      layerId: resolveEntityLayerId(
+        (c as Partial<Character>).layerId,
+        fallbackLayerId,
+        validLayerIds,
+      ),
     };
   });
+}
+
+function normalizeLinesWithLayers(
+  lines: Line[],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
+): Line[] {
+  return lines.map((line) => ({
+    ...line,
+    from: normalizeNodeRef(line.from),
+    to: normalizeNodeRef(line.to),
+    layerId: resolveEntityLayerId(
+      (line as Partial<Line>).layerId,
+      fallbackLayerId,
+      validLayerIds,
+    ),
+  }));
 }
 
 function normalizeDiagramId(id: unknown): string {
@@ -224,21 +259,41 @@ function normalizeDiagramId(id: unknown): string {
 }
 
 function normalizeDiagram(
-  data: Omit<Diagram, "schemaVersion" | "id"> & {
+  data: Omit<Diagram, "schemaVersion" | "id" | "layers"> & {
     schemaVersion?: number;
     id?: string;
+    layers?: Diagram["layers"];
+    activeLayerId?: string;
   },
 ): Diagram {
   const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
-  const characters = normalizeCharacters(data.characters);
-  const floatingTexts = normalizeFloatingTexts(data.floatingTexts);
+  const { layers, activeLayerId } = ensureLayers(
+    normalizeLayers(data.layers),
+    data.activeLayerId,
+  );
+  const validLayerIds = new Set(layers.map((l) => l.id));
+  const fallbackLayerId = activeLayerId;
+  const characters = normalizeCharacters(
+    data.characters as Diagram["characters"],
+    fallbackLayerId,
+    validLayerIds,
+  );
+  const floatingTexts = normalizeFloatingTexts(
+    data.floatingTexts,
+    fallbackLayerId,
+    validLayerIds,
+  );
 
   return {
     ...data,
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: normalizeDiagramId(data.id),
     characters,
-    lines: normalizeLines(data.lines ?? []),
+    lines: normalizeLinesWithLayers(
+      (data.lines ?? []) as Line[],
+      fallbackLayerId,
+      validLayerIds,
+    ),
     groups: (data.groups ?? []).map((g) => ({
       id: g.id,
       name: g.name,
@@ -246,6 +301,11 @@ function normalizeDiagram(
       appearance: normalizeMembershipAppearance(
         g.appearance as Partial<MembershipAppearance> | undefined,
         { r: 100, g: 140, b: 100 },
+      ),
+      layerId: resolveEntityLayerId(
+        (g as Partial<Group>).layerId,
+        fallbackLayerId,
+        validLayerIds,
       ),
       ...(g.hubPosition &&
       typeof g.hubPosition.x === "number" &&
@@ -263,6 +323,11 @@ function normalizeDiagram(
         collapsedPosition: b.collapsedPosition,
         anchorPosition: b.anchorPosition,
         bounds: b.bounds,
+        layerId: resolveEntityLayerId(
+          (b as Partial<Box>).layerId,
+          fallbackLayerId,
+          validLayerIds,
+        ),
       };
       if (!collapsed) return box;
 
@@ -282,6 +347,8 @@ function normalizeDiagram(
       return box;
     }),
     floatingTexts,
+    layers,
+    activeLayerId,
     showGrid: data.showGrid ?? true,
     gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
     appearance: data.appearance,
@@ -304,7 +371,11 @@ export function parseDiagram(json: string): Diagram {
     return migrateV1ToV2(v1);
   }
 
-  if (data.schemaVersion === 2 || data.schemaVersion === 3) {
+  if (
+    data.schemaVersion === 2 ||
+    data.schemaVersion === 3 ||
+    data.schemaVersion === 4
+  ) {
     const diagram = data as Diagram;
     if (
       !Array.isArray(diagram.characters) ||

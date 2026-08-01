@@ -48,6 +48,8 @@ export type ExportBoundsMode = "auto" | "custom";
 export interface AppPreferences {
   autosaveEnabled: boolean;
   confirmBeforeNewDiagram: boolean;
+  /** When true, deleting a non-empty layer asks for confirmation. */
+  confirmBeforeDeleteLayer: boolean;
   /**
    * When true, hovering a character link chip shows the full URI.
    * Independent of the per-diagram open confirmation.
@@ -100,6 +102,7 @@ export interface AppPreferences {
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autosaveEnabled: true,
   confirmBeforeNewDiagram: true,
+  confirmBeforeDeleteLayer: true,
   showExternalLinkChipTooltip: true,
   defaultBackgroundMode: "grid",
   defaultShowHeader: true,
@@ -306,6 +309,10 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
       typeof stored.confirmBeforeNewDiagram === "boolean"
         ? stored.confirmBeforeNewDiagram
         : defaults.confirmBeforeNewDiagram,
+    confirmBeforeDeleteLayer:
+      typeof stored.confirmBeforeDeleteLayer === "boolean"
+        ? stored.confirmBeforeDeleteLayer
+        : defaults.confirmBeforeDeleteLayer,
     showExternalLinkChipTooltip:
       typeof stored.showExternalLinkChipTooltip === "boolean"
         ? stored.showExternalLinkChipTooltip

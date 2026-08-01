@@ -1,11 +1,13 @@
 import type {
   Diagram,
   DiagramAppearance,
+  DiagramLayer,
   FloatingText,
   GridStyle,
   RGB,
   ViewBookmark,
 } from "../models/types";
+import { createDefaultLayer } from "../utils/layers";
 import { v4 as uuidv4 } from "uuid";
 
 export interface PersistedDiagramState {
@@ -16,6 +18,8 @@ export interface PersistedDiagramState {
   floatingTexts: FloatingText[];
   viewport: Diagram["viewport"];
   bookmarks: ViewBookmark[];
+  layers: DiagramLayer[];
+  activeLayerId: string;
   diagramTitle: string;
   diagramSubtitle: string;
   showDiagramHeader: boolean;
@@ -37,6 +41,8 @@ export function pickPersistedState(
     floatingTexts: state.floatingTexts,
     viewport: state.viewport,
     bookmarks: state.bookmarks,
+    layers: state.layers,
+    activeLayerId: state.activeLayerId,
     diagramTitle: state.diagramTitle,
     diagramSubtitle: state.diagramSubtitle,
     showDiagramHeader: state.showDiagramHeader,
@@ -62,6 +68,8 @@ export function persistedStatesEqual(
     a.boxes === b.boxes &&
     a.floatingTexts === b.floatingTexts &&
     a.bookmarks === b.bookmarks &&
+    a.layers === b.layers &&
+    a.activeLayerId === b.activeLayerId &&
     a.diagramTitle === b.diagramTitle &&
     a.diagramSubtitle === b.diagramSubtitle &&
     a.showDiagramHeader === b.showDiagramHeader &&
@@ -87,14 +95,17 @@ export function hasPersistedStateChanged(
 }
 
 export function createEmptyDiagram(): Diagram {
+  const layer = createDefaultLayer();
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: uuidv4(),
     characters: [],
     lines: [],
     groups: [],
     boxes: [],
     floatingTexts: [],
+    layers: [layer],
+    activeLayerId: layer.id,
     viewport: { x: 0, y: 0, scale: 1 },
   };
 }

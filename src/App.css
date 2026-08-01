@@ -674,6 +674,178 @@ body,
   gap: 0.5rem;
 }
 
+.layer-controls-anchor {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.layer-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.layers-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  width: 14rem;
+  max-height: min(70vh, 24rem);
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+  background: var(--ui-surface);
+  box-shadow: 0 0.125rem 0.5rem var(--ui-shadow);
+  box-sizing: border-box;
+}
+
+.layer-strip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.layer-strip-slot {
+  position: relative;
+}
+
+.layer-strip-row.is-dragging {
+  opacity: 0.45;
+}
+
+.layer-drop-line {
+  position: relative;
+  height: 0;
+  margin: 0.1rem 0.25rem;
+  border-top: 2px solid var(--ui-accent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.layer-drop-line::before,
+.layer-drop-line::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.layer-drop-line::before {
+  left: -1px;
+}
+
+.layer-drop-line::after {
+  right: -1px;
+}
+
+.layer-strip-drag {
+  flex: 0 0 auto;
+  width: 0.875rem;
+  color: var(--ui-text-muted, var(--ui-text));
+  opacity: 0.45;
+  cursor: grab;
+  user-select: none;
+  font-size: 0.65rem;
+  letter-spacing: -0.1em;
+  text-align: center;
+}
+
+.layer-strip-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ui-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.layer-strip-item:hover {
+  background: var(--ui-surface-hover);
+}
+
+.layer-strip-item.active {
+  background: var(--ui-accent);
+  color: var(--ui-accent-text);
+  border-color: var(--ui-accent-hover);
+}
+
+.layer-strip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.layer-strip-rename {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.375rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 0.8125rem;
+  box-sizing: border-box;
+}
+
+.layer-row-button {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  box-shadow: none;
+}
+
+.layer-delete {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.layer-delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.layer-strip-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: 0.125rem;
+  padding: 0;
+  border: 1px dashed var(--ui-border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ui-text);
+  cursor: pointer;
+}
+
+.layer-strip-add:hover {
+  background: var(--ui-surface-hover);
+  border-style: solid;
+}
+
 .add-object-controls-row {
   display: flex;
   align-items: center;

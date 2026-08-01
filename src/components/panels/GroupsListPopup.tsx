@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { rgbToCss } from "../../models/types";
@@ -12,7 +12,6 @@ import { cycleGroupsCanvasMode } from "../../utils/groupHub";
 export function GroupsListPopup() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const selection = useDiagramStore((s) => s.selection);
   const groups = useDiagramStore((s) => s.groups);
   const groupsCanvasMode = useDiagramStore((s) => s.groupsCanvasMode);
@@ -24,45 +23,27 @@ export function GroupsListPopup() {
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
 
+  // Stay open until the toggle is clicked or Escape is pressed.
   useEffect(() => {
     if (!open) return;
-
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (rootRef.current?.contains(target)) return;
-      // Keep open while panning, zooming, or selecting on the canvas.
-      if (
-        target instanceof Element &&
-        (target.closest(".canvas-container") ||
-          target.closest(".selection-float"))
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
 
-    window.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
 
   const selectGroup = (groupId: string) => {
     setSelection({ type: "group", id: groupId });
-    setOpen(false);
   };
 
   const editMembers = (groupId: string) => {
     setSelection({ type: "group", id: groupId });
     setToolMode("editGroupMembers");
-    setOpen(false);
   };
 
   const modeLabel =
@@ -73,7 +54,7 @@ export function GroupsListPopup() {
         : t("groups.canvasModeHidden");
 
   return (
-    <div className="groups-list-anchor" ref={rootRef}>
+    <div className="groups-list-anchor">
       {open && (
         <div
           className="groups-list-popup"
@@ -89,7 +70,6 @@ export function GroupsListPopup() {
             className="btn-primary groups-list-add"
             onClick={() => {
               addGroup();
-              setOpen(false);
             }}
           >
             {t("groups.add")}

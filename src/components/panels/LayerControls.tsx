@@ -18,7 +18,6 @@ export function LayerControls() {
   );
   /** Insertion slot in display order: 0 = before first, length = after last. */
   const [dropInsertIndex, setDropInsertIndex] = useState<number | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const layers = useDiagramStore((s) => s.layers);
@@ -40,39 +39,25 @@ export function LayerControls() {
   const canMergeDown =
     activeDisplayIndex >= 0 && activeDisplayIndex < displayLayers.length - 1;
 
+  // Stay open until the toggle is clicked or Escape is pressed.
   useEffect(() => {
     if (!open) return;
 
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (rootRef.current?.contains(target)) return;
-      if (
-        target instanceof Element &&
-        (target.closest(".canvas-container") ||
-          target.closest(".selection-float") ||
-          target.closest(".fit-to-content-button"))
-      ) {
-        return;
-      }
-      setOpen(false);
-      setEditingId(null);
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (editingId) {
+          setEditingId(null);
+          return;
+        }
         setOpen(false);
-        setEditingId(null);
       }
     };
 
-    window.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, editingId]);
 
   useEffect(() => {
     if (!editingId) return;
@@ -136,7 +121,7 @@ export function LayerControls() {
     dropInsertIndex !== dragDisplayIndex + 1;
 
   return (
-    <div className="layer-controls-anchor" ref={rootRef}>
+    <div className="layer-controls-anchor">
       <div className="layer-controls-row">
         <button
           type="button"

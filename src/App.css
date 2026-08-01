@@ -834,6 +834,7 @@ body,
 }
 
 .layer-strip-add,
+.layer-strip-merge,
 .layer-strip-delete {
   display: inline-flex;
   align-items: center;
@@ -854,11 +855,13 @@ body,
 }
 
 .layer-strip-add:hover,
+.layer-strip-merge:hover:not(:disabled),
 .layer-strip-delete:hover:not(:disabled) {
   background: var(--ui-surface-hover);
   border-style: solid;
 }
 
+.layer-strip-merge:disabled,
 .layer-strip-delete:disabled {
   opacity: 0.35;
   cursor: not-allowed;

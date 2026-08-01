@@ -96,7 +96,10 @@
     "deleteAria": "Delete layer {{name}}",
     "deleteLastBlocked": "Cannot delete the only layer",
     "deleteConfirmTitle": "Delete layer?",
-    "deleteConfirm": "Delete “{{name}}” and its {{count}} object(s)? This can be undone."
+    "deleteConfirm": "Delete “{{name}}” and its {{count}} object(s)? This can be undone.",
+    "mergeDown": "Merge layer down",
+    "mergeDownAria": "Merge layer {{name}} into the layer beneath it",
+    "mergeDownBlocked": "Cannot merge the bottom layer down"
   },
   "groups": {
     "title": "Groups",

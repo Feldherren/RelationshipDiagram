@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { EyeOpenIcon, EyeClosedIcon } from "../icons/EyeIcon";
-import { LayerAddIcon, LayersIcon } from "../icons/LayersIcon";
+import {
+  LayerAddIcon,
+  LayerMergeDownIcon,
+  LayersIcon,
+} from "../icons/LayersIcon";
 
 export function LayerControls() {
   const { t } = useTranslation();
@@ -25,10 +29,16 @@ export function LayerControls() {
   const reorderLayers = useDiagramStore((s) => s.reorderLayers);
   const setActiveLayer = useDiagramStore((s) => s.setActiveLayer);
   const deleteLayer = useDiagramStore((s) => s.deleteLayer);
+  const mergeLayerDown = useDiagramStore((s) => s.mergeLayerDown);
 
   // UI lists top (front) first; storage is back → front.
   const displayLayers = [...layers].reverse();
   const activeLayer = layers.find((l) => l.id === activeLayerId);
+  const activeDisplayIndex = displayLayers.findIndex(
+    (l) => l.id === activeLayerId,
+  );
+  const canMergeDown =
+    activeDisplayIndex >= 0 && activeDisplayIndex < displayLayers.length - 1;
 
   useEffect(() => {
     if (!open) return;
@@ -190,6 +200,30 @@ export function LayerControls() {
               }}
             >
               <LayerAddIcon className="viewport-control-icon" size={20} />
+            </button>
+            <button
+              type="button"
+              className="layer-strip-merge"
+              title={
+                canMergeDown
+                  ? t("layers.mergeDown")
+                  : t("layers.mergeDownBlocked")
+              }
+              aria-label={
+                canMergeDown && activeLayer
+                  ? t("layers.mergeDownAria", { name: activeLayer.name })
+                  : t("layers.mergeDown")
+              }
+              disabled={!canMergeDown}
+              onClick={() => {
+                if (!activeLayerId) return;
+                mergeLayerDown(activeLayerId);
+              }}
+            >
+              <LayerMergeDownIcon
+                className="viewport-control-icon"
+                size={18}
+              />
             </button>
             <button
               type="button"

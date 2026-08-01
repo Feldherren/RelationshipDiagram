@@ -248,6 +248,8 @@ interface DiagramState {
   reorderLayers: (fromIndex: number, toIndex: number) => void;
   setActiveLayer: (id: string) => void;
   deleteLayer: (id: string) => Promise<boolean>;
+  /** Merge `id` into the layer beneath it in the UI list (toward the back). */
+  mergeLayerDown: (id: string) => boolean;
   setEntityLayer: (
     type: "character" | "line" | "group" | "box" | "floatingText",
     id: string,
@@ -2161,6 +2163,34 @@ export const useDiagramStore = create<DiagramState>()(
             ? null
             : s.editingFloatingTextId,
         ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
+      };
+    });
+    return true;
+  },
+
+  mergeLayerDown: (id) => {
+    const { layers } = get();
+    // Display order is front → back (reversed storage). "Down" = next in that list.
+    const display = [...layers].reverse();
+    const fromIndex = display.findIndex((l) => l.id === id);
+    if (fromIndex < 0 || fromIndex >= display.length - 1) return false;
+    const targetId = display[fromIndex + 1].id;
+
+    get().captureHistory();
+    set((s) => {
+      const remap = <T extends { layerId: string }>(items: T[]): T[] =>
+        items.map((item) =>
+          item.layerId === id ? { ...item, layerId: targetId } : item,
+        );
+      return {
+        characters: remap(s.characters),
+        lines: remap(s.lines),
+        groups: remap(s.groups),
+        boxes: remap(s.boxes),
+        floatingTexts: remap(s.floatingTexts),
+        layers: s.layers.filter((l) => l.id !== id),
+        activeLayerId:
+          s.activeLayerId === id ? targetId : s.activeLayerId,
       };
     });
     return true;

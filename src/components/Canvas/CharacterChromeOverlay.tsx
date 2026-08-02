@@ -1,11 +1,13 @@
 import type {
   Box,
   Character,
+  NodeRef,
   Selection,
   ToolMode,
 } from "../../models/types";
 import { isCharacterHidden } from "../../store/diagramStore";
 import { isItemSelected } from "../../utils/selectionMulti";
+import { BoxContainer } from "./BoxContainer";
 import { CharacterNode } from "./CharacterNode";
 import {
   EMPTY_MEMBERSHIP_CHIPS,
@@ -23,7 +25,7 @@ interface CharacterChromeOverlayProps {
   highlightedGroupId: string | null;
   highlightedMemberIds: Set<string> | null;
   handleNodeClick: (
-    ref: { id: string; kind: "character" },
+    ref: NodeRef,
     options?: { openDetails?: boolean },
   ) => void;
   setSelection: (
@@ -32,7 +34,9 @@ interface CharacterChromeOverlayProps {
   ) => void;
 }
 
-/** Names, membership chips, and link chips — always above relationship lines. */
+const noop = () => undefined;
+
+/** Character/box names and chips — always above relationship lines. */
 export function CharacterChromeOverlay({
   characters,
   boxes,
@@ -48,6 +52,33 @@ export function CharacterChromeOverlay({
 }: CharacterChromeOverlayProps) {
   return (
     <>
+      {boxes
+        .filter((b) => visibleLayerIds.has(b.layerId))
+        .map((box) => (
+          <BoxContainer
+            key={`${box.id}-label`}
+            box={box}
+            characters={characters}
+            selected={isItemSelected(selection, "box", box.id)}
+            isConnectSource={false}
+            onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
+            onOpenDetails={() =>
+              handleNodeClick(
+                { id: box.id, kind: "box" },
+                { openDetails: true },
+              )
+            }
+            onToggleCollapse={noop}
+            onBoundsChange={noop}
+            onMoveByDelta={noop}
+            onResizeStart={noop}
+            onResizeEnd={noop}
+            onDragStart={noop}
+            onDragEnd={noop}
+            onConnectHandleDown={noop}
+            part="label"
+          />
+        ))}
       {characters
         .filter(
           (c) =>
@@ -98,9 +129,9 @@ export function CharacterChromeOverlay({
                         anchorCharacterId: character.id,
                       })
               }
-              onConnectHandleDown={() => undefined}
-              onDragMove={() => undefined}
-              onDragEnd={() => undefined}
+              onConnectHandleDown={noop}
+              onDragMove={noop}
+              onDragEnd={noop}
             />
           );
         })}

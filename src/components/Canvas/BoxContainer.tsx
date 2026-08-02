@@ -71,8 +71,8 @@ interface BoxContainerProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onConnectHandleDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
-  /** Split render: background below relationship lines, foreground above. */
-  part?: "full" | "background" | "foreground";
+  /** Split render: background below lines, foreground chrome, label above all lines. */
+  part?: "full" | "background" | "foreground" | "label";
   /** Shared hover across background/foreground parts (and collapse remounts). */
   hovered?: boolean;
   onHoverChange?: (hovered: boolean) => void;
@@ -513,21 +513,25 @@ export function BoxContainer({
       diagramBackgroundColor ?? DEFAULT_DIAGRAM_BACKGROUND,
     );
     const countFill = rgbToCss(contrastingInk(countSurface));
+    const showLabel = part === "full" || part === "label";
+    const showBody =
+      part === "full" || part === "background" || part === "foreground";
+    if (!showBody && !showLabel) return null;
 
     return (
       <Group
         x={pos.x}
         y={pos.y}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseEnter={showBody ? () => setHovered(true) : undefined}
+        onMouseLeave={showBody ? () => setHovered(false) : undefined}
         onClick={handleSelectClick}
         onTap={handleSelectClick}
         onDblClick={handleOpenDetails}
         onDblTap={handleOpenDetails}
         onContextMenu={handleOpenDetails}
-        onMouseDown={(e) => beginMove(e)}
+        onMouseDown={showBody ? (e) => beginMove(e) : undefined}
       >
-        {showAura && (
+        {showBody && showAura && (
           <RoundedRectAura
             x={-size}
             y={-size}
@@ -537,7 +541,7 @@ export function BoxContainer({
             color={box.borderColor}
           />
         )}
-        {showPulse && (
+        {showBody && showPulse && (
           <RoundedRectSelectionPulse
             x={-size}
             y={-size}
@@ -548,37 +552,43 @@ export function BoxContainer({
             active
           />
         )}
-        <Rect
-          x={-size}
-          y={-size}
-          width={size * 2}
-          height={size * 2}
-          stroke={color}
-          strokeWidth={3}
-          fill={rgbaWithAlpha(box.borderColor, COLLAPSED_BOX_FILL_ALPHA)}
-          cornerRadius={4}
-        />
-        <PillLabel
-          text={box.name}
-          y={-(size + getPillLabelHeight(12) / 2 + 6)}
-          fontSize={12}
-          textFill={rgbToCss(boxNameLabel.textColor)}
-          fill={rgbToCss(boxNameLabel.backgroundColor)}
-          unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
-          selected={selected}
-        />
-        <Text
-          text={`${containedCount}`}
-          fontFamily={formatFontForCanvas(diagramFontFamily)}
-          fontSize={22}
-          fill={countFill}
-          align="center"
-          width={size * 2}
-          offsetX={size}
-          offsetY={11}
-          listening={false}
-        />
-        {showCollapseControl && (
+        {showBody && (
+          <Rect
+            x={-size}
+            y={-size}
+            width={size * 2}
+            height={size * 2}
+            stroke={color}
+            strokeWidth={3}
+            fill={rgbaWithAlpha(box.borderColor, COLLAPSED_BOX_FILL_ALPHA)}
+            cornerRadius={4}
+          />
+        )}
+        {showLabel && (
+          <PillLabel
+            text={box.name}
+            y={-(size + getPillLabelHeight(12) / 2 + 6)}
+            fontSize={12}
+            textFill={rgbToCss(boxNameLabel.textColor)}
+            fill={rgbToCss(boxNameLabel.backgroundColor)}
+            unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
+            selected={selected}
+          />
+        )}
+        {showBody && (
+          <Text
+            text={`${containedCount}`}
+            fontFamily={formatFontForCanvas(diagramFontFamily)}
+            fontSize={22}
+            fill={countFill}
+            align="center"
+            width={size * 2}
+            offsetX={size}
+            offsetY={11}
+            listening={false}
+          />
+        )}
+        {showBody && showCollapseControl && (
           <BoxCollapseControl
             x={collapseControlPos.x}
             y={collapseControlPos.y}
@@ -586,7 +596,7 @@ export function BoxContainer({
             onToggle={handleToggleCollapse}
           />
         )}
-        {showConnectHandle && (
+        {showBody && showConnectHandle && (
           <ConnectHandle
             x={connectHandlePos.x}
             y={connectHandlePos.y}
@@ -606,11 +616,21 @@ export function BoxContainer({
   const collapseControlPos = getBoxCollapseControlPosition(bounds);
   const showBackground = part === "full" || part === "background";
   const showForeground = part === "full" || part === "foreground";
+  const showLabel = part === "full" || part === "label";
+  if (!showBackground && !showForeground && !showLabel) return null;
 
   return (
     <Group
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={
+        showBackground || showForeground
+          ? () => setHovered(true)
+          : undefined
+      }
+      onMouseLeave={
+        showBackground || showForeground
+          ? () => setHovered(false)
+          : undefined
+      }
       onClick={handleSelectClick}
       onTap={handleSelectClick}
       onDblClick={handleOpenDetails}
@@ -682,7 +702,7 @@ export function BoxContainer({
           onDblTap={handleOpenDetails}
         />
       )}
-      {showForeground && (
+      {showLabel && (
         <PillLabel
           text={box.name}
           x={bounds.x + bounds.width / 2}

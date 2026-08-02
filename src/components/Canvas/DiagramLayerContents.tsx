@@ -414,6 +414,7 @@ export function DiagramLayerContents({
               id: box.id,
               kind: "box",
             })}
+            part="foreground"
             hovered={hoveredBoxId === box.id}
             onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
           />

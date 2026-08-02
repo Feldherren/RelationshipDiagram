@@ -53,6 +53,11 @@ interface CharacterNodeProps {
   highlightedGroupId?: string | null;
   dimmed?: boolean;
   membershipEmphasized?: boolean;
+  /**
+   * Split paint so labels/chips can sit above relationship lines from every
+   * layer while bodies stay in layer z-order. Default renders both.
+   */
+  part?: "full" | "body" | "overlays";
   onSelect: () => void;
   onOpenDetails: () => void;
   onSelectGroup?: (groupId: string) => void;
@@ -126,6 +131,7 @@ export function CharacterNode({
   highlightedGroupId = null,
   dimmed = false,
   membershipEmphasized = false,
+  part = "full",
   onSelect,
   onOpenDetails,
   onSelectGroup,
@@ -133,6 +139,8 @@ export function CharacterNode({
   onDragEnd,
   onConnectHandleDown,
 }: CharacterNodeProps) {
+  const showBody = part === "full" || part === "body";
+  const showOverlays = part === "full" || part === "overlays";
   const [hovered, setHovered] = useState(false);
   /** Konva dragstart often fires from mousemove (button===0); remember the real press. */
   const allowNodeDragRef = useRef(true);
@@ -175,10 +183,17 @@ export function CharacterNode({
     (s) => s.diagramAppearance.characterInitialsColor,
   );
   const handleOffset = getConnectHandleOffset(size);
-  const showConnectHandle = selected || hovered || isConnectSource;
+  const showConnectHandle =
+    showBody && (selected || hovered || isConnectSource);
   const showAura =
-    shouldShowAura(hovered, selected) || membershipEmphasized;
+    showBody &&
+    (shouldShowAura(hovered, selected) || membershipEmphasized);
   const strongStaticSelectionAura = selected && !selectionPulseEnabled;
+  /** Overlay pass follows store position (updated during body drag). */
+  const groupX =
+    showBody && dragPos ? dragPos.x : character.position.x;
+  const groupY =
+    showBody && dragPos ? dragPos.y : character.position.y;
 
   const handleLabelSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
@@ -196,113 +211,144 @@ export function CharacterNode({
 
   return (
     <Group
-      x={dragPos?.x ?? character.position.x}
-      y={dragPos?.y ?? character.position.y}
+      x={groupX}
+      y={groupY}
       opacity={dimmed ? 0.28 : 1}
-      draggable={draggable}
-      onMouseDown={(e) => {
-        allowNodeDragRef.current = e.evt.button === 0;
-      }}
-      onTouchStart={() => {
-        allowNodeDragRef.current = true;
-      }}
-      onClick={(e) => {
-        e.cancelBubble = true;
-        if (e.evt.button !== 0) return;
-        onSelect();
-      }}
-      onTap={(e) => {
-        e.cancelBubble = true;
-        onSelect();
-      }}
-      onDblClick={handleOpenDetails}
-      onDblTap={handleOpenDetails}
-      onContextMenu={handleOpenDetails}
-      onDragStart={(e) => {
-        if (!allowNodeDragRef.current) {
-          e.target.stopDrag();
-          return;
-        }
-        // Dragging is layout, not inspect — keep selection, close the float.
-        captureHistory();
-        useDiagramStore.setState({ selectionDetailsOpen: false });
-        const start = {
-          x: character.position.x,
-          y: character.position.y,
-        };
-        multiDragOriginRef.current = start;
-        setDragPos(start);
-        if (inMulti) {
-          const state = useDiagramStore.getState();
-          multiDragSnapshotRef.current = captureMultiDragSnapshot(
-            state.selection,
-            state.characters,
-            state.boxes,
-            state.floatingTexts,
-            state.diagramFontFamily,
-            (b) => ({
-              characterIds: getCharactersContainedInBox(
-                b,
-                state.characters,
-                state.diagramFontFamily,
-              ).map((c) => c.id),
-              floatingTextIds: getFloatingTextsContainedInBox(
-                b,
-                state.floatingTexts,
-                state.diagramFontFamily,
-              ).map((t) => t.id),
-            }),
-          );
-        } else {
-          multiDragSnapshotRef.current = null;
-        }
-      }}
-      onDragMove={(e) => {
-        let pos = { x: e.target.x(), y: e.target.y() };
-        if (inMulti) {
-          const origin = multiDragOriginRef.current ?? pos;
-          const totalDelta = {
-            dx: pos.x - origin.x,
-            dy: pos.y - origin.y,
-          };
-          const snapshot = multiDragSnapshotRef.current;
-          if (snapshot) {
-            moveMultiSelectionByDelta(totalDelta, {
-              recordHistory: false,
-              initialSnapshot: snapshot,
-              totalDelta,
-            });
-          } else if (totalDelta.dx !== 0 || totalDelta.dy !== 0) {
-            moveMultiSelectionByDelta(totalDelta, { recordHistory: false });
-          }
-          setDragPos(pos);
-          return;
-        }
-        if (snapToGridEnabled) {
-          pos = snapPointToGrid(pos);
-          e.target.position(pos);
-        }
-        setDragPos((prev) =>
-          prev && prev.x === pos.x && prev.y === pos.y ? prev : pos,
-        );
-        onDragMove(pos);
-      }}
-      onDragEnd={(e) => {
-        let pos = { x: e.target.x(), y: e.target.y() };
-        multiDragOriginRef.current = null;
-        multiDragSnapshotRef.current = null;
-        setDragPos(null);
-        if (inMulti) {
-          return;
-        }
-        if (snapToGridEnabled) {
-          pos = snapPointToGrid(pos);
-          e.target.position(pos);
-        }
-        onDragEnd(pos);
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      listening={showBody || showOverlays}
+      draggable={showBody && draggable}
+      onMouseDown={
+        showBody
+          ? (e) => {
+              allowNodeDragRef.current = e.evt.button === 0;
+            }
+          : undefined
+      }
+      onTouchStart={
+        showBody
+          ? () => {
+              allowNodeDragRef.current = true;
+            }
+          : undefined
+      }
+      onClick={
+        showBody
+          ? (e) => {
+              e.cancelBubble = true;
+              if (e.evt.button !== 0) return;
+              onSelect();
+            }
+          : undefined
+      }
+      onTap={
+        showBody
+          ? (e) => {
+              e.cancelBubble = true;
+              onSelect();
+            }
+          : undefined
+      }
+      onDblClick={showBody ? handleOpenDetails : undefined}
+      onDblTap={showBody ? handleOpenDetails : undefined}
+      onContextMenu={showBody ? handleOpenDetails : undefined}
+      onDragStart={
+        showBody
+          ? (e) => {
+              if (!allowNodeDragRef.current) {
+                e.target.stopDrag();
+                return;
+              }
+              // Dragging is layout, not inspect — keep selection, close the float.
+              captureHistory();
+              useDiagramStore.setState({ selectionDetailsOpen: false });
+              const start = {
+                x: character.position.x,
+                y: character.position.y,
+              };
+              multiDragOriginRef.current = start;
+              setDragPos(start);
+              if (inMulti) {
+                const state = useDiagramStore.getState();
+                multiDragSnapshotRef.current = captureMultiDragSnapshot(
+                  state.selection,
+                  state.characters,
+                  state.boxes,
+                  state.floatingTexts,
+                  state.diagramFontFamily,
+                  (b) => ({
+                    characterIds: getCharactersContainedInBox(
+                      b,
+                      state.characters,
+                      state.diagramFontFamily,
+                    ).map((c) => c.id),
+                    floatingTextIds: getFloatingTextsContainedInBox(
+                      b,
+                      state.floatingTexts,
+                      state.diagramFontFamily,
+                    ).map((t) => t.id),
+                  }),
+                );
+              } else {
+                multiDragSnapshotRef.current = null;
+              }
+            }
+          : undefined
+      }
+      onDragMove={
+        showBody
+          ? (e) => {
+              let pos = { x: e.target.x(), y: e.target.y() };
+              if (inMulti) {
+                const origin = multiDragOriginRef.current ?? pos;
+                const totalDelta = {
+                  dx: pos.x - origin.x,
+                  dy: pos.y - origin.y,
+                };
+                const snapshot = multiDragSnapshotRef.current;
+                if (snapshot) {
+                  moveMultiSelectionByDelta(totalDelta, {
+                    recordHistory: false,
+                    initialSnapshot: snapshot,
+                    totalDelta,
+                  });
+                } else if (totalDelta.dx !== 0 || totalDelta.dy !== 0) {
+                  moveMultiSelectionByDelta(totalDelta, {
+                    recordHistory: false,
+                  });
+                }
+                setDragPos(pos);
+                return;
+              }
+              if (snapToGridEnabled) {
+                pos = snapPointToGrid(pos);
+                e.target.position(pos);
+              }
+              setDragPos((prev) =>
+                prev && prev.x === pos.x && prev.y === pos.y ? prev : pos,
+              );
+              onDragMove(pos);
+            }
+          : undefined
+      }
+      onDragEnd={
+        showBody
+          ? (e) => {
+              let pos = { x: e.target.x(), y: e.target.y() };
+              multiDragOriginRef.current = null;
+              multiDragSnapshotRef.current = null;
+              setDragPos(null);
+              if (inMulti) {
+                return;
+              }
+              if (snapToGridEnabled) {
+                pos = snapPointToGrid(pos);
+                e.target.position(pos);
+              }
+              onDragEnd(pos);
+            }
+          : undefined
+      }
+      onMouseEnter={showBody ? () => setHovered(true) : undefined}
+      onMouseLeave={showBody ? () => setHovered(false) : undefined}
     >
       {showAura && (
         <RadialAuraCircle
@@ -312,64 +358,71 @@ export function CharacterNode({
           outerPadding={strongStaticSelectionAura ? 32 : undefined}
         />
       )}
-      {selected && selectionPulseEnabled && (
+      {showBody && selected && selectionPulseEnabled && (
         <RadialSelectionPulse
           innerRadius={size}
           color={character.borderColor}
           active
         />
       )}
-      <ShapeOutline
-        shape={character.borderShape}
-        size={size}
-        color={color}
-        fill={
-          character.imageData
-            ? "transparent"
-            : rgbToCss(characterPlaceholderFill)
-        }
-      />
-      {character.imageData ? (
-        <CharacterImage
-          imageData={character.imageData}
+      {showBody && (
+        <ShapeOutline
           shape={character.borderShape}
           size={size}
-          focus={character.imageFocus}
-        />
-      ) : (
-        <Text
-          text={getCharacterInitials(character.name)}
-          fontFamily={formatFontForCanvas(diagramFontFamily)}
-          fontSize={size * 0.55}
-          fontStyle="bold"
-          fill={rgbToCss(characterInitialsColor)}
-          align="center"
-          verticalAlign="middle"
-          width={size * 2}
-          height={size * 2}
-          offsetX={size}
-          offsetY={size}
-          listening={false}
+          color={color}
+          fill={
+            character.imageData
+              ? "transparent"
+              : rgbToCss(characterPlaceholderFill)
+          }
         />
       )}
-      <MembershipChips
-        groups={membershipGroups}
-        characterSize={size}
-        borderShape={character.borderShape}
-        characterX={character.position.x}
-        characterY={character.position.y}
-        highlightedGroupId={highlightedGroupId}
-        onChipClick={onSelectGroup}
-      />
-      <CharacterLinkChip
-        characterId={character.id}
-        link={character.link}
-        characterSize={size}
-        borderShape={character.borderShape}
-        characterX={character.position.x}
-        characterY={character.position.y}
-      />
-      {character.name && (
+      {showBody &&
+        (character.imageData ? (
+          <CharacterImage
+            imageData={character.imageData}
+            shape={character.borderShape}
+            size={size}
+            focus={character.imageFocus}
+          />
+        ) : (
+          <Text
+            text={getCharacterInitials(character.name)}
+            fontFamily={formatFontForCanvas(diagramFontFamily)}
+            fontSize={size * 0.55}
+            fontStyle="bold"
+            fill={rgbToCss(characterInitialsColor)}
+            align="center"
+            verticalAlign="middle"
+            width={size * 2}
+            height={size * 2}
+            offsetX={size}
+            offsetY={size}
+            listening={false}
+          />
+        ))}
+      {showOverlays && (
+        <MembershipChips
+          groups={membershipGroups}
+          characterSize={size}
+          borderShape={character.borderShape}
+          characterX={character.position.x}
+          characterY={character.position.y}
+          highlightedGroupId={highlightedGroupId}
+          onChipClick={onSelectGroup}
+        />
+      )}
+      {showOverlays && (
+        <CharacterLinkChip
+          characterId={character.id}
+          link={character.link}
+          characterSize={size}
+          borderShape={character.borderShape}
+          characterX={character.position.x}
+          characterY={character.position.y}
+        />
+      )}
+      {showOverlays && character.name && (
         <PillLabel
           text={character.name}
           y={subtitleOffset}
@@ -387,7 +440,7 @@ export function CharacterNode({
           onTap={handleLabelSelect}
         />
       )}
-      {character.subtitle && (
+      {showOverlays && character.subtitle && (
         <PillLabel
           text={character.subtitle}
           y={

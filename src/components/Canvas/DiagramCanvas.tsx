@@ -7,6 +7,7 @@ import { FloatingTextEditor } from "./FloatingTextEditor";
 import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
 import { DiagramLayerContents } from "./DiagramLayerContents";
+import { CharacterChromeOverlay } from "./CharacterChromeOverlay";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
 import { MembershipChipNameOverlay } from "./MembershipChipNameOverlay";
@@ -702,6 +703,11 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     [layers],
   );
 
+  const visibleLayerIds = useMemo(
+    () => new Set(visibleLayers.map((layer) => layer.id)),
+    [visibleLayers],
+  );
+
   const dragRectBounds =
     (isDrawingExport || isDrawingMarquee) && drawStart && drawCurrent
       ? {
@@ -802,6 +808,20 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               setIsDraggingBox={setIsDraggingBox}
             />
           ))}
+
+          <CharacterChromeOverlay
+            characters={characters}
+            boxes={boxes}
+            visibleLayerIds={visibleLayerIds}
+            diagramFontFamily={diagramFontFamily}
+            selection={selection}
+            toolMode={toolMode}
+            membershipByCharacterId={membershipByCharacterId}
+            highlightedGroupId={highlightedGroupId}
+            highlightedMemberIds={highlightedMemberIds}
+            handleNodeClick={handleNodeClick}
+            setSelection={setSelection}
+          />
 
           {connectDrag && (
             <ScaleStrokeLine

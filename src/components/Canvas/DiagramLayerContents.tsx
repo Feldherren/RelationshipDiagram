@@ -278,6 +278,7 @@ export function DiagramLayerContents({
             <CharacterNode
               key={character.id}
               character={character}
+              part="body"
               selected={isItemSelected(
                 selection,
                 "character",

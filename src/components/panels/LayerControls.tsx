@@ -277,77 +277,81 @@ export function LayerControls() {
                   >
                     ⋮⋮
                   </span>
-                  {isEditing ? (
-                    <input
-                      ref={renameInputRef}
-                      className="layer-strip-rename"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          commitRename();
-                        }
-                        if (e.key === "Escape") {
-                          e.preventDefault();
-                          setEditingId(null);
-                        }
-                      }}
-                      aria-label={t("layers.renameAria")}
-                    />
-                  ) : (
+                  <div
+                    className={
+                      active
+                        ? "layer-strip-main active"
+                        : "layer-strip-main"
+                    }
+                  >
+                    {isEditing ? (
+                      <input
+                        ref={renameInputRef}
+                        className="layer-strip-rename"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitRename();
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            setEditingId(null);
+                          }
+                        }}
+                        aria-label={t("layers.renameAria")}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="layer-strip-item"
+                        title={t("layers.selectAria", { name: layer.name })}
+                        aria-label={t("layers.selectAria", {
+                          name: layer.name,
+                        })}
+                        aria-pressed={active}
+                        onClick={() => setActiveLayer(layer.id)}
+                        onDoubleClick={() => {
+                          setEditingId(layer.id);
+                          setEditName(layer.name);
+                        }}
+                      >
+                        <span className="layer-strip-name">{layer.name}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={
-                        active
-                          ? "layer-strip-item active"
-                          : "layer-strip-item"
+                        layer.visible
+                          ? "layer-strip-visibility"
+                          : "layer-strip-visibility is-hidden"
                       }
-                      title={t("layers.selectAria", { name: layer.name })}
-                      aria-label={t("layers.selectAria", {
-                        name: layer.name,
-                      })}
-                      aria-pressed={active}
-                      onClick={() => setActiveLayer(layer.id)}
-                      onDoubleClick={() => {
-                        setEditingId(layer.id);
-                        setEditName(layer.name);
-                      }}
+                      title={
+                        layer.visible ? t("layers.hide") : t("layers.show")
+                      }
+                      aria-label={
+                        layer.visible ? t("layers.hide") : t("layers.show")
+                      }
+                      aria-pressed={layer.visible}
+                      onClick={() =>
+                        setLayerVisible(layer.id, !layer.visible)
+                      }
                     >
-                      <span className="layer-strip-name">{layer.name}</span>
+                      {layer.visible ? (
+                        <EyeOpenIcon
+                          className="layer-strip-visibility-icon"
+                          size={16}
+                        />
+                      ) : (
+                        <EyeClosedIcon
+                          className="layer-strip-visibility-icon"
+                          size={16}
+                        />
+                      )}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className={
-                      layer.visible
-                        ? "viewport-control-button layer-row-button active"
-                        : "viewport-control-button layer-row-button"
-                    }
-                    title={
-                      layer.visible ? t("layers.hide") : t("layers.show")
-                    }
-                    aria-label={
-                      layer.visible ? t("layers.hide") : t("layers.show")
-                    }
-                    aria-pressed={layer.visible}
-                    onClick={() =>
-                      setLayerVisible(layer.id, !layer.visible)
-                    }
-                  >
-                    {layer.visible ? (
-                      <EyeOpenIcon
-                        className="viewport-control-icon"
-                        size={16}
-                      />
-                    ) : (
-                      <EyeClosedIcon
-                        className="viewport-control-icon"
-                        size={16}
-                      />
-                    )}
-                  </button>
+                  </div>
                 </div>
               </div>
             );

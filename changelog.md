@@ -5,6 +5,8 @@
 - Added Save As functionality.
 - Moved Controls and About into a Help menu.
 - Layers!
+	- You can make stuff on a layer directly, or shift items from other layers via a dropdown in their details popup.
+	- Relationship lines can be created from and to characters on separate layers, and be on different layers from the things they connect
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.

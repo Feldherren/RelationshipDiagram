@@ -2259,6 +2259,27 @@ body,
   width: min(24rem, 94vw);
 }
 
+.about-kofi-link {
+  display: inline-block;
+  line-height: 0;
+}
+
+.about-kofi-link img {
+  display: block;
+  width: min(11rem, 100%);
+  height: auto;
+}
+
+.about-kofi-link:hover {
+  opacity: 0.92;
+}
+
+.about-kofi-link:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+
 .help-section {
   margin-top: 1rem;
 }

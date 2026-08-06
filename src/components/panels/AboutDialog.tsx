@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import packageJson from "../../../package.json";
+import kofiSupportBadge from "../../assets/kofi-support.png";
 
 interface AboutDialogProps {
   open: boolean;
@@ -33,6 +34,16 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
             rel="noopener noreferrer"
           >
             {t("appSettings.githubRepo")}
+          </a>
+        </p>
+        <p>
+          <a
+            className="about-kofi-link"
+            href="https://ko-fi.com/feldherren"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img src={kofiSupportBadge} alt={t("about.kofi")} />
           </a>
         </p>
         <div className="dialog-actions">

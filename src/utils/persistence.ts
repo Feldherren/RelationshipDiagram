@@ -35,6 +35,12 @@ import {
   isFloatingTextGeometricallyInBox,
 } from "./geometry";
 import { ensureLayers, normalizeLayers } from "./layers";
+import {
+  DEFAULT_EXPORT_FORMAT,
+  extensionForFormat,
+  mimeTypeForFormat,
+  type ExportFormat,
+} from "./exportFormat";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -416,12 +422,30 @@ function getDefaultDiagramFilename(diagram: Diagram): string {
   );
 }
 
-export function getDefaultExportFilename(title?: string): string {
+export function getDefaultExportFilename(
+  title?: string,
+  format: ExportFormat = DEFAULT_EXPORT_FORMAT,
+): string {
+  const ext = extensionForFormat(format);
   return getDefaultFilenameFromTitle(
     title,
-    "png",
-    "relationship-diagram.png",
+    ext,
+    `relationship-diagram.${ext}`,
   );
+}
+
+function imageFileFilter(format: ExportFormat): {
+  name: string;
+  extensions: string[];
+} {
+  const ext = extensionForFormat(format);
+  const filterKey =
+    format === "png"
+      ? "fileFilter.png"
+      : format === "webp"
+        ? "fileFilter.webp"
+        : "fileFilter.jpeg";
+  return { name: i18n.t(filterKey), extensions: [ext] };
 }
 
 async function saveBytesWithTauriDialog(
@@ -706,8 +730,11 @@ function triggerAnchorDownload(href: string, filename: string): void {
 export async function downloadDataUrl(
   dataUrl: string,
   filename: string,
+  format: ExportFormat = DEFAULT_EXPORT_FORMAT,
 ): Promise<boolean> {
-  const pngFilter = { name: i18n.t("fileFilter.png"), extensions: ["png"] };
+  const filter = imageFileFilter(format);
+  const mimeType = mimeTypeForFormat(format);
+  const extension = extensionForFormat(format);
 
   if (isTauriApp()) {
     const blob = dataUrlToBlob(dataUrl);
@@ -716,7 +743,7 @@ export async function downloadDataUrl(
     return saveBytesWithTauriDialog(
       bytes,
       filename,
-      pngFilter,
+      filter,
       defaultExportDirectory,
     );
   }
@@ -727,8 +754,8 @@ export async function downloadDataUrl(
         suggestedName: filename,
         types: [
           {
-            description: pngFilter.name,
-            accept: { "image/png": [".png"] },
+            description: filter.name,
+            accept: { [mimeType]: [`.${extension}`] },
           },
         ],
       });

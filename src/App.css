@@ -2329,6 +2329,24 @@ body,
   margin: 0.25rem 0;
 }
 
+.export-quality-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.export-quality-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-quality-value {
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .export-zoom-row {
   display: flex;
   flex-wrap: wrap;

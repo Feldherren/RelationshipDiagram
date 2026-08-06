@@ -24,6 +24,14 @@ import {
   layoutExportHeader,
   type ExportHeaderConfig,
 } from "./exportHeader";
+import {
+  clampExportQuality,
+  DEFAULT_EXPORT_FORMAT,
+  DEFAULT_EXPORT_QUALITY,
+  formatUsesQuality,
+  mimeTypeForFormat,
+  type ExportFormat,
+} from "./exportFormat";
 
 import {
   computeGridLineBounds,
@@ -31,6 +39,8 @@ import {
   DIAGRAM_GRID_SIZE,
   drawGrid,
 } from "./gridBackground";
+
+export type { ExportFormat } from "./exportFormat";
 
 export const GRID_NODE_NAME = "diagram-grid";
 export const EXPORT_BACKGROUND_NODE_NAME = "diagram-export-background";
@@ -118,6 +128,8 @@ async function compositeExportHeader(
   pixelRatio: number,
   headerLayout: NonNullable<ReturnType<typeof layoutExportHeader>>,
   fontFamily: string,
+  mimeType: string,
+  quality?: number,
 ): Promise<string> {
   const image = await loadImage(stageDataUrl);
   const canvas = document.createElement("canvas");
@@ -128,12 +140,17 @@ async function compositeExportHeader(
 
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
   drawExportHeaderPills(ctx, headerLayout, fontFamily, crop, pixelRatio);
-  return canvas.toDataURL("image/png");
+  return quality !== undefined
+    ? canvas.toDataURL(mimeType, quality)
+    : canvas.toDataURL(mimeType);
 }
 
 export interface ExportOptions {
   bounds: Bounds;
   pixelRatio: number;
+  format?: ExportFormat;
+  /** Lossy encode quality 0–1 (WebP / JPEG). Ignored for PNG. */
+  quality?: number;
   backgroundColor?: RGB | null;
   showGrid?: boolean;
   gridStyle?: GridStyle;
@@ -207,13 +224,15 @@ export function getAutoExportBounds(
   return computeDiagramBounds(diagram, padding, viewportScale);
 }
 
-export async function exportStageToPng(
+export async function exportStageImage(
   stage: Konva.Stage,
   options: ExportOptions,
 ): Promise<string> {
   const {
     bounds,
     pixelRatio,
+    format = DEFAULT_EXPORT_FORMAT,
+    quality: qualityOption,
     backgroundColor,
     showGrid,
     gridStyle = "lines",
@@ -226,6 +245,10 @@ export async function exportStageToPng(
     viewportScale = 1,
   } = options;
 
+  const mimeType = mimeTypeForFormat(format);
+  const quality = formatUsesQuality(format)
+    ? clampExportQuality(qualityOption ?? DEFAULT_EXPORT_QUALITY)
+    : undefined;
   const gridCss = rgbToCss(gridColor);
 
   if (header?.showHeader) {
@@ -242,7 +265,11 @@ export async function exportStageToPng(
     await document.fonts.ready;
   }
 
-  const resolvedBackground = resolveDiagramBackground(backgroundColor);
+  let resolvedBackground = resolveDiagramBackground(backgroundColor);
+  // JPEG has no alpha channel — use white when the diagram background is transparent.
+  if (format === "jpeg" && resolvedBackground === null) {
+    resolvedBackground = { r: 255, g: 255, b: 255 };
+  }
   const position = stage.position();
   const scale = { x: stage.scaleX(), y: stage.scaleY() };
   const crop = normalizeBounds(bounds);
@@ -364,7 +391,8 @@ export async function exportStageToPng(
       width: crop.width,
       height: crop.height,
       pixelRatio,
-      mimeType: "image/png",
+      mimeType,
+      ...(quality !== undefined ? { quality } : {}),
     });
   } finally {
     for (const node of tempNodes) {
@@ -392,5 +420,7 @@ export async function exportStageToPng(
     pixelRatio,
     headerLayout,
     header.fontFamily,
+    mimeType,
+    quality,
   );
 }

@@ -128,8 +128,13 @@
     "dimensions": "Dimensions:",
     "empty": "Add content to the diagram before exporting.",
     "cancel": "Cancel",
-    "downloadPng": "Download PNG",
-    "failed": "Failed to export PNG."
+    "format": "Format",
+    "formatPng": "PNG",
+    "formatWebp": "WebP",
+    "formatJpeg": "JPEG",
+    "quality": "Quality",
+    "download": "Download",
+    "failed": "Failed to export image."
   },
   "diagramProperties": {
     "title": "Diagram properties",
@@ -613,6 +618,8 @@
   },
   "fileFilter": {
     "diagram": "Character Relationship Diagram Creator",
-    "png": "PNG Image"
+    "png": "PNG Image",
+    "webp": "WebP Image",
+    "jpeg": "JPEG Image"
   }
 }

@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
 import { exportStageImage, getAutoExportBounds } from "../../utils/export";
 import {
-  DEFAULT_EXPORT_FORMAT,
-  DEFAULT_EXPORT_QUALITY,
   exportQualityFromPercent,
   exportQualityPercentFromRatio,
   formatUsesQuality,
@@ -61,9 +59,11 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     exportZoomPercentFromRatio(exportPrefs.defaultExportPixelRatio),
   );
   const [padding, setPadding] = useState(exportPrefs.defaultExportPadding);
-  const [format, setFormat] = useState<ExportFormat>(DEFAULT_EXPORT_FORMAT);
+  const [format, setFormat] = useState<ExportFormat>(
+    exportPrefs.defaultExportFormat,
+  );
   const [qualityPercent, setQualityPercent] = useState(() =>
-    exportQualityPercentFromRatio(DEFAULT_EXPORT_QUALITY),
+    exportQualityPercentFromRatio(exportPrefs.defaultExportQuality),
   );
   const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
 
@@ -73,8 +73,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     setMode(prefs.defaultExportBoundsMode);
     setZoomPercent(exportZoomPercentFromRatio(prefs.defaultExportPixelRatio));
     setPadding(prefs.defaultExportPadding);
-    setFormat(DEFAULT_EXPORT_FORMAT);
-    setQualityPercent(exportQualityPercentFromRatio(DEFAULT_EXPORT_QUALITY));
+    setFormat(prefs.defaultExportFormat);
+    setQualityPercent(exportQualityPercentFromRatio(prefs.defaultExportQuality));
   }, [open]);
 
   useEffect(() => {

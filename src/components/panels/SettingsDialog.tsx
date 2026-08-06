@@ -12,6 +12,12 @@ import {
   type AppPreferences,
   type ExportBoundsMode,
 } from "../../utils/appPreferences";
+import {
+  exportQualityFromPercent,
+  exportQualityPercentFromRatio,
+  formatUsesQuality,
+  isExportFormat,
+} from "../../utils/exportFormat";
 import { clearAutosave } from "../../store/openDocumentsAutosave";
 import { useDiagramStore } from "../../store/diagramStore";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
@@ -622,6 +628,48 @@ export function SettingsDialog({
               <option value="custom">{t("export.boundsCustom")}</option>
             </select>
           </label>
+
+          <label className="field">
+            <span>{t("appSettings.defaultExportFormat")}</span>
+            <select
+              value={prefs.defaultExportFormat}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (isExportFormat(next)) {
+                  updatePrefs({ defaultExportFormat: next });
+                }
+              }}
+            >
+              <option value="png">{t("export.formatPng")}</option>
+              <option value="webp">{t("export.formatWebp")}</option>
+              <option value="jpeg">{t("export.formatJpeg")}</option>
+            </select>
+          </label>
+
+          {formatUsesQuality(prefs.defaultExportFormat) && (
+            <label className="field">
+              <span>{t("appSettings.defaultExportQuality")}</span>
+              <div className="export-quality-row">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={exportQualityPercentFromRatio(prefs.defaultExportQuality)}
+                  onChange={(e) =>
+                    updatePrefs({
+                      defaultExportQuality: exportQualityFromPercent(
+                        Number(e.target.value),
+                      ),
+                    })
+                  }
+                  aria-label={t("appSettings.defaultExportQuality")}
+                />
+                <span className="export-quality-value">
+                  {exportQualityPercentFromRatio(prefs.defaultExportQuality)}%
+                </span>
+              </div>
+            </label>
+          )}
 
           <DefaultFolderField
             label={t("appSettings.defaultExportDirectory")}

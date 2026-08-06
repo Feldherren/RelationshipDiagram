@@ -16,6 +16,13 @@ import {
   type DiagramThemePreference,
 } from "./diagramAppearance";
 import {
+  clampExportQuality,
+  DEFAULT_EXPORT_FORMAT,
+  DEFAULT_EXPORT_QUALITY,
+  isExportFormat,
+  type ExportFormat,
+} from "./exportFormat";
+import {
   getSystemColorScheme,
   isUiScale,
   validateThemeDocument,
@@ -66,9 +73,13 @@ export interface AppPreferences {
   /** Export scale multiplier (1 = 100%, 2 = 200%). */
   defaultExportPixelRatio: number;
   defaultExportBoundsMode: ExportBoundsMode;
+  /** Default image format when opening the export dialog. */
+  defaultExportFormat: ExportFormat;
+  /** Default lossy quality 0–1 for WebP/JPEG (ignored for PNG). */
+  defaultExportQuality: number;
   /** Folder for save/open dialogs; unset uses the OS default. */
   defaultDiagramDirectory: string | null;
-  /** Folder for PNG export dialogs; unset uses the OS default. */
+  /** Folder for image export dialogs; unset uses the OS default. */
   defaultExportDirectory: string | null;
   themePreference: ThemePreference;
   uiScale: UiScale;
@@ -114,6 +125,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   defaultExportPadding: 32,
   defaultExportPixelRatio: 1,
   defaultExportBoundsMode: "auto",
+  defaultExportFormat: DEFAULT_EXPORT_FORMAT,
+  defaultExportQuality: DEFAULT_EXPORT_QUALITY,
   defaultDiagramDirectory: null,
   defaultExportDirectory: null,
   themePreference: "system",
@@ -337,6 +350,14 @@ function parseStoredPreferences(raw: unknown): AppPreferences {
     defaultExportBoundsMode: isExportBoundsMode(stored.defaultExportBoundsMode)
       ? stored.defaultExportBoundsMode
       : defaults.defaultExportBoundsMode,
+    defaultExportFormat: isExportFormat(stored.defaultExportFormat)
+      ? stored.defaultExportFormat
+      : defaults.defaultExportFormat,
+    defaultExportQuality:
+      typeof stored.defaultExportQuality === "number" &&
+      Number.isFinite(stored.defaultExportQuality)
+        ? clampExportQuality(stored.defaultExportQuality)
+        : defaults.defaultExportQuality,
     defaultDiagramDirectory: parseOptionalDirectory(
       stored.defaultDiagramDirectory,
     ),
@@ -646,6 +667,15 @@ export function setAppPreferences(patch: Partial<AppPreferences>): AppPreference
       patch.defaultExportPixelRatio !== undefined
         ? exportZoomRatioFromPercent(patch.defaultExportPixelRatio * 100)
         : current.defaultExportPixelRatio,
+    defaultExportFormat:
+      patch.defaultExportFormat !== undefined &&
+      isExportFormat(patch.defaultExportFormat)
+        ? patch.defaultExportFormat
+        : current.defaultExportFormat,
+    defaultExportQuality:
+      patch.defaultExportQuality !== undefined
+        ? clampExportQuality(patch.defaultExportQuality)
+        : current.defaultExportQuality,
   };
   updateWallpaperCache(next);
   writeStoredPreferences(next);

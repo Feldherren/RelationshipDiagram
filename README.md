@@ -20,7 +20,7 @@ Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pige
 - **Themes** - in-app UI theme and diagram theme editors (themes are stored in localStorage), theme export and import (JSON)
 - **Bookmarks** - user-definable easy navigation
 - Saving and loading (*.rdiagram)
-- Image export (entire graphic or selected area) at two predefined levels of zoom or a user-customisable level; it also estimates the dimensions of the exported image
+- Image export (entire graphic or selected area) to PNG, JPEG or WEBP formats, at two predefined levels of zoom or a user-customisable level
 
 ## Screenshots
 

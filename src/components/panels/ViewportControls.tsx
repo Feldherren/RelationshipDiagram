@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -35,7 +34,6 @@ function getSymbolSwatchStyleSnapshot(): SymbolSwatchStyle {
 export function ViewportControls() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   const bookmarks = useDiagramStore((s) => s.bookmarks);
   const bookmarksVisible = useDiagramStore((s) => s.bookmarksVisible);
@@ -51,33 +49,16 @@ export function ViewportControls() {
     () => SYMBOL_SWATCH_ON_LIGHT,
   );
 
-  // Keep the strip open during canvas interaction; dismiss on outside click.
+  // Stay open until the toggle is clicked or Escape is pressed.
   useEffect(() => {
     if (!open) return;
-
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (rootRef.current?.contains(target)) return;
-      if (
-        target instanceof Element &&
-        (target.closest(".canvas-container") ||
-          target.closest(".selection-float") ||
-          target.closest(".fit-to-content-button"))
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
 
-    window.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
@@ -93,7 +74,7 @@ export function ViewportControls() {
   } as CSSProperties;
 
   return (
-    <div className="viewport-controls-anchor" ref={rootRef}>
+    <div className="viewport-controls-anchor">
       <div className="viewport-controls-row">
         <button
           type="button"

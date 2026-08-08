@@ -1,13 +1,16 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../store/diagramStore";
 
 interface ToolbarProps {
   onNew: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
   onOpen: () => void;
   onExport: () => void;
   onDiagramProperties: () => void;
-  onHelp: () => void;
+  onControls: () => void;
+  onAbout: () => void;
   onSettings: () => void;
   onFind: () => void;
 }
@@ -24,47 +27,6 @@ function SearchIcon() {
       <path
         fill="currentColor"
         d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-      />
-    </svg>
-  );
-}
-
-function HelpIcon() {
-  return (
-    <svg
-      className="toolbar-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      aria-hidden="true"
-    >
-      <text
-        x="12"
-        y="12"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize="18"
-        fontWeight="700"
-        fill="currentColor"
-      >
-        ?
-      </text>
-    </svg>
-  );
-}
-
-function SettingsGearIcon() {
-  return (
-    <svg
-      className="toolbar-icon"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"
       />
     </svg>
   );
@@ -145,13 +107,217 @@ function SnapToGridIcon() {
   );
 }
 
+function FileMenu({
+  onNew,
+  onOpen,
+  onSave,
+  onSaveAs,
+  onExport,
+  onSettings,
+}: {
+  onNew: () => void;
+  onOpen: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
+  onExport: () => void;
+  onSettings: () => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const run = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="toolbar-menu-anchor" ref={rootRef}>
+      <button
+        type="button"
+        className={open ? "active" : undefined}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("toolbar.fileMenuAria")}
+        title={t("toolbar.file")}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t("toolbar.file")}
+      </button>
+      {open && (
+        <div
+          className="toolbar-menu"
+          role="menu"
+          aria-label={t("toolbar.fileMenuAria")}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onNew)}
+          >
+            {t("toolbar.new")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onOpen)}
+          >
+            {t("toolbar.open")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            title={t("toolbar.saveTitle")}
+            onClick={() => run(onSave)}
+          >
+            {t("toolbar.save")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            title={t("toolbar.saveAsTitle")}
+            onClick={() => run(onSaveAs)}
+          >
+            {t("toolbar.saveAs")}
+          </button>
+          <div className="toolbar-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onExport)}
+          >
+            {t("toolbar.export")}
+          </button>
+          <div className="toolbar-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onSettings)}
+          >
+            {t("toolbar.settings")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HelpMenu({
+  onControls,
+  onAbout,
+}: {
+  onControls: () => void;
+  onAbout: () => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const run = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="toolbar-menu-anchor" ref={rootRef}>
+      <button
+        type="button"
+        className={open ? "active" : undefined}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("toolbar.helpMenuAria")}
+        title={t("toolbar.helpMenu")}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {t("toolbar.helpMenu")}
+      </button>
+      {open && (
+        <div
+          className="toolbar-menu"
+          role="menu"
+          aria-label={t("toolbar.helpMenuAria")}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onControls)}
+          >
+            {t("toolbar.help")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="toolbar-menu-item"
+            onClick={() => run(onAbout)}
+          >
+            {t("toolbar.about")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Toolbar({
   onNew,
   onSave,
+  onSaveAs,
   onOpen,
   onExport,
   onDiagramProperties,
-  onHelp,
+  onControls,
+  onAbout,
   onSettings,
   onFind,
 }: ToolbarProps) {
@@ -167,18 +333,15 @@ export function Toolbar({
   return (
     <header className="toolbar">
       <div className="toolbar-group">
-        <button type="button" onClick={onNew}>
-          {t("toolbar.new")}
-        </button>
-        <button type="button" onClick={onOpen}>
-          {t("toolbar.open")}
-        </button>
-        <button type="button" onClick={onSave}>
-          {t("toolbar.save")}
-        </button>
-        <button type="button" onClick={onExport}>
-          {t("toolbar.export")}
-        </button>
+        <FileMenu
+          onNew={onNew}
+          onOpen={onOpen}
+          onSave={onSave}
+          onSaveAs={onSaveAs}
+          onExport={onExport}
+          onSettings={onSettings}
+        />
+        <HelpMenu onControls={onControls} onAbout={onAbout} />
       </div>
 
       <div
@@ -257,24 +420,6 @@ export function Toolbar({
         </button>
         <button type="button" onClick={onDiagramProperties}>
           {t("toolbar.diagramProperties")}
-        </button>
-        <button
-          type="button"
-          className="toolbar-icon-button"
-          onClick={onSettings}
-          aria-label={t("toolbar.settingsAria")}
-          title={t("toolbar.settings")}
-        >
-          <SettingsGearIcon />
-        </button>
-        <button
-          type="button"
-          className="toolbar-icon-button"
-          onClick={onHelp}
-          aria-label={t("toolbar.helpAria")}
-          title={t("toolbar.help")}
-        >
-          <HelpIcon />
         </button>
       </div>
     </header>

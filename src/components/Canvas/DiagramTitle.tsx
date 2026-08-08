@@ -1,8 +1,5 @@
 import { useDiagramStore } from "../../store/diagramStore";
-import {
-  getDiagramHeaderPillClassName,
-  getDiagramHeaderPillFontSize,
-} from "../../utils/diagramHeaderPill";
+import { getDiagramHeaderPillClassName } from "../../utils/diagramHeaderPill";
 import { rgbToCss } from "../../models/types";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 
@@ -25,9 +22,9 @@ export function DiagramTitle() {
 
   const fontFamily = formatUiFontFamily(diagramFontFamily);
 
-  const pillStyle = (chrome: typeof titleLabel, variant: "title" | "subtitle") => ({
+  const pillStyle = (chrome: typeof titleLabel) => ({
     fontFamily,
-    fontSize: getDiagramHeaderPillFontSize(variant),
+    fontSize: chrome.fontSize,
     color: rgbToCss(chrome.textColor),
     backgroundColor: rgbToCss(chrome.backgroundColor),
     borderColor: rgbToCss(chrome.borderColor),
@@ -38,7 +35,7 @@ export function DiagramTitle() {
       {title && (
         <span
           className={getDiagramHeaderPillClassName("title")}
-          style={pillStyle(titleLabel, "title")}
+          style={pillStyle(titleLabel)}
         >
           {title}
         </span>
@@ -46,7 +43,7 @@ export function DiagramTitle() {
       {subtitle && (
         <span
           className={getDiagramHeaderPillClassName("subtitle")}
-          style={pillStyle(subtitleLabel, "subtitle")}
+          style={pillStyle(subtitleLabel)}
         >
           {subtitle}
         </span>

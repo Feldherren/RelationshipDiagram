@@ -3,26 +3,19 @@ import { Layer, Line, Rect } from "react-konva";
 import type Konva from "konva";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
-import { CharacterNode } from "./CharacterNode";
-import { FloatingTextNode } from "./FloatingTextNode";
 import { FloatingTextEditor } from "./FloatingTextEditor";
-import { LineEdge } from "./LineEdge";
-import { BoxContainer } from "./BoxContainer";
 import { GridBackground } from "./GridBackground";
 import { ViewportStage } from "./ViewportStage";
+import { DiagramLayerContents } from "./DiagramLayerContents";
+import { CharacterChromeOverlay } from "./CharacterChromeOverlay";
 import { DiagramTitle } from "./DiagramTitle";
 import { BookmarkFlagsLayer } from "./BookmarkFlagsLayer";
-import { GroupHubLayer } from "./GroupHubLayer";
 import { MembershipChipNameOverlay } from "./MembershipChipNameOverlay";
 import {
   CanvasAddObjectMenu,
   type CanvasAddObjectMenuState,
 } from "../panels/CanvasAddObjectMenu";
-import {
-  useDiagramStore,
-  isCharacterHidden,
-  isFloatingTextHidden,
-} from "../../store/diagramStore";
+import { useDiagramStore } from "../../store/diagramStore";
 import { usePanZoom } from "../../hooks/usePanZoom";
 import { sameNodeRef } from "../../utils/connection";
 import { shouldRenderLine } from "../../utils/lineEndpoints";
@@ -30,10 +23,7 @@ import {
   shouldShowGroupLine,
   type GroupCanvasVisibilityContext,
 } from "../../utils/groupHub";
-import {
-  buildCharacterMembershipChipMap,
-  EMPTY_MEMBERSHIP_CHIPS,
-} from "./MembershipChips";
+import { buildCharacterMembershipChipMap } from "./MembershipChips";
 import { setMembershipChipTooltip } from "../../utils/membershipChipTooltip";
 import type { NodeRef } from "../../models/types";
 import { backgroundColorForDisplay } from "../../utils/diagramBackground";
@@ -46,7 +36,6 @@ import { useImageNaturalSize } from "../../hooks/useImageNaturalSize";
 import { consumeSuppressStageClick } from "../../utils/suppressStageClick";
 import {
   hitTestMarqueeSelection,
-  isItemSelected,
   selectionFromMarqueeHits,
 } from "../../utils/selectionMulti";
 import { routeLine } from "../../utils/lineRouting";
@@ -119,6 +108,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
     groups,
     boxes,
     floatingTexts,
+    layers,
     selection,
     editingFloatingTextId,
     toolMode,
@@ -154,6 +144,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       groups: s.groups,
       boxes: s.boxes,
       floatingTexts: s.floatingTexts,
+      layers: s.layers,
       selection: s.selection,
       editingFloatingTextId: s.editingFloatingTextId,
       toolMode: s.toolMode,
@@ -471,13 +462,23 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
         if (width > 4 && height > 4) {
           suppressClick.current = true;
           const state = useDiagramStore.getState();
+          const visibleLayerIds = new Set(
+            state.layers.filter((l) => l.visible).map((l) => l.id),
+          );
           const hits = hitTestMarqueeSelection(
             { x, y, width, height },
             {
-              characters: state.characters,
-              boxes: state.boxes,
-              floatingTexts: state.floatingTexts,
+              characters: state.characters.filter((c) =>
+                visibleLayerIds.has(c.layerId),
+              ),
+              boxes: state.boxes.filter((b) =>
+                visibleLayerIds.has(b.layerId),
+              ),
+              floatingTexts: state.floatingTexts.filter((t) =>
+                visibleLayerIds.has(t.layerId),
+              ),
               fontFamily: state.diagramFontFamily,
+              appearance: state.diagramAppearance,
             },
           );
           const next = selectionFromMarqueeHits(hits);
@@ -668,16 +669,28 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
 
   const diagram = useMemo(
     () => ({
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       id: diagramId,
       characters,
       lines,
       groups,
       boxes,
       floatingTexts,
+      layers,
       fontFamily: diagramFontFamily,
+      appearance: diagramAppearance,
     }),
-    [diagramId, characters, lines, groups, boxes, floatingTexts, diagramFontFamily],
+    [
+      diagramId,
+      characters,
+      lines,
+      groups,
+      boxes,
+      floatingTexts,
+      layers,
+      diagramFontFamily,
+      diagramAppearance,
+    ],
   );
 
   const membershipByCharacterId = useMemo(
@@ -695,6 +708,16 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
           routed: routeLine(line, diagram),
         })),
     [lines, diagram, groupVisibilityCtx],
+  );
+
+  const visibleLayers = useMemo(
+    () => layers.filter((layer) => layer.visible),
+    [layers],
+  );
+
+  const visibleLayerIds = useMemo(
+    () => new Set(visibleLayers.map((layer) => layer.id)),
+    [visibleLayers],
   );
 
   const dragRectBounds =
@@ -759,126 +782,58 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
             />
           )}
 
-          {boxes
-            .filter((b) => !b.collapsed)
-            .map((box) => (
-              <BoxContainer
-                key={`${box.id}-bg`}
-                box={box}
-                characters={characters}
-                selected={isItemSelected(selection, "box", box.id)}
-                isConnectSource={isConnectSource({
-                  id: box.id,
-                  kind: "box",
-                })}
-                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
-                onOpenDetails={() =>
-                  handleNodeClick(
-                    { id: box.id, kind: "box" },
-                    { openDetails: true },
-                  )
-                }
-                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) =>
-                  updateBox(box.id, { bounds }, { recordHistory: false })
-                }
-                onMoveByDelta={(delta, contents, snapOptions) =>
-                  moveBox(box.id, delta, contents, {
-                    recordHistory: false,
-                    ...snapOptions,
-                  })
-                }
-                onResizeStart={() => setIsResizingBox(true)}
-                onResizeEnd={() => setIsResizingBox(false)}
-                onDragStart={() => setIsDraggingBox(true)}
-                onDragEnd={() => setIsDraggingBox(false)}
-                onConnectHandleDown={handleConnectHandleDown({
-                  id: box.id,
-                  kind: "box",
-                })}
-                part="background"
-                hovered={hoveredBoxId === box.id}
-                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
-              />
-            ))}
+          {visibleLayers.map((layer) => (
+            <DiagramLayerContents
+              key={layer.id}
+              layerId={layer.id}
+              characters={characters}
+              boxes={boxes}
+              groups={groups}
+              floatingTexts={floatingTexts}
+              routedLines={visibleRoutedLines}
+              diagram={diagram}
+              diagramFontFamily={diagramFontFamily}
+              selection={selection}
+              editingFloatingTextId={editingFloatingTextId}
+              toolMode={toolMode}
+              connectDrag={connectDrag}
+              membershipByCharacterId={membershipByCharacterId}
+              highlightedGroupId={highlightedGroupId}
+              highlightedMemberIds={highlightedMemberIds}
+              groupVisibilityCtx={groupVisibilityCtx}
+              hoveredLineId={hoveredLineId}
+              hoveredBoxId={hoveredBoxId}
+              setHoveredLineId={setHoveredLineId}
+              setBoxHovered={setBoxHovered}
+              handleToggleBoxCollapse={handleToggleBoxCollapse}
+              handleNodeClick={handleNodeClick}
+              handleConnectHandleDown={handleConnectHandleDown}
+              isConnectSource={isConnectSource}
+              setSelection={setSelection}
+              updateBox={updateBox}
+              moveBox={moveBox}
+              moveCharacter={moveCharacter}
+              moveFloatingText={moveFloatingText}
+              updateLine={updateLine}
+              beginEditingFloatingText={beginEditingFloatingText}
+              setIsResizingBox={setIsResizingBox}
+              setIsDraggingBox={setIsDraggingBox}
+            />
+          ))}
 
-          <GroupHubLayer
-            groups={groups}
+          <CharacterChromeOverlay
             characters={characters}
             boxes={boxes}
-            lines={lines}
-            visibility={groupVisibilityCtx}
-            selectedGroupId={highlightedGroupId}
-            onSelectGroup={(groupId) =>
-              setSelection({ type: "group", id: groupId }, { openDetails: false })
-            }
-            onOpenDetails={(groupId) =>
-              setSelection(
-                { type: "group", id: groupId },
-                { openDetails: true },
-              )
-            }
-            onConnectHandleDown={(groupId) =>
-              handleConnectHandleDown({ id: groupId, kind: "group" })
-            }
-            isConnectSource={isConnectSource}
+            visibleLayerIds={visibleLayerIds}
+            diagramFontFamily={diagramFontFamily}
+            selection={selection}
+            toolMode={toolMode}
+            membershipByCharacterId={membershipByCharacterId}
+            highlightedGroupId={highlightedGroupId}
+            highlightedMemberIds={highlightedMemberIds}
+            handleNodeClick={handleNodeClick}
+            setSelection={setSelection}
           />
-
-          {visibleRoutedLines.map(({ line, routed }) => (
-              <LineEdge
-                key={line.id}
-                line={line}
-                diagram={diagram}
-                routed={routed}
-                selected={
-                  selection?.type === "line" && selection.id === line.id
-                }
-                onSelect={() =>
-                  setSelection({ type: "line", id: line.id }, { openDetails: false })
-                }
-                onOpenDetails={() =>
-                  setSelection({ type: "line", id: line.id }, { openDetails: true })
-                }
-                onBendChange={(bend) =>
-                  updateLine(line.id, { bend }, { recordHistory: false })
-                }
-                part="stroke"
-                hovered={hoveredLineId === line.id}
-                onHoverChange={(hovered) =>
-                  setHoveredLineId((current) =>
-                    hovered ? line.id : current === line.id ? null : current,
-                  )
-                }
-              />
-            ))}
-
-          {visibleRoutedLines.map(({ line, routed }) => (
-              <LineEdge
-                key={`${line.id}-label`}
-                line={line}
-                diagram={diagram}
-                routed={routed}
-                selected={
-                  selection?.type === "line" && selection.id === line.id
-                }
-                onSelect={() =>
-                  setSelection({ type: "line", id: line.id }, { openDetails: false })
-                }
-                onOpenDetails={() =>
-                  setSelection({ type: "line", id: line.id }, { openDetails: true })
-                }
-                onBendChange={(bend) =>
-                  updateLine(line.id, { bend }, { recordHistory: false })
-                }
-                part="label"
-                hovered={hoveredLineId === line.id}
-                onHoverChange={(hovered) =>
-                  setHoveredLineId((current) =>
-                    hovered ? line.id : current === line.id ? null : current,
-                  )
-                }
-              />
-            ))}
 
           {connectDrag && (
             <ScaleStrokeLine
@@ -892,208 +847,6 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
               dashPattern={[8, 5]}
             />
           )}
-
-          {characters
-            .filter(
-              (c) =>
-                !isCharacterHidden(c.id, boxes, characters, diagramFontFamily),
-            )
-            .map((character) => {
-              const membershipGroups =
-                membershipByCharacterId.get(character.id) ??
-                EMPTY_MEMBERSHIP_CHIPS;
-              const isMember =
-                highlightedMemberIds?.has(character.id) ?? false;
-              return (
-                <CharacterNode
-                  key={character.id}
-                  character={character}
-                  selected={isItemSelected(
-                    selection,
-                    "character",
-                    character.id,
-                  )}
-                  isConnectSource={isConnectSource({
-                    id: character.id,
-                    kind: "character",
-                  })}
-                  membershipGroups={membershipGroups}
-                  highlightedGroupId={highlightedGroupId}
-                  dimmed={highlightedMemberIds != null && !isMember}
-                  membershipEmphasized={isMember}
-                  draggable={
-                    toolMode !== "exportBounds" &&
-                    toolMode !== "editGroupMembers" &&
-                    !connectDrag
-                  }
-                  onSelect={() =>
-                    handleNodeClick({ id: character.id, kind: "character" })
-                  }
-                  onOpenDetails={() =>
-                    handleNodeClick(
-                      { id: character.id, kind: "character" },
-                      { openDetails: true },
-                    )
-                  }
-                  onSelectGroup={
-                    toolMode === "editGroupMembers"
-                      ? () =>
-                          handleNodeClick({
-                            id: character.id,
-                            kind: "character",
-                          })
-                      : (groupId) =>
-                          setSelection({
-                            type: "group",
-                            id: groupId,
-                            anchorCharacterId: character.id,
-                          })
-                  }
-                  onConnectHandleDown={handleConnectHandleDown({
-                    id: character.id,
-                    kind: "character",
-                  })}
-                  onDragMove={(pos) =>
-                    moveCharacter(character.id, pos, { recordHistory: false })
-                  }
-                  onDragEnd={(pos) =>
-                    moveCharacter(character.id, pos, { recordHistory: false })
-                  }
-                />
-              );
-            })}
-
-          {boxes
-            .filter((b) => !b.collapsed)
-            .map((box) => (
-              <BoxContainer
-                key={`${box.id}-fg`}
-                box={box}
-                characters={characters}
-                selected={isItemSelected(selection, "box", box.id)}
-                isConnectSource={isConnectSource({
-                  id: box.id,
-                  kind: "box",
-                })}
-                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
-                onOpenDetails={() =>
-                  handleNodeClick(
-                    { id: box.id, kind: "box" },
-                    { openDetails: true },
-                  )
-                }
-                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) =>
-                  updateBox(box.id, { bounds }, { recordHistory: false })
-                }
-                onMoveByDelta={(delta, contents, snapOptions) =>
-                  moveBox(box.id, delta, contents, {
-                    recordHistory: false,
-                    ...snapOptions,
-                  })
-                }
-                onResizeStart={() => setIsResizingBox(true)}
-                onResizeEnd={() => setIsResizingBox(false)}
-                onDragStart={() => setIsDraggingBox(true)}
-                onDragEnd={() => setIsDraggingBox(false)}
-                onConnectHandleDown={handleConnectHandleDown({
-                  id: box.id,
-                  kind: "box",
-                })}
-                part="foreground"
-                hovered={hoveredBoxId === box.id}
-                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
-              />
-            ))}
-
-          {boxes
-            .filter((b) => b.collapsed)
-            .map((box) => (
-              <BoxContainer
-                key={box.id}
-                box={box}
-                characters={characters}
-                selected={isItemSelected(selection, "box", box.id)}
-                isConnectSource={isConnectSource({
-                  id: box.id,
-                  kind: "box",
-                })}
-                onSelect={() => handleNodeClick({ id: box.id, kind: "box" })}
-                onOpenDetails={() =>
-                  handleNodeClick(
-                    { id: box.id, kind: "box" },
-                    { openDetails: true },
-                  )
-                }
-                onToggleCollapse={() => handleToggleBoxCollapse(box.id)}
-                onBoundsChange={(bounds) =>
-                  updateBox(box.id, { bounds }, { recordHistory: false })
-                }
-                onMoveByDelta={(delta, contents, snapOptions) =>
-                  moveBox(box.id, delta, contents, {
-                    recordHistory: false,
-                    ...snapOptions,
-                  })
-                }
-                onResizeStart={() => setIsResizingBox(true)}
-                onResizeEnd={() => setIsResizingBox(false)}
-                onDragStart={() => setIsDraggingBox(true)}
-                onDragEnd={() => setIsDraggingBox(false)}
-                onConnectHandleDown={handleConnectHandleDown({
-                  id: box.id,
-                  kind: "box",
-                })}
-                hovered={hoveredBoxId === box.id}
-                onHoverChange={(hovered) => setBoxHovered(box.id, hovered)}
-              />
-            ))}
-
-          {floatingTexts
-            .filter(
-              (t) =>
-                !isFloatingTextHidden(
-                  t.id,
-                  boxes,
-                  floatingTexts,
-                  diagramFontFamily,
-                ),
-            )
-            .map((floatingText) => (
-            <FloatingTextNode
-              key={floatingText.id}
-              floatingText={floatingText}
-              selected={isItemSelected(
-                selection,
-                "floatingText",
-                floatingText.id,
-              )}
-              editing={editingFloatingTextId === floatingText.id}
-              draggable={
-                toolMode !== "exportBounds" &&
-                toolMode !== "editGroupMembers" &&
-                !connectDrag &&
-                editingFloatingTextId !== floatingText.id
-              }
-              onSelect={() =>
-                setSelection(
-                  { type: "floatingText", id: floatingText.id },
-                  { openDetails: false },
-                )
-              }
-              onStartEdit={() => beginEditingFloatingText(floatingText.id)}
-              onOpenDetails={() => beginEditingFloatingText(floatingText.id)}
-              onDragMove={(pos) =>
-                moveFloatingText(floatingText.id, pos, {
-                  recordHistory: false,
-                })
-              }
-              onDragEnd={(pos) =>
-                moveFloatingText(floatingText.id, pos, {
-                  recordHistory: false,
-                })
-              }
-            />
-          ))}
 
           {previewBounds && (
             <ScaleStrokeRect

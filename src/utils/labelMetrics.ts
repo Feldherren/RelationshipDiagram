@@ -22,9 +22,68 @@ export const LABEL_PADDING_Y = 4;
 
 export const CHARACTER_NAME_FONT_SIZE = 15;
 export const CHARACTER_SUBTITLE_FONT_SIZE = 12;
+/** Default font size for line and box name pills. */
+export const DEFAULT_PILL_LABEL_FONT_SIZE = 12;
 export const CHARACTER_LABEL_PADDING_X = 12;
 export const CHARACTER_LABEL_PADDING_Y = 5;
 export const CHARACTER_LABEL_GAP = 4;
+
+export const MIN_LABEL_FONT_SIZE = 8;
+export const MAX_LABEL_FONT_SIZE = 48;
+
+export function clampLabelFontSize(size: number): number {
+  if (!Number.isFinite(size)) return DEFAULT_PILL_LABEL_FONT_SIZE;
+  return Math.min(
+    MAX_LABEL_FONT_SIZE,
+    Math.max(MIN_LABEL_FONT_SIZE, Math.round(size)),
+  );
+}
+
+/** Resolved canvas pill label font sizes (defaults match pre-theme constants). */
+export interface LabelFontSizes {
+  characterName: number;
+  characterSubtitle: number;
+  line: number;
+  boxName: number;
+}
+
+export function defaultLabelFontSizes(): LabelFontSizes {
+  return {
+    characterName: CHARACTER_NAME_FONT_SIZE,
+    characterSubtitle: CHARACTER_SUBTITLE_FONT_SIZE,
+    line: DEFAULT_PILL_LABEL_FONT_SIZE,
+    boxName: DEFAULT_PILL_LABEL_FONT_SIZE,
+  };
+}
+
+/** Read sizes from diagram appearance chrome; missing fields use defaults. */
+export function labelFontSizesFromAppearance(appearance?: {
+  characterNameLabel?: { fontSize?: number };
+  characterSubtitleLabel?: { fontSize?: number };
+  lineLabel?: { fontSize?: number };
+  boxNameLabel?: { fontSize?: number };
+} | null): LabelFontSizes {
+  const defaults = defaultLabelFontSizes();
+  if (!appearance) return defaults;
+  return {
+    characterName:
+      typeof appearance.characterNameLabel?.fontSize === "number"
+        ? appearance.characterNameLabel.fontSize
+        : defaults.characterName,
+    characterSubtitle:
+      typeof appearance.characterSubtitleLabel?.fontSize === "number"
+        ? appearance.characterSubtitleLabel.fontSize
+        : defaults.characterSubtitle,
+    line:
+      typeof appearance.lineLabel?.fontSize === "number"
+        ? appearance.lineLabel.fontSize
+        : defaults.line,
+    boxName:
+      typeof appearance.boxNameLabel?.fontSize === "number"
+        ? appearance.boxNameLabel.fontSize
+        : defaults.boxName,
+  };
+}
 
 /** Padding around floating text for hit-testing and the selection outline. */
 export function getFloatingTextPadding(fontSize: number): {

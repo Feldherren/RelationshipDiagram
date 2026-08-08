@@ -2,14 +2,13 @@ import { Circle, Group, Text } from "react-konva";
 import type Konva from "konva";
 import {
   CONNECT_HANDLE_FONT_SIZE,
-  CONNECT_HANDLE_SCREEN_RADIUS,
+  CONNECT_HANDLE_RADIUS,
 } from "../../utils/connection";
 import { EXPORT_CONNECT_HANDLE_NODE_NAME } from "../../utils/export";
 
 interface ConnectHandleProps {
   x: number;
   y: number;
-  viewportScale: number;
   isConnectSource: boolean;
   onMouseDown: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
@@ -17,13 +16,9 @@ interface ConnectHandleProps {
 export function ConnectHandle({
   x,
   y,
-  viewportScale,
   isConnectSource,
   onMouseDown,
 }: ConnectHandleProps) {
-  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
-  const handleFontSize = CONNECT_HANDLE_FONT_SIZE / viewportScale;
-
   return (
     <Group
       name={EXPORT_CONNECT_HANDLE_NODE_NAME}
@@ -41,25 +36,25 @@ export function ConnectHandle({
       }}
     >
       <Circle
-        radius={handleRadius}
+        radius={CONNECT_HANDLE_RADIUS}
         fill={isConnectSource ? "#2f6fb3" : "#4a90d9"}
         stroke="#ffffff"
-        strokeWidth={2 / viewportScale}
+        strokeWidth={2}
         shadowColor="rgba(0,0,0,0.25)"
-        shadowBlur={4 / viewportScale}
-        shadowOffset={{ x: 0, y: 1 / viewportScale }}
+        shadowBlur={4}
+        shadowOffset={{ x: 0, y: 1 }}
       />
       <Text
         text="+"
-        fontSize={handleFontSize}
+        fontSize={CONNECT_HANDLE_FONT_SIZE}
         fontStyle="bold"
         fill="#ffffff"
         align="center"
         verticalAlign="middle"
-        width={handleRadius * 2}
-        height={handleRadius * 2}
-        offsetX={handleRadius}
-        offsetY={handleRadius}
+        width={CONNECT_HANDLE_RADIUS * 2}
+        height={CONNECT_HANDLE_RADIUS * 2}
+        offsetX={CONNECT_HANDLE_RADIUS}
+        offsetY={CONNECT_HANDLE_RADIUS}
         listening={false}
       />
     </Group>

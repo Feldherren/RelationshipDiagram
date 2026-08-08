@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import packageJson from "../../../package.json";
 import {
   SUPPORTED_LOCALES,
   SYSTEM_LANGUAGE,
@@ -13,7 +12,13 @@ import {
   type AppPreferences,
   type ExportBoundsMode,
 } from "../../utils/appPreferences";
-import { clearAutosave } from "../../utils/autosaveStorage";
+import {
+  exportQualityFromPercent,
+  exportQualityPercentFromRatio,
+  formatUsesQuality,
+  isExportFormat,
+} from "../../utils/exportFormat";
+import { clearAutosave } from "../../store/openDocumentsAutosave";
 import { useDiagramStore } from "../../store/diagramStore";
 import { reapplyUiAppearanceFromPrefs } from "../../hooks/useUiAppearance";
 import {
@@ -61,8 +66,7 @@ export type SettingsSectionId =
   | "accessibility"
   | "editing"
   | "export"
-  | "data"
-  | "about";
+  | "data";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -320,7 +324,6 @@ export function SettingsDialog({
     { id: "editing", label: t("appSettings.editingSection") },
     { id: "export", label: t("appSettings.exportSection") },
     { id: "data", label: t("appSettings.dataSection") },
-    { id: "about", label: t("appSettings.aboutSection") },
   ] as const;
 
   let content = null;
@@ -552,6 +555,20 @@ export function SettingsDialog({
           <label className="field checkbox">
             <input
               type="checkbox"
+              checked={prefs.confirmBeforeDeleteLayer}
+              onChange={(e) =>
+                updatePrefs({ confirmBeforeDeleteLayer: e.target.checked })
+              }
+            />
+            <span>{t("appSettings.confirmBeforeDeleteLayer")}</span>
+          </label>
+          <p className="hint">
+            {t("appSettings.confirmBeforeDeleteLayerHint")}
+          </p>
+
+          <label className="field checkbox">
+            <input
+              type="checkbox"
               checked={prefs.showExternalLinkChipTooltip}
               onChange={(e) =>
                 updatePrefs({
@@ -612,6 +629,48 @@ export function SettingsDialog({
             </select>
           </label>
 
+          <label className="field">
+            <span>{t("appSettings.defaultExportFormat")}</span>
+            <select
+              value={prefs.defaultExportFormat}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (isExportFormat(next)) {
+                  updatePrefs({ defaultExportFormat: next });
+                }
+              }}
+            >
+              <option value="png">{t("export.formatPng")}</option>
+              <option value="webp">{t("export.formatWebp")}</option>
+              <option value="jpeg">{t("export.formatJpeg")}</option>
+            </select>
+          </label>
+
+          {formatUsesQuality(prefs.defaultExportFormat) && (
+            <label className="field">
+              <span>{t("appSettings.defaultExportQuality")}</span>
+              <div className="export-quality-row">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={exportQualityPercentFromRatio(prefs.defaultExportQuality)}
+                  onChange={(e) =>
+                    updatePrefs({
+                      defaultExportQuality: exportQualityFromPercent(
+                        Number(e.target.value),
+                      ),
+                    })
+                  }
+                  aria-label={t("appSettings.defaultExportQuality")}
+                />
+                <span className="export-quality-value">
+                  {exportQualityPercentFromRatio(prefs.defaultExportQuality)}%
+                </span>
+              </div>
+            </label>
+          )}
+
           <DefaultFolderField
             label={t("appSettings.defaultExportDirectory")}
             hint={t("appSettings.defaultExportDirectoryHint")}
@@ -645,26 +704,6 @@ export function SettingsDialog({
           >
             {t("appSettings.clearAutosaveData")}
           </button>
-        </>
-      );
-      break;
-    case "about":
-      content = (
-        <>
-          <p>{t("app.name")}</p>
-          <p className="hint">
-            {t("appSettings.version", { version: packageJson.version })}
-          </p>
-          <p>
-            <a
-              className="text-link"
-              href="https://github.com/Feldherren/RelationshipDiagram"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("appSettings.githubRepo")}
-            </a>
-          </p>
         </>
       );
       break;

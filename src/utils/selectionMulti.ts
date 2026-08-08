@@ -18,6 +18,7 @@ import {
   getCollapsedBoxForCharacter,
   getCollapsedBoxForFloatingText,
 } from "./lineEndpoints";
+import { labelFontSizesFromAppearance } from "./labelMetrics";
 
 export function isItemSelected(
   selection: Selection,
@@ -69,14 +70,20 @@ export function hitTestMarqueeSelection(
     boxes: Box[];
     floatingTexts: FloatingText[];
     fontFamily?: string;
+    appearance?: {
+      characterNameLabel?: { fontSize?: number };
+      characterSubtitleLabel?: { fontSize?: number };
+      boxNameLabel?: { fontSize?: number };
+    };
   },
 ): MultiSelectableItem[] {
   const fontFamily = args.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const labelFonts = labelFontSizesFromAppearance(args.appearance);
   const items: MultiSelectableItem[] = [];
 
   for (const box of args.boxes) {
     const bounds = box.collapsed
-      ? getCollapsedBoxBounds(box, fontFamily)
+      ? getCollapsedBoxBounds(box, fontFamily, labelFonts.boxName)
       : resolveBoxBounds(box);
     if (bounds && boundsIntersect(marquee, bounds)) {
       items.push({ type: "box", id: box.id });
@@ -96,6 +103,8 @@ export function hitTestMarqueeSelection(
     }
     const bounds = getCharacterBounds(character, fontFamily, 1, {
       includeConnectHandle: false,
+      nameFontSize: labelFonts.characterName,
+      subtitleFontSize: labelFonts.characterSubtitle,
     });
     if (boundsIntersect(marquee, bounds)) {
       items.push({ type: "character", id: character.id });

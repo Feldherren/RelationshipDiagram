@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import { useTranslation } from "react-i18next";
 import { DiagramCanvas } from "./components/Canvas/DiagramCanvas";
@@ -8,21 +8,24 @@ import { ExportDialog } from "./components/panels/ExportDialog";
 import { DiagramPropertiesDialog } from "./components/panels/DiagramPropertiesDialog";
 import { SettingsDialog, type SettingsSectionId } from "./components/panels/SettingsDialog";
 import { HelpControlsDialog } from "./components/panels/HelpControlsDialog";
+import { AboutDialog } from "./components/panels/AboutDialog";
 import { ExternalLinkConfirmHost } from "./components/panels/ExternalLinkConfirmHost";
 import { FindBar, type FindBarActions } from "./components/panels/FindBar";
 import { Toolbar } from "./components/Toolbar";
+import { EditorTabs } from "./components/EditorTabs";
 import { ZoomIndicator } from "./components/panels/ZoomIndicator";
 import { ViewportControls } from "./components/panels/ViewportControls";
-import { AddObjectControls } from "./components/panels/AddObjectControls";
+import { LayerControls } from "./components/panels/LayerControls";
 import { useAutosave } from "./hooks/useAutosave";
 import { useUiAppearance } from "./hooks/useUiAppearance";
 import { useFindShortcuts } from "./hooks/useFindShortcuts";
+import { useFileShortcuts } from "./hooks/useFileShortcuts";
 import { useDiagramStore } from "./store/diagramStore";
-import { getAppPreferences } from "./utils/appPreferences";
-import { confirmDialog } from "./utils/confirmDialog";
+import { useOpenDocumentsStore } from "./store/openDocumentsStore";
 import {
   loadDiagramFromFile,
   saveDiagramToFile,
+  type DiagramSaveResult,
 } from "./utils/persistence";
 import "./App.css";
 
@@ -35,13 +38,21 @@ function App() {
   const [settingsSection, setSettingsSection] =
     useState<SettingsSectionId>("appearance");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const findActionsRef = useRef<FindBarActions | null>(null);
-  const getDiagram = useDiagramStore((s) => s.getDiagram);
-  const loadDiagram = useDiagramStore((s) => s.loadDiagram);
   const bootstrapApp = useDiagramStore((s) => s.bootstrapApp);
-  const newDiagram = useDiagramStore((s) => s.newDiagram);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
+  const bootstrapDocuments = useOpenDocumentsStore((s) => s.bootstrap);
+  const openNewTab = useOpenDocumentsStore((s) => s.openNewTab);
+  const openDiagramInTab = useOpenDocumentsStore((s) => s.openDiagramInTab);
+  const markActiveSaved = useOpenDocumentsStore((s) => s.markActiveSaved);
+  const activeFilePath = useOpenDocumentsStore((s) => s.activeFilePath);
+  const activeFileHandle = useOpenDocumentsStore((s) => s.activeFileHandle);
+  const activePathScopeGranted = useOpenDocumentsStore(
+    (s) => s.activePathScopeGranted,
+  );
+  const documentsReady = useOpenDocumentsStore((s) => s.ready);
 
   useAutosave();
   useUiAppearance();
@@ -53,22 +64,95 @@ function App() {
   });
 
   useEffect(() => {
-    void bootstrapApp();
-  }, [bootstrapApp]);
+    void (async () => {
+      await bootstrapApp();
+      await bootstrapDocuments();
+    })();
+  }, [bootstrapApp, bootstrapDocuments]);
 
-  const handleSave = async () => {
+  // Close find / export UI when switching tabs so they don't target stale state.
+  const activeSessionId = useOpenDocumentsStore((s) => s.activeSessionId);
+  useEffect(() => {
+    setFindOpen(false);
+    setExportOpen(false);
+    setDiagramPropertiesOpen(false);
+  }, [activeSessionId]);
+
+  const finishSave = useCallback(
+    async (result: DiagramSaveResult) => {
+      if (result.cancelled) return;
+      useDiagramStore.getState().markClean();
+      markActiveSaved({
+        filePath: result.filePath,
+        fileHandle: result.fileHandle,
+        pathScopeGranted: result.pathScopeGranted,
+      });
+      if (useDiagramStore.getState().autosaveEnabled) {
+        await useDiagramStore.getState().flushAutosave();
+      }
+      if (result.usedDownloadFallback) {
+        alert(t("app.saveDownloadFallback"));
+      }
+    },
+    [markActiveSaved, t],
+  );
+
+  const handleSave = useCallback(async () => {
     try {
-      await saveDiagramToFile(getDiagram());
+      const result = await saveDiagramToFile(
+        useDiagramStore.getState().getDiagram(),
+        {
+          filePath: activeFilePath,
+          fileHandle: activeFileHandle,
+          pathScopeGranted: activePathScopeGranted,
+        },
+      );
+      await finishSave(result);
     } catch (err) {
       console.error(err);
       alert(t("app.saveFailed"));
     }
-  };
+  }, [
+    activeFileHandle,
+    activeFilePath,
+    activePathScopeGranted,
+    finishSave,
+    t,
+  ]);
+
+  const handleSaveAs = useCallback(async () => {
+    try {
+      const result = await saveDiagramToFile(
+        useDiagramStore.getState().getDiagram(),
+        {
+          filePath: activeFilePath,
+          forcePicker: true,
+        },
+      );
+      await finishSave(result);
+    } catch (err) {
+      console.error(err);
+      alert(t("app.saveFailed"));
+    }
+  }, [activeFilePath, finishSave, t]);
+
+  useFileShortcuts({
+    onSave: () => {
+      void handleSave();
+    },
+    onSaveAs: () => {
+      void handleSaveAs();
+    },
+  });
 
   const handleOpen = async () => {
     try {
-      const diagram = await loadDiagramFromFile();
-      await loadDiagram(diagram);
+      const loaded = await loadDiagramFromFile();
+      await openDiagramInTab(loaded.diagram, {
+        filePath: loaded.filePath,
+        fileHandle: loaded.fileHandle,
+        pathScopeGranted: loaded.pathScopeGranted,
+      });
     } catch (err) {
       if ((err as Error).message === "cancelled") return;
       console.error(err);
@@ -77,22 +161,7 @@ function App() {
   };
 
   const handleNew = async () => {
-    const { confirmBeforeNewDiagram } = getAppPreferences();
-    const { characters, lines, groups, boxes, floatingTexts } =
-      useDiagramStore.getState();
-    const hasContent =
-      characters.length > 0 ||
-      lines.length > 0 ||
-      groups.length > 0 ||
-      boxes.length > 0 ||
-      floatingTexts.length > 0;
-    if (confirmBeforeNewDiagram && hasContent) {
-      const confirmed = await confirmDialog(t("app.newConfirm"), {
-        title: t("app.name"),
-      });
-      if (!confirmed) return;
-    }
-    await newDiagram();
+    await openNewTab();
   };
 
   const handleExport = () => {
@@ -115,26 +184,33 @@ function App() {
       <Toolbar
         onNew={handleNew}
         onSave={handleSave}
+        onSaveAs={handleSaveAs}
         onOpen={handleOpen}
         onExport={handleExport}
         onDiagramProperties={() => setDiagramPropertiesOpen(true)}
-        onHelp={() => setHelpOpen(true)}
+        onControls={() => setHelpOpen(true)}
+        onAbout={() => setAboutOpen(true)}
         onSettings={() => openSettings()}
         onFind={() => setFindOpen(true)}
       />
+      <EditorTabs />
       <main className="main">
         <div className="workspace">
-          <DiagramCanvas stageRef={stageRef} />
-          <SelectionFloat />
-          <ViewportControls />
-          <AddObjectControls />
-          <GroupsListPopup />
-          <ZoomIndicator />
-          <FindBar
-            open={findOpen}
-            onClose={() => setFindOpen(false)}
-            actionsRef={findActionsRef}
-          />
+          {documentsReady ? (
+            <>
+              <DiagramCanvas stageRef={stageRef} />
+              <SelectionFloat />
+              <ViewportControls />
+              <LayerControls />
+              <GroupsListPopup />
+              <ZoomIndicator />
+              <FindBar
+                open={findOpen}
+                onClose={() => setFindOpen(false)}
+                actionsRef={findActionsRef}
+              />
+            </>
+          ) : null}
         </div>
       </main>
       <ExportDialog
@@ -151,6 +227,7 @@ function App() {
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
       />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

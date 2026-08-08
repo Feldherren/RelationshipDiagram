@@ -34,6 +34,13 @@ import {
   isCharacterGeometricallyInBox,
   isFloatingTextGeometricallyInBox,
 } from "./geometry";
+import { ensureLayers, normalizeLayers } from "./layers";
+import {
+  DEFAULT_EXPORT_FORMAT,
+  extensionForFormat,
+  mimeTypeForFormat,
+  type ExportFormat,
+} from "./exportFormat";
 
 export function serializeDiagram(diagram: Diagram): string {
   return JSON.stringify(diagram, null, 2);
@@ -89,17 +96,9 @@ function migrateV1Lines(lines: Line[]): Line[] {
   }));
 }
 
-function normalizeLines(lines: Line[]): Line[] {
-  return lines.map((line) => ({
-    ...line,
-    from: normalizeNodeRef(line.from),
-    to: normalizeNodeRef(line.to),
-  }));
-}
-
 function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
-  const boxes: Box[] = [];
-  const groups: Group[] = [];
+  const boxes: Omit<Box, "layerId">[] = [];
+  const groups: Omit<Group, "layerId">[] = [];
 
   for (const g of data.groups ?? []) {
     boxes.push({
@@ -123,16 +122,16 @@ function migrateV1ToV2(data: LegacyV1Diagram): Diagram {
   }
 
   return normalizeDiagram({
-    schemaVersion: 3,
+    schemaVersion: 4,
     title: data.title,
     subtitle: data.subtitle,
     showHeader: data.showHeader,
     fontFamily: data.fontFamily,
     backgroundColor: data.backgroundColor,
-    characters: data.characters,
-    lines: migrateV1Lines(data.lines ?? []),
-    groups,
-    boxes,
+    characters: data.characters as Diagram["characters"],
+    lines: migrateV1Lines(data.lines ?? []) as Diagram["lines"],
+    groups: groups as Group[],
+    boxes: boxes as Box[],
     floatingTexts: [],
     viewport: data.viewport,
   });
@@ -158,8 +157,21 @@ function normalizeFloatingTextDimension(
   return Math.max(min, Math.round(value));
 }
 
+function resolveEntityLayerId(
+  layerId: unknown,
+  fallbackLayerId: string,
+  validIds: Set<string>,
+): string {
+  if (typeof layerId === "string" && validIds.has(layerId)) {
+    return layerId;
+  }
+  return fallbackLayerId;
+}
+
 function normalizeFloatingTexts(
   texts: Diagram["floatingTexts"],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
 ): FloatingText[] {
   return (texts ?? []).map((t) => {
     const partial = t as Partial<FloatingText> & {
@@ -190,6 +202,11 @@ function normalizeFloatingTexts(
         ? { ...partial.color }
         : { ...DEFAULT_FLOATING_TEXT_COLOR },
       fontSize,
+      layerId: resolveEntityLayerId(
+        partial.layerId,
+        fallbackLayerId,
+        validLayerIds,
+      ),
       ...(textAlign ? { textAlign } : {}),
       ...(width != null ? { width } : {}),
       ...(height != null ? { height } : {}),
@@ -199,6 +216,8 @@ function normalizeFloatingTexts(
 
 function normalizeCharacters(
   characters: Diagram["characters"],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
 ): Character[] {
   return (characters ?? []).map((c) => {
     const link =
@@ -212,8 +231,30 @@ function normalizeCharacters(
           ? clampCharacterSize(c.size)
           : DEFAULT_CHARACTER_SIZE,
       link,
+      layerId: resolveEntityLayerId(
+        (c as Partial<Character>).layerId,
+        fallbackLayerId,
+        validLayerIds,
+      ),
     };
   });
+}
+
+function normalizeLinesWithLayers(
+  lines: Line[],
+  fallbackLayerId: string,
+  validLayerIds: Set<string>,
+): Line[] {
+  return lines.map((line) => ({
+    ...line,
+    from: normalizeNodeRef(line.from),
+    to: normalizeNodeRef(line.to),
+    layerId: resolveEntityLayerId(
+      (line as Partial<Line>).layerId,
+      fallbackLayerId,
+      validLayerIds,
+    ),
+  }));
 }
 
 function normalizeDiagramId(id: unknown): string {
@@ -224,21 +265,41 @@ function normalizeDiagramId(id: unknown): string {
 }
 
 function normalizeDiagram(
-  data: Omit<Diagram, "schemaVersion" | "id"> & {
+  data: Omit<Diagram, "schemaVersion" | "id" | "layers"> & {
     schemaVersion?: number;
     id?: string;
+    layers?: Diagram["layers"];
+    activeLayerId?: string;
   },
 ): Diagram {
   const fontFamily = data.fontFamily ?? DEFAULT_DIAGRAM_FONT;
-  const characters = normalizeCharacters(data.characters);
-  const floatingTexts = normalizeFloatingTexts(data.floatingTexts);
+  const { layers, activeLayerId } = ensureLayers(
+    normalizeLayers(data.layers),
+    data.activeLayerId,
+  );
+  const validLayerIds = new Set(layers.map((l) => l.id));
+  const fallbackLayerId = activeLayerId;
+  const characters = normalizeCharacters(
+    data.characters as Diagram["characters"],
+    fallbackLayerId,
+    validLayerIds,
+  );
+  const floatingTexts = normalizeFloatingTexts(
+    data.floatingTexts,
+    fallbackLayerId,
+    validLayerIds,
+  );
 
   return {
     ...data,
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: normalizeDiagramId(data.id),
     characters,
-    lines: normalizeLines(data.lines ?? []),
+    lines: normalizeLinesWithLayers(
+      (data.lines ?? []) as Line[],
+      fallbackLayerId,
+      validLayerIds,
+    ),
     groups: (data.groups ?? []).map((g) => ({
       id: g.id,
       name: g.name,
@@ -246,6 +307,11 @@ function normalizeDiagram(
       appearance: normalizeMembershipAppearance(
         g.appearance as Partial<MembershipAppearance> | undefined,
         { r: 100, g: 140, b: 100 },
+      ),
+      layerId: resolveEntityLayerId(
+        (g as Partial<Group>).layerId,
+        fallbackLayerId,
+        validLayerIds,
       ),
       ...(g.hubPosition &&
       typeof g.hubPosition.x === "number" &&
@@ -263,6 +329,11 @@ function normalizeDiagram(
         collapsedPosition: b.collapsedPosition,
         anchorPosition: b.anchorPosition,
         bounds: b.bounds,
+        layerId: resolveEntityLayerId(
+          (b as Partial<Box>).layerId,
+          fallbackLayerId,
+          validLayerIds,
+        ),
       };
       if (!collapsed) return box;
 
@@ -282,6 +353,8 @@ function normalizeDiagram(
       return box;
     }),
     floatingTexts,
+    layers,
+    activeLayerId,
     showGrid: data.showGrid ?? true,
     gridStyle: data.gridStyle === "dots" ? "dots" : "lines",
     appearance: data.appearance,
@@ -304,7 +377,11 @@ export function parseDiagram(json: string): Diagram {
     return migrateV1ToV2(v1);
   }
 
-  if (data.schemaVersion === 2 || data.schemaVersion === 3) {
+  if (
+    data.schemaVersion === 2 ||
+    data.schemaVersion === 3 ||
+    data.schemaVersion === 4
+  ) {
     const diagram = data as Diagram;
     if (
       !Array.isArray(diagram.characters) ||
@@ -345,12 +422,30 @@ function getDefaultDiagramFilename(diagram: Diagram): string {
   );
 }
 
-export function getDefaultExportFilename(title?: string): string {
+export function getDefaultExportFilename(
+  title?: string,
+  format: ExportFormat = DEFAULT_EXPORT_FORMAT,
+): string {
+  const ext = extensionForFormat(format);
   return getDefaultFilenameFromTitle(
     title,
-    "png",
-    "relationship-diagram.png",
+    ext,
+    `relationship-diagram.${ext}`,
   );
+}
+
+function imageFileFilter(format: ExportFormat): {
+  name: string;
+  extensions: string[];
+} {
+  const ext = extensionForFormat(format);
+  const filterKey =
+    format === "png"
+      ? "fileFilter.png"
+      : format === "webp"
+        ? "fileFilter.webp"
+        : "fileFilter.jpeg";
+  return { name: i18n.t(filterKey), extensions: [ext] };
 }
 
 async function saveBytesWithTauriDialog(
@@ -377,37 +472,129 @@ async function saveTextWithTauriDialog(
   suggestedName: string,
   filter: { name: string; extensions: string[] },
   directory?: string | null,
-): Promise<boolean> {
+  defaultPathOverride?: string,
+): Promise<string | null> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
 
   const path = await save({
-    defaultPath: buildDefaultDialogPath(directory, suggestedName),
+    defaultPath:
+      defaultPathOverride ??
+      buildDefaultDialogPath(directory, suggestedName),
     filters: [filter],
   });
-  if (path === null) return false;
+  if (path === null) return null;
 
   await writeTextFile(path, content);
-  return true;
+  return path;
 }
 
-export async function saveDiagramToFile(diagram: Diagram, filename?: string): Promise<void> {
+export type DiagramSaveResult = {
+  cancelled: boolean;
+  filePath?: string;
+  fileHandle?: FileSystemFileHandle;
+  /** True when the path was chosen via a native dialog this session (Tauri fs scope). */
+  pathScopeGranted?: boolean;
+  /** True when the browser fell back to an `<a download>` (Downloads folder only). */
+  usedDownloadFallback?: boolean;
+};
+
+export type DiagramLoadResult = {
+  diagram: Diagram;
+  filePath?: string;
+  fileHandle?: FileSystemFileHandle;
+  pathScopeGranted?: boolean;
+};
+
+async function writeDiagramToTauriPath(
+  content: string,
+  path: string,
+): Promise<void> {
+  if (content.length < 2) {
+    throw new Error("Refusing to write empty diagram content");
+  }
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  await writeTextFile(path, content);
+}
+
+async function writeDiagramToFileHandle(
+  content: string,
+  handle: FileSystemFileHandle,
+): Promise<void> {
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+export async function saveDiagramToFile(
+  diagram: Diagram,
+  options?: {
+    filename?: string;
+    filePath?: string;
+    fileHandle?: FileSystemFileHandle;
+    /** When false, Tauri must use the save dialog to acquire fs scope for the path. */
+    pathScopeGranted?: boolean;
+    /** When true, always prompt for a location (Save As). */
+    forcePicker?: boolean;
+  },
+): Promise<DiagramSaveResult> {
   const content = serializeDiagram(diagram);
-  const suggestedName = filename ?? getDefaultDiagramFilename(diagram);
+  if (content.length < 2) {
+    throw new Error("Refusing to save empty diagram content");
+  }
+  const suggestedName =
+    options?.filename ?? getDefaultDiagramFilename(diagram);
   const diagramFilter = {
     name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
   };
+  const forcePicker = options?.forcePicker === true;
 
   if (isTauriApp()) {
     const { defaultDiagramDirectory } = getAppPreferences();
-    await saveTextWithTauriDialog(
+    const dialogDefaultPath =
+      options?.filePath ??
+      buildDefaultDialogPath(defaultDiagramDirectory, suggestedName);
+
+    if (
+      !forcePicker &&
+      options?.filePath &&
+      options.pathScopeGranted
+    ) {
+      try {
+        await writeDiagramToTauriPath(content, options.filePath);
+        return {
+          cancelled: false,
+          filePath: options.filePath,
+          pathScopeGranted: true,
+        };
+      } catch (err) {
+        console.warn("Direct save failed, falling back to save dialog:", err);
+      }
+    }
+
+    const path = await saveTextWithTauriDialog(
       content,
       suggestedName,
       diagramFilter,
       defaultDiagramDirectory,
+      dialogDefaultPath,
     );
-    return;
+    if (path === null) return { cancelled: true };
+    return { cancelled: false, filePath: path, pathScopeGranted: true };
+  }
+
+  if (!forcePicker && options?.fileHandle) {
+    try {
+      await writeDiagramToFileHandle(content, options.fileHandle);
+      return {
+        cancelled: false,
+        fileHandle: options.fileHandle,
+        pathScopeGranted: true,
+      };
+    } catch {
+      // Fall through to picker if the handle is no longer writable.
+    }
   }
 
   if ("showSaveFilePicker" in window) {
@@ -421,13 +608,16 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
           },
         ],
       });
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
-      return;
+      await writeDiagramToFileHandle(content, handle);
+      return { cancelled: false, fileHandle: handle, pathScopeGranted: true };
     } catch (err) {
-      if ((err as DOMException).name === "AbortError") return;
-      throw err;
+      if ((err as DOMException).name === "AbortError") {
+        return { cancelled: true };
+      }
+      // Restricted embeds (e.g. some in-IDE browsers) reject the picker.
+      if ((err as DOMException).name !== "NotAllowedError") {
+        throw err;
+      }
     }
   }
 
@@ -435,9 +625,10 @@ export async function saveDiagramToFile(diagram: Diagram, filename?: string): Pr
   const url = URL.createObjectURL(blob);
   triggerAnchorDownload(url, suggestedName);
   URL.revokeObjectURL(url);
+  return { cancelled: false, usedDownloadFallback: true };
 }
 
-export async function loadDiagramFromFile(): Promise<Diagram> {
+export async function loadDiagramFromFile(): Promise<DiagramLoadResult> {
   const diagramFilter = {
     name: i18n.t("fileFilter.diagram"),
     extensions: ["rdiagram", "json"],
@@ -461,7 +652,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
     }
 
     const text = await readTextFile(path);
-    return parseDiagram(text);
+    return { diagram: parseDiagram(text), filePath: path, pathScopeGranted: true };
   }
 
   if ("showOpenFilePicker" in window) {
@@ -477,7 +668,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       });
       const file = await handle.getFile();
       const text = await file.text();
-      return parseDiagram(text);
+      return { diagram: parseDiagram(text), fileHandle: handle, pathScopeGranted: true };
     } catch (err) {
       if ((err as DOMException).name === "AbortError") {
         throw new Error("cancelled");
@@ -498,7 +689,7 @@ export async function loadDiagramFromFile(): Promise<Diagram> {
       }
       try {
         const text = await file.text();
-        resolve(parseDiagram(text));
+        resolve({ diagram: parseDiagram(text) });
       } catch (e) {
         reject(e);
       }
@@ -539,8 +730,11 @@ function triggerAnchorDownload(href: string, filename: string): void {
 export async function downloadDataUrl(
   dataUrl: string,
   filename: string,
+  format: ExportFormat = DEFAULT_EXPORT_FORMAT,
 ): Promise<boolean> {
-  const pngFilter = { name: i18n.t("fileFilter.png"), extensions: ["png"] };
+  const filter = imageFileFilter(format);
+  const mimeType = mimeTypeForFormat(format);
+  const extension = extensionForFormat(format);
 
   if (isTauriApp()) {
     const blob = dataUrlToBlob(dataUrl);
@@ -549,7 +743,7 @@ export async function downloadDataUrl(
     return saveBytesWithTauriDialog(
       bytes,
       filename,
-      pngFilter,
+      filter,
       defaultExportDirectory,
     );
   }
@@ -560,8 +754,8 @@ export async function downloadDataUrl(
         suggestedName: filename,
         types: [
           {
-            description: pngFilter.name,
-            accept: { "image/png": [".png"] },
+            description: filter.name,
+            accept: { [mimeType]: [`.${extension}`] },
           },
         ],
       });

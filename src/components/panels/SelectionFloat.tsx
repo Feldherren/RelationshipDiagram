@@ -60,6 +60,32 @@ import {
   resolveLineBend,
 } from "../../utils/lineRouting";
 
+function LayerSelectField({
+  layerId,
+  onChange,
+}: {
+  layerId: string;
+  onChange: (layerId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const layers = useDiagramStore((s) => s.layers);
+  return (
+    <label className="field">
+      <span>{t("selection.layer")}</span>
+      <select
+        value={layerId}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {[...layers].reverse().map((layer) => (
+          <option key={layer.id} value={layer.id}>
+            {layer.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /** Connector only — keeps viewport subscription off the detached panel body. */
 function SelectionFloatConnector({
   selection,
@@ -283,6 +309,7 @@ export function SelectionFloat() {
   const toolMode = useDiagramStore((s) => s.toolMode);
   const setToolMode = useDiagramStore((s) => s.setToolMode);
   const deleteSelected = useDiagramStore((s) => s.deleteSelected);
+  const setEntityLayer = useDiagramStore((s) => s.setEntityLayer);
 
   const selectedGroupId =
     selection?.type === "group" ? selection.id : null;
@@ -560,6 +587,12 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.character")}</h2>
+        <LayerSelectField
+          layerId={character.layerId}
+          onChange={(layerId) =>
+            setEntityLayer("character", character.id, layerId)
+          }
+        />
         <label className="field">
           <span>{t("selection.name")}</span>
           <input
@@ -743,6 +776,10 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.line")}</h2>
+        <LayerSelectField
+          layerId={line.layerId}
+          onChange={(layerId) => setEntityLayer("line", line.id, layerId)}
+        />
         <div className="selection-line-endpoints">
           <button
             type="button"
@@ -842,6 +879,10 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.box")}</h2>
+        <LayerSelectField
+          layerId={box.layerId}
+          onChange={(layerId) => setEntityLayer("box", box.id, layerId)}
+        />
         <label className="field">
           <span>{t("selection.name")}</span>
           <input
@@ -902,6 +943,12 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.text")}</h2>
+        <LayerSelectField
+          layerId={floatingText.layerId}
+          onChange={(layerId) =>
+            setEntityLayer("floatingText", floatingText.id, layerId)
+          }
+        />
         <div className="field">
           <span>{t("selection.textAlign")}</span>
           <div
@@ -999,6 +1046,10 @@ export function SelectionFloat() {
     body = (
       <>
         <h2>{t("selection.group")}</h2>
+        <LayerSelectField
+          layerId={group.layerId}
+          onChange={(layerId) => setEntityLayer("group", group.id, layerId)}
+        />
         <p className="hint">{t("selection.groupHint")}</p>
         <label className="field">
           <span>{t("selection.name")}</span>

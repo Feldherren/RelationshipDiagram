@@ -24,8 +24,18 @@ import {
   DEFAULT_DIAGRAM_SUBTITLE_COLOR,
   DEFAULT_DIAGRAM_TITLE_COLOR,
 } from "./diagramHeaderPill";
-import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
+import {
+  DIAGRAM_SUBTITLE_FONT_SIZE,
+  DIAGRAM_TITLE_FONT_SIZE,
+  DEFAULT_DIAGRAM_FONT,
+} from "./diagramFont";
 import { DEFAULT_DIAGRAM_GRID_COLOR } from "./gridBackground";
+import {
+  CHARACTER_NAME_FONT_SIZE,
+  CHARACTER_SUBTITLE_FONT_SIZE,
+  DEFAULT_PILL_LABEL_FONT_SIZE,
+  clampLabelFontSize,
+} from "./labelMetrics";
 
 export type { DiagramAppearance, LabelChrome };
 
@@ -56,14 +66,18 @@ function cloneChrome(chrome: LabelChrome): LabelChrome {
     textColor: cloneRgb(chrome.textColor),
     backgroundColor: cloneRgb(chrome.backgroundColor),
     borderColor: cloneRgb(chrome.borderColor),
+    fontSize: chrome.fontSize,
   };
 }
 
-function defaultNameChrome(): LabelChrome {
+function defaultNameChrome(
+  fontSize: number = DEFAULT_PILL_LABEL_FONT_SIZE,
+): LabelChrome {
   return {
     textColor: cloneRgb(PILL_TEXT),
     backgroundColor: cloneRgb(PILL_FILL),
     borderColor: cloneRgb(PILL_BORDER),
+    fontSize,
   };
 }
 
@@ -72,6 +86,7 @@ function defaultSubtitleChrome(): LabelChrome {
     textColor: cloneRgb(PILL_SUBTITLE_TEXT),
     backgroundColor: cloneRgb(PILL_FILL),
     borderColor: cloneRgb(PILL_BORDER),
+    fontSize: CHARACTER_SUBTITLE_FONT_SIZE,
   };
 }
 
@@ -80,6 +95,7 @@ function defaultDiagramTitleLabel(): LabelChrome {
     textColor: cloneRgb(DEFAULT_DIAGRAM_TITLE_COLOR),
     backgroundColor: cloneRgb(HEADER_PILL_FILL),
     borderColor: cloneRgb(HEADER_PILL_BORDER),
+    fontSize: DIAGRAM_TITLE_FONT_SIZE,
   };
 }
 
@@ -88,6 +104,7 @@ function defaultDiagramSubtitleLabel(): LabelChrome {
     textColor: cloneRgb(DEFAULT_DIAGRAM_SUBTITLE_COLOR),
     backgroundColor: cloneRgb(HEADER_PILL_FILL),
     borderColor: cloneRgb(HEADER_PILL_BORDER),
+    fontSize: DIAGRAM_SUBTITLE_FONT_SIZE,
   };
 }
 
@@ -107,10 +124,10 @@ export const DEFAULT_DIAGRAM_APPEARANCE: DiagramAppearance = {
   characterInitialsColor: cloneRgb(DEFAULT_CHARACTER_INITIALS_COLOR),
   defaultBoxBorderColor: cloneRgb(DEFAULT_BOX_BORDER),
   defaultFloatingTextColor: cloneRgb(DEFAULT_FLOATING_TEXT_COLOR),
-  characterNameLabel: defaultNameChrome(),
+  characterNameLabel: defaultNameChrome(CHARACTER_NAME_FONT_SIZE),
   characterSubtitleLabel: defaultSubtitleChrome(),
-  lineLabel: defaultNameChrome(),
-  boxNameLabel: defaultNameChrome(),
+  lineLabel: defaultNameChrome(DEFAULT_PILL_LABEL_FONT_SIZE),
+  boxNameLabel: defaultNameChrome(DEFAULT_PILL_LABEL_FONT_SIZE),
   diagramTitleLabel: defaultDiagramTitleLabel(),
   diagramSubtitleLabel: defaultDiagramSubtitleLabel(),
 };
@@ -136,31 +153,37 @@ export const DEFAULT_DARK_DIAGRAM_APPEARANCE: DiagramAppearance = {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 98, g: 98, b: 147 },
+    fontSize: CHARACTER_NAME_FONT_SIZE,
   },
   characterSubtitleLabel: {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 98, g: 98, b: 147 },
+    fontSize: CHARACTER_SUBTITLE_FONT_SIZE,
   },
   lineLabel: {
     textColor: { r: 31, g: 31, b: 31 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 98, g: 98, b: 147 },
+    fontSize: DEFAULT_PILL_LABEL_FONT_SIZE,
   },
   boxNameLabel: {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 208, g: 208, b: 208 },
+    fontSize: DEFAULT_PILL_LABEL_FONT_SIZE,
   },
   diagramTitleLabel: {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 98, g: 98, b: 147 },
+    fontSize: DIAGRAM_TITLE_FONT_SIZE,
   },
   diagramSubtitleLabel: {
     textColor: { r: 204, g: 230, b: 255 },
     backgroundColor: { r: 51, g: 51, b: 82 },
     borderColor: { r: 98, g: 98, b: 147 },
+    fontSize: DIAGRAM_SUBTITLE_FONT_SIZE,
   },
 };
 
@@ -211,6 +234,10 @@ function resolveRgb(value: unknown, fallback: RGB): RGB {
 function resolveChrome(value: unknown, fallback: LabelChrome): LabelChrome {
   if (!value || typeof value !== "object") return cloneChrome(fallback);
   const partial = value as Partial<LabelChrome>;
+  const fontSize =
+    typeof partial.fontSize === "number" && Number.isFinite(partial.fontSize)
+      ? clampLabelFontSize(partial.fontSize)
+      : fallback.fontSize;
   return {
     textColor: resolveRgb(partial.textColor, fallback.textColor),
     backgroundColor: resolveRgb(
@@ -218,6 +245,7 @@ function resolveChrome(value: unknown, fallback: LabelChrome): LabelChrome {
       fallback.backgroundColor,
     ),
     borderColor: resolveRgb(partial.borderColor, fallback.borderColor),
+    fontSize,
   };
 }
 
@@ -441,7 +469,8 @@ function chromeEqual(a: LabelChrome, b: LabelChrome): boolean {
   return (
     colorsEqual(a.textColor, b.textColor) &&
     colorsEqual(a.backgroundColor, b.backgroundColor) &&
-    colorsEqual(a.borderColor, b.borderColor)
+    colorsEqual(a.borderColor, b.borderColor) &&
+    a.fontSize === b.fontSize
   );
 }
 
@@ -459,6 +488,9 @@ function serializeChrome(
   }
   if (!colorsEqual(chrome.borderColor, defaults.borderColor)) {
     out.borderColor = cloneRgb(chrome.borderColor);
+  }
+  if (chrome.fontSize !== defaults.fontSize) {
+    out.fontSize = chrome.fontSize;
   }
   return out;
 }
@@ -623,6 +655,10 @@ function patchChrome(
     borderColor: patch.borderColor
       ? cloneRgb(patch.borderColor)
       : cloneRgb(current.borderColor),
+    fontSize:
+      patch.fontSize !== undefined
+        ? clampLabelFontSize(patch.fontSize)
+        : current.fontSize,
   };
 }
 

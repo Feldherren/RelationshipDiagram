@@ -1,15 +1,12 @@
 import { Circle, Group, Path } from "react-konva";
 import type Konva from "konva";
-import {
-  CONNECT_HANDLE_SCREEN_RADIUS,
-} from "../../utils/connection";
+import { BOX_COLLAPSE_CONTROL_RADIUS } from "../../utils/connection";
 import { EXPORT_BOX_COLLAPSE_CONTROL_NODE_NAME } from "../../utils/export";
 
 interface BoxCollapseControlProps {
   x: number;
   y: number;
   collapsed: boolean;
-  viewportScale: number;
   onToggle: () => void;
 }
 
@@ -17,17 +14,14 @@ interface BoxCollapseControlProps {
 const CHEVRON_UP =
   "M2.5 8.25 L6 4.75 L9.5 8.25 L8.35 9.4 L6 7.05 L3.65 9.4 Z";
 
+const GLYPH_SCALE = (BOX_COLLAPSE_CONTROL_RADIUS * 1.35) / 6;
+
 export function BoxCollapseControl({
   x,
   y,
   collapsed,
-  viewportScale,
   onToggle,
 }: BoxCollapseControlProps) {
-  const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
-  // Slightly smaller than the circle so the chevron has padding.
-  const glyphScale = (handleRadius * 1.35) / 6;
-
   const stopGesture = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
     e.evt.preventDefault();
@@ -60,19 +54,19 @@ export function BoxCollapseControl({
       onDblTap={stopGesture}
     >
       <Circle
-        radius={handleRadius}
+        radius={BOX_COLLAPSE_CONTROL_RADIUS}
         fill="#4a90d9"
         stroke="#ffffff"
-        strokeWidth={2 / viewportScale}
+        strokeWidth={2}
         shadowColor="rgba(0,0,0,0.25)"
-        shadowBlur={4 / viewportScale}
-        shadowOffset={{ x: 0, y: 1 / viewportScale }}
+        shadowBlur={4}
+        shadowOffset={{ x: 0, y: 1 }}
       />
       <Path
         data={CHEVRON_UP}
         fill="#ffffff"
-        scaleX={glyphScale}
-        scaleY={collapsed ? -glyphScale : glyphScale}
+        scaleX={GLYPH_SCALE}
+        scaleY={collapsed ? -GLYPH_SCALE : GLYPH_SCALE}
         offsetX={6}
         offsetY={6}
         listening={false}

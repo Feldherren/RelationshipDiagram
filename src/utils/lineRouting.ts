@@ -10,10 +10,12 @@ import {
 } from "./geometry";
 import { getLineDisplayLabel, resolveLineEndpoint, shouldRenderLine } from "./lineEndpoints";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
-import { getPillLabelSize } from "./labelMetrics";
+import {
+  getPillLabelSize,
+  labelFontSizesFromAppearance,
+} from "./labelMetrics";
 
 const LINE_ARROW_MARGIN = 14;
-const LINE_LABEL_FONT_SIZE = 12;
 
 const AUTO_BEND_STEP = 28;
 const SAMPLE_SEGMENTS = 48;
@@ -659,6 +661,7 @@ export function getLineBounds(
   line: Line,
   diagram: Diagram,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  lineLabelFontSize?: number,
 ): Bounds | null {
   if (!shouldRenderLine(line, diagram)) return null;
 
@@ -667,9 +670,12 @@ export function getLineBounds(
 
   const displayLabel = getLineDisplayLabel(line, diagram);
   if (displayLabel) {
+    const fontSize =
+      lineLabelFontSize ??
+      labelFontSizesFromAppearance(diagram.appearance).line;
     const pill = getPillLabelSize(
       displayLabel,
-      LINE_LABEL_FONT_SIZE,
+      fontSize,
       "normal",
       fontFamily,
     );

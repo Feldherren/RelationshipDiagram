@@ -36,6 +36,8 @@ export interface Character {
   size: number;
   /** External URI (https://, obsidian://, mailto:, etc.) shown as a link chip on the node. */
   link?: string;
+  /** Diagram layer this character belongs to. */
+  layerId: string;
 }
 
 export interface Line {
@@ -49,6 +51,8 @@ export interface Line {
   label?: string;
   routeIndex: number;
   bend?: number;
+  /** Diagram layer this connection belongs to (independent of endpoint layers). */
+  layerId: string;
 }
 
 /** Built-in glyph drawn on membership chips. */
@@ -184,6 +188,8 @@ export interface Group {
   appearance: MembershipAppearance;
   /** Manual hub badge position; omit to follow the members’ centroid. */
   hubPosition?: Point;
+  /** Diagram layer this group hub belongs to. */
+  layerId: string;
 }
 
 /** Organisational region — labelled box, geometric containment, collapse. */
@@ -198,6 +204,8 @@ export interface Box {
   containedFloatingTextIds?: string[];
   anchorPosition?: { x: number; y: number };
   bounds?: Bounds;
+  /** Diagram layer this box belongs to. */
+  layerId: string;
 }
 
 export type FloatingTextAlign = "left" | "center" | "right";
@@ -215,6 +223,16 @@ export interface FloatingText {
   width?: number;
   /** Explicit area height after the user resizes; omit for content-sized height. */
   height?: number;
+  /** Diagram layer this text belongs to. */
+  layerId: string;
+}
+
+/** Named visibility / z-order layer stored with the diagram. */
+export interface DiagramLayer {
+  id: string;
+  name: string;
+  /** When false, entities on this layer are not painted or hit-tested. */
+  visible: boolean;
 }
 
 export const DEFAULT_FLOATING_TEXT_COLOR: RGB = { r: 31, g: 31, b: 31 };
@@ -254,6 +272,7 @@ export interface LabelChrome {
   textColor: RGB;
   backgroundColor: RGB;
   borderColor: RGB;
+  fontSize: number;
 }
 
 /** How a diagram wallpaper image is placed within the viewport / export crop. */
@@ -304,7 +323,7 @@ export interface DiagramAppearance {
 }
 
 export interface Diagram {
-  schemaVersion: 3;
+  schemaVersion: 4;
   /**
    * Stable diagram identity for local per-diagram preferences.
    * Present in the save file; preferences keyed by this id are not.
@@ -331,6 +350,13 @@ export interface Diagram {
   viewport?: Viewport;
   /** Named camera bookmarks; omit or empty when none. */
   bookmarks?: ViewBookmark[];
+  /**
+   * Diagram layers ordered back → front (index 0 paints first).
+   * Always present after normalize; migration invents a default layer.
+   */
+  layers: DiagramLayer[];
+  /** Layer new objects are created on; omit to use the topmost layer. */
+  activeLayerId?: string;
 }
 
 /** Items that can appear in a marquee multi-selection. */

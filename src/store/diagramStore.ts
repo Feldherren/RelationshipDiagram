@@ -9,6 +9,7 @@ import type {
   ConnectDrag,
   Diagram,
   DiagramAppearance,
+  DiagramLayer,
   FloatingText,
   GridStyle,
   Group,
@@ -58,14 +59,22 @@ import {
 } from "../utils/lineEndpoints";
 import {
   createAutosaveSnapshot,
-  loadAutosave,
-  saveAutosave,
 } from "../utils/autosaveStorage";
+import {
+  countLayerObjects,
+  createDefaultLayer,
+  ensureLayers,
+  layerHasObjects,
+  moveArrayItem,
+  resolveActiveLayerId,
+} from "../utils/layers";
+import { confirmDialog } from "../utils/confirmDialog";
 import {
   createEmptyDiagram,
   type PersistedDiagramState,
   pickPersistedState,
 } from "./autosaveState";
+import type { DiagramEditorSessionState } from "./diagramSession";
 import { performAutosave, cancelScheduledAutosave } from "./autosaveScheduler";
 import {
   DEFAULT_DIAGRAM_BACKGROUND,
@@ -134,6 +143,8 @@ interface DiagramState {
   floatingTexts: FloatingText[];
   viewport: Viewport;
   bookmarks: ViewBookmark[];
+  layers: DiagramLayer[];
+  activeLayerId: string;
   bookmarksVisible: boolean;
   /** Group hub eye: full hubs+corridors, connected badges only, or hidden. */
   groupsCanvasMode: GroupsCanvasMode;
@@ -163,6 +174,10 @@ interface DiagramState {
   diagramAppearance: DiagramAppearance;
   /** Stable id from Diagram.id; used for local per-diagram preferences. */
   diagramId: string;
+  /** True when the active diagram has unsaved edits since last save/load. */
+  dirty: boolean;
+  /** JSON of persisted document when last marked clean (save / clean load). */
+  cleanJson: string | null;
   autosaveEnabled: boolean;
   undoStack: PersistedDiagramState[];
   redoStack: PersistedDiagramState[];
@@ -173,6 +188,8 @@ interface DiagramState {
   captureHistory: () => void;
   undo: () => void;
   redo: () => void;
+  setDirty: (dirty: boolean) => void;
+  markClean: () => void;
   setToolMode: (mode: ToolMode) => void;
   setSelection: (
     selection: Selection,
@@ -225,6 +242,23 @@ interface DiagramState {
   ) => void;
   deleteBookmark: (id: string) => void;
   goToBookmark: (id: string, options?: { keepZoom?: boolean }) => void;
+  addLayer: (name?: string) => void;
+  renameLayer: (id: string, name: string) => void;
+  setLayerVisible: (id: string, visible: boolean) => void;
+  reorderLayers: (fromIndex: number, toIndex: number) => void;
+  setActiveLayer: (id: string) => void;
+  deleteLayer: (id: string) => Promise<boolean>;
+  /** Merge `id` into the layer beneath it in the UI list (toward the back). */
+  mergeLayerDown: (id: string) => boolean;
+  setEntityLayer: (
+    type: "character" | "line" | "group" | "box" | "floatingText",
+    id: string,
+    layerId: string,
+  ) => void;
+  setMultiEntityLayer: (
+    items: MultiSelectableItem[],
+    layerId: string,
+  ) => void;
   focusSelection: (
     selection: Exclude<Selection, null | { type: "multi" }>,
     options?: { keepZoom?: boolean },
@@ -297,8 +331,13 @@ interface DiagramState {
   endConnectDrag: (point: { x: number; y: number }) => void;
   cancelConnect: () => void;
   deleteSelected: () => void;
-  loadDiagram: (diagram: Diagram) => Promise<void>;
+  loadDiagram: (
+    diagram: Diagram,
+    options?: { dirty?: boolean; preserveHistory?: boolean },
+  ) => Promise<void>;
   getDiagram: () => Diagram;
+  captureSession: () => DiagramEditorSessionState;
+  applySession: (session: DiagramEditorSessionState) => Promise<void>;
   screenToWorld: (screen: { x: number; y: number }) => { x: number; y: number };
   getViewportCenter: () => { x: number; y: number };
 }
@@ -306,6 +345,7 @@ interface DiagramState {
 function createDefaultCharacter(
   position: { x: number; y: number },
   borderColor: RGB,
+  layerId: string,
 ): Character {
   return {
     id: uuidv4(),
@@ -314,6 +354,7 @@ function createDefaultCharacter(
     borderShape: "circle",
     borderColor: { ...borderColor },
     size: DEFAULT_CHARACTER_SIZE,
+    layerId,
   };
 }
 
@@ -407,6 +448,16 @@ function normalizeBookmarks(raw: unknown): ViewBookmark[] {
 
 const HISTORY_LIMIT = 100;
 
+/** Document fingerprint for dirty checks — viewport / active layer excluded (UI chrome). */
+function dirtyFingerprint(state: PersistedDiagramState): string {
+  const {
+    viewport: _viewport,
+    activeLayerId: _activeLayerId,
+    ...rest
+  } = pickPersistedState(state);
+  return JSON.stringify(rest);
+}
+
 function restoreHistorySnapshot(
   snapshot: PersistedDiagramState,
   viewport: Viewport,
@@ -424,8 +475,26 @@ function restoreHistorySnapshot(
   };
 }
 
+function recomputeDirtyFromCleanJson(
+  get: () => DiagramState,
+  set: (
+    partial:
+      | Partial<DiagramState>
+      | ((state: DiagramState) => Partial<DiagramState>),
+  ) => void,
+): void {
+  const s = get();
+  if (s.cleanJson == null) {
+    set({ dirty: true });
+    return;
+  }
+  set({ dirty: dirtyFingerprint(s) !== s.cleanJson });
+}
+
 export const useDiagramStore = create<DiagramState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set, get) => {
+  const initialLayer = createDefaultLayer();
+  return {
   characters: [],
   lines: [],
   groups: [],
@@ -433,6 +502,8 @@ export const useDiagramStore = create<DiagramState>()(
   floatingTexts: [],
   viewport: { x: 0, y: 0, scale: 1 },
   bookmarks: [],
+  layers: [initialLayer],
+  activeLayerId: initialLayer.id,
   bookmarksVisible: true,
   groupsCanvasMode: "full" as GroupsCanvasMode,
   selectionPulseEnabled: true,
@@ -456,6 +527,8 @@ export const useDiagramStore = create<DiagramState>()(
   diagramBackgroundColor: DEFAULT_DIAGRAM_BACKGROUND,
   diagramAppearance: cloneDiagramAppearance(DEFAULT_DIAGRAM_APPEARANCE),
   diagramId: uuidv4(),
+  dirty: false,
+  cleanJson: null,
   autosaveEnabled: false,
   undoStack: [],
   redoStack: [],
@@ -469,14 +542,29 @@ export const useDiagramStore = create<DiagramState>()(
     if (!bounds) return;
     set({ viewport: computeViewportForBounds(bounds, stageSize) });
   },
-  captureHistory: () =>
+  setDirty: (dirty) => {
+    if (dirty) {
+      set({ dirty: true, cleanJson: null });
+      return;
+    }
+    get().markClean();
+  },
+  markClean: () =>
+    set({
+      dirty: false,
+      cleanJson: dirtyFingerprint(get()),
+    }),
+  captureHistory: () => {
     set((s) => ({
       undoStack: [
         ...s.undoStack.slice(-(HISTORY_LIMIT - 1)),
         pickPersistedState(s),
       ],
       redoStack: [],
-    })),
+    }));
+    // After the mutation that follows captureHistory, compare to last save.
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
+  },
   undo: () => {
     const { undoStack } = get();
     const previous = undoStack.at(-1);
@@ -487,6 +575,7 @@ export const useDiagramStore = create<DiagramState>()(
       undoStack: s.undoStack.slice(0, -1),
       redoStack: [...s.redoStack, current],
     }));
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
   },
   redo: () => {
     const { redoStack } = get();
@@ -498,6 +587,7 @@ export const useDiagramStore = create<DiagramState>()(
       undoStack: [...s.undoStack, current],
       redoStack: s.redoStack.slice(0, -1),
     }));
+    queueMicrotask(() => recomputeDirtyFromCleanJson(get, set));
   },
   setToolMode: (mode) => {
     if (mode === "editGroupMembers" && get().selection?.type !== "group") {
@@ -577,6 +667,7 @@ export const useDiagramStore = create<DiagramState>()(
         }
         const initialBoxSnap = snapshot.boxes[boxId];
         if (!initialBoxSnap) continue;
+        const currentBox = boxes.find((b) => b.id === boxId);
         const initialBox: Box = {
           id: boxId,
           name: "",
@@ -585,6 +676,9 @@ export const useDiagramStore = create<DiagramState>()(
           bounds: initialBoxSnap.bounds ?? undefined,
           anchorPosition: initialBoxSnap.anchorPosition ?? undefined,
           collapsedPosition: initialBoxSnap.collapsedPosition ?? undefined,
+          layerId:
+            currentBox?.layerId ??
+            resolveActiveLayerId(get().layers, get().activeLayerId),
         };
         get().moveBox(
           boxId,
@@ -796,7 +890,12 @@ export const useDiagramStore = create<DiagramState>()(
   setDiagramBackgroundMode: (mode) => {
     get().setDiagramAppearance({ backgroundMode: mode });
   },
-  setAutosaveEnabled: (enabled) => set({ autosaveEnabled: enabled }),
+  setAutosaveEnabled: (enabled) => {
+    set({ autosaveEnabled: enabled });
+    if (enabled) {
+      void get().flushAutosave();
+    }
+  },
   setExportBounds: (bounds) => set({ exportBounds: bounds }),
 
   setDiagramTitle: (title) => {
@@ -973,27 +1072,15 @@ export const useDiagramStore = create<DiagramState>()(
     await hydrateAppPreferenceWallpapers();
     const prefs = getAppPreferences();
     cancelScheduledAutosave();
-    set({ autosaveEnabled: false });
-
-    if (prefs.autosaveEnabled) {
-      const snapshot = await loadAutosave();
-      if (snapshot) {
-        await get().loadDiagram(snapshot.diagram);
-      } else {
-        await get().initializeFonts();
-      }
-    } else {
-      await get().initializeFonts();
-    }
-
     set({
-      autosaveEnabled: prefs.autosaveEnabled,
+      autosaveEnabled: false,
       bookmarksVisible: prefs.bookmarksVisible,
       groupsCanvasMode: prefs.groupsCanvasMode,
       selectionPulseEnabled: prefs.selectionPulseEnabled,
       lineLabelContrastWithBackground: prefs.lineLabelContrastWithBackground,
       snapToGridEnabled: prefs.snapToGridEnabled,
     });
+    await get().initializeFonts();
   },
 
   getAutosaveSnapshot: () => createAutosaveSnapshot(get().getDiagram()),
@@ -1001,9 +1088,14 @@ export const useDiagramStore = create<DiagramState>()(
   flushAutosave: async () => {
     if (!get().autosaveEnabled) return;
     try {
+      const { flushOpenDocumentsAutosave } = await import(
+        "./openDocumentsStore"
+      );
       await performAutosave(
         () => get().getAutosaveSnapshot(),
-        saveAutosave,
+        async () => {
+          await flushOpenDocumentsAutosave();
+        },
       );
     } catch (err) {
       console.error("Autosave failed:", err);
@@ -1041,7 +1133,7 @@ export const useDiagramStore = create<DiagramState>()(
         backgroundColor: background.backgroundColor,
       }),
     };
-    await get().loadDiagram(diagram);
+    await get().loadDiagram(diagram, { dirty: false });
     set({ undoStack: [], redoStack: [] });
     set({ autosaveEnabled: prefs.autosaveEnabled });
     if (prefs.autosaveEnabled) {
@@ -1070,9 +1162,11 @@ export const useDiagramStore = create<DiagramState>()(
     const pos = get().snapToGridEnabled
       ? snapPointToGrid(position)
       : position;
+    const layerId = resolveActiveLayerId(get().layers, get().activeLayerId);
     const character = createDefaultCharacter(
       pos,
       get().diagramAppearance.defaultCharacterBorderColor,
+      layerId,
     );
     set((s) => ({
       characters: [...s.characters, character],
@@ -1144,6 +1238,7 @@ export const useDiagramStore = create<DiagramState>()(
       bend: self
         ? initialSelfLoopBend(routeIndex)
         : initialBendForRouteIndex(routeIndex),
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       lines: [...s.lines, line],
@@ -1180,6 +1275,7 @@ export const useDiagramStore = create<DiagramState>()(
       name: name?.trim() || i18n.t("defaults.groupName", { n: groups.length + 1 }),
       memberCharacterIds: [],
       appearance: defaultMembershipAppearance(),
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       groups: [...s.groups, group],
@@ -1299,6 +1395,7 @@ export const useDiagramStore = create<DiagramState>()(
       collapsedPosition: anchor,
       bounds,
       borderColor: { ...diagramAppearance.defaultBoxBorderColor },
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
 
     set((s) => ({
@@ -1609,6 +1706,7 @@ export const useDiagramStore = create<DiagramState>()(
       text: "",
       color: { ...get().diagramAppearance.defaultFloatingTextColor },
       fontSize: DEFAULT_FLOATING_TEXT_FONT_SIZE,
+      layerId: resolveActiveLayerId(get().layers, get().activeLayerId),
     };
     set((s) => ({
       floatingTexts: [...s.floatingTexts, floatingText],
@@ -1711,18 +1809,21 @@ export const useDiagramStore = create<DiagramState>()(
     ),
 
   endConnectDrag: (point) => {
-    const { connectDrag, characters, boxes, groups } = get();
+    const { connectDrag, characters, boxes, groups, layers } = get();
     if (!connectDrag) return;
 
+    const visibleLayerIds = new Set(
+      layers.filter((l) => l.visible).map((l) => l.id),
+    );
     const moved = Math.hypot(
       point.x - connectDrag.startX,
       point.y - connectDrag.startY,
     );
     const target = findConnectionTargetAt(
       point,
-      characters,
-      boxes,
-      groups,
+      characters.filter((c) => visibleLayerIds.has(c.layerId)),
+      boxes.filter((b) => visibleLayerIds.has(b.layerId)),
+      groups.filter((g) => visibleLayerIds.has(g.layerId)),
     );
 
     if (target) {
@@ -1892,6 +1993,273 @@ export const useDiagramStore = create<DiagramState>()(
     set({ viewport: { ...bookmark.viewport } });
   },
 
+  addLayer: (name) => {
+    get().captureHistory();
+    const { layers } = get();
+    const layer = createDefaultLayer(
+      name?.trim() ||
+        i18n.t("layers.defaultName", { n: layers.length + 1 }),
+    );
+    set((s) => ({
+      layers: [...s.layers, layer],
+      activeLayerId: layer.id,
+    }));
+  },
+
+  renameLayer: (id, name) => {
+    const trimmed = name.trim().slice(0, 80);
+    if (!trimmed) return;
+    get().captureHistory();
+    set((s) => ({
+      layers: s.layers.map((l) =>
+        l.id === id ? { ...l, name: trimmed } : l,
+      ),
+    }));
+  },
+
+  setLayerVisible: (id, visible) => {
+    get().captureHistory();
+    set((s) => ({
+      layers: s.layers.map((l) =>
+        l.id === id ? { ...l, visible } : l,
+      ),
+    }));
+  },
+
+  reorderLayers: (fromIndex, toIndex) => {
+    const { layers } = get();
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= layers.length ||
+      toIndex >= layers.length ||
+      fromIndex === toIndex
+    ) {
+      return;
+    }
+    get().captureHistory();
+    set({ layers: moveArrayItem(layers, fromIndex, toIndex) });
+  },
+
+  setActiveLayer: (id) => {
+    if (!get().layers.some((l) => l.id === id)) return;
+    set({ activeLayerId: id });
+  },
+
+  deleteLayer: async (id) => {
+    const state = get();
+    if (state.layers.length <= 1) return false;
+    if (!state.layers.some((l) => l.id === id)) return false;
+
+    const hasObjects = layerHasObjects(id, state);
+    if (hasObjects && getAppPreferences().confirmBeforeDeleteLayer) {
+      const count = countLayerObjects(id, state);
+      const layer = state.layers.find((l) => l.id === id);
+      const confirmed = await confirmDialog(
+        i18n.t("layers.deleteConfirm", {
+          name: layer?.name ?? "",
+          count,
+        }),
+        { title: i18n.t("layers.deleteConfirmTitle") },
+      );
+      if (!confirmed) return false;
+    }
+
+    get().captureHistory();
+    set((s) => {
+      const remaining = s.layers.filter((l) => l.id !== id);
+      const nextActive =
+        s.activeLayerId === id
+          ? remaining[remaining.length - 1].id
+          : s.activeLayerId;
+
+      const removedCharacterIds = new Set(
+        s.characters.filter((c) => c.layerId === id).map((c) => c.id),
+      );
+      const removedBoxIds = new Set(
+        s.boxes.filter((b) => b.layerId === id).map((b) => b.id),
+      );
+      const removedGroupIds = new Set(
+        s.groups.filter((g) => g.layerId === id).map((g) => g.id),
+      );
+      const removedFloatingTextIds = new Set(
+        s.floatingTexts.filter((t) => t.layerId === id).map((t) => t.id),
+      );
+
+      const characters = s.characters.filter((c) => c.layerId !== id);
+      const boxes = s.boxes.filter((b) => b.layerId !== id);
+      const groups = s.groups
+        .filter((g) => g.layerId !== id)
+        .map((g) => ({
+          ...g,
+          memberCharacterIds: g.memberCharacterIds.filter(
+            (mid) => !removedCharacterIds.has(mid),
+          ),
+        }));
+      const floatingTexts = s.floatingTexts.filter((t) => t.layerId !== id);
+      const lines = s.lines.filter((l) => {
+        if (l.layerId === id) return false;
+        const fromGone =
+          (l.from.kind === "character" &&
+            removedCharacterIds.has(l.from.id)) ||
+          (l.from.kind === "box" && removedBoxIds.has(l.from.id)) ||
+          (l.from.kind === "group" && removedGroupIds.has(l.from.id));
+        const toGone =
+          (l.to.kind === "character" && removedCharacterIds.has(l.to.id)) ||
+          (l.to.kind === "box" && removedBoxIds.has(l.to.id)) ||
+          (l.to.kind === "group" && removedGroupIds.has(l.to.id));
+        return !fromGone && !toGone;
+      });
+
+      let selection = s.selection;
+      if (selection) {
+        if (selection.type === "character" && removedCharacterIds.has(selection.id)) {
+          selection = null;
+        } else if (selection.type === "box" && removedBoxIds.has(selection.id)) {
+          selection = null;
+        } else if (selection.type === "group" && removedGroupIds.has(selection.id)) {
+          selection = null;
+        } else if (
+          selection.type === "floatingText" &&
+          removedFloatingTextIds.has(selection.id)
+        ) {
+          selection = null;
+        } else if (selection.type === "line") {
+          const lineId = selection.id;
+          if (!lines.some((l) => l.id === lineId)) {
+            selection = null;
+          }
+        } else if (selection.type === "multi") {
+          const nextItems = selection.items.filter((item) => {
+            if (item.type === "character") return !removedCharacterIds.has(item.id);
+            if (item.type === "box") return !removedBoxIds.has(item.id);
+            if (item.type === "floatingText")
+              return !removedFloatingTextIds.has(item.id);
+            return true;
+          });
+          selection =
+            nextItems.length === 0
+              ? null
+              : nextItems.length === 1
+                ? { type: nextItems[0].type, id: nextItems[0].id }
+                : { type: "multi", items: nextItems };
+        }
+      }
+
+      const deletingEditedGroup =
+        s.toolMode === "editGroupMembers" &&
+        s.selection?.type === "group" &&
+        removedGroupIds.has(s.selection.id);
+
+      return {
+        layers: remaining,
+        activeLayerId: nextActive,
+        characters,
+        boxes,
+        groups,
+        floatingTexts,
+        lines,
+        selection,
+        selectionDetailsOpen: selection ? s.selectionDetailsOpen : false,
+        editingFloatingTextId:
+          s.editingFloatingTextId &&
+          removedFloatingTextIds.has(s.editingFloatingTextId)
+            ? null
+            : s.editingFloatingTextId,
+        ...(deletingEditedGroup ? { toolMode: "select" as const } : {}),
+      };
+    });
+    return true;
+  },
+
+  mergeLayerDown: (id) => {
+    const { layers } = get();
+    // Display order is front → back (reversed storage). "Down" = next in that list.
+    const display = [...layers].reverse();
+    const fromIndex = display.findIndex((l) => l.id === id);
+    if (fromIndex < 0 || fromIndex >= display.length - 1) return false;
+    const targetId = display[fromIndex + 1].id;
+
+    get().captureHistory();
+    set((s) => {
+      const remap = <T extends { layerId: string }>(items: T[]): T[] =>
+        items.map((item) =>
+          item.layerId === id ? { ...item, layerId: targetId } : item,
+        );
+      return {
+        characters: remap(s.characters),
+        lines: remap(s.lines),
+        groups: remap(s.groups),
+        boxes: remap(s.boxes),
+        floatingTexts: remap(s.floatingTexts),
+        layers: s.layers.filter((l) => l.id !== id),
+        activeLayerId:
+          s.activeLayerId === id ? targetId : s.activeLayerId,
+      };
+    });
+    return true;
+  },
+
+  setEntityLayer: (type, id, layerId) => {
+    if (!get().layers.some((l) => l.id === layerId)) return;
+    get().captureHistory();
+    set((s) => {
+      if (type === "character") {
+        return {
+          characters: s.characters.map((c) =>
+            c.id === id ? { ...c, layerId } : c,
+          ),
+        };
+      }
+      if (type === "line") {
+        return {
+          lines: s.lines.map((l) => (l.id === id ? { ...l, layerId } : l)),
+        };
+      }
+      if (type === "group") {
+        return {
+          groups: s.groups.map((g) =>
+            g.id === id ? { ...g, layerId } : g,
+          ),
+        };
+      }
+      if (type === "box") {
+        return {
+          boxes: s.boxes.map((b) => (b.id === id ? { ...b, layerId } : b)),
+        };
+      }
+      return {
+        floatingTexts: s.floatingTexts.map((t) =>
+          t.id === id ? { ...t, layerId } : t,
+        ),
+      };
+    });
+  },
+
+  setMultiEntityLayer: (items, layerId) => {
+    if (!get().layers.some((l) => l.id === layerId)) return;
+    if (items.length === 0) return;
+    get().captureHistory();
+    const characterIds = new Set(
+      items.filter((i) => i.type === "character").map((i) => i.id),
+    );
+    const boxIds = new Set(items.filter((i) => i.type === "box").map((i) => i.id));
+    const floatingTextIds = new Set(
+      items.filter((i) => i.type === "floatingText").map((i) => i.id),
+    );
+    set((s) => ({
+      characters: s.characters.map((c) =>
+        characterIds.has(c.id) ? { ...c, layerId } : c,
+      ),
+      boxes: s.boxes.map((b) =>
+        boxIds.has(b.id) ? { ...b, layerId } : b,
+      ),
+      floatingTexts: s.floatingTexts.map((t) =>
+        floatingTextIds.has(t.id) ? { ...t, layerId } : t,
+      ),
+    }));
+  },
+
   focusSelection: (selection, options) => {
     const keepZoom = options?.keepZoom ?? true;
     const state = get();
@@ -1987,8 +2355,12 @@ export const useDiagramStore = create<DiagramState>()(
     if (selection.type === "bookmark") get().deleteBookmark(selection.id);
   },
 
-  loadDiagram: async (diagram) => {
+  loadDiagram: async (diagram, options) => {
     cancelScheduledAutosave();
+
+    // Set title immediately so tabs don't flicker the previous name.
+    set({ diagramTitle: diagram.title ?? "" });
+
     await cleanupDeprecatedFonts();
 
     const resolvedAppearance = mergeLegacyHeaderColors(
@@ -2014,6 +2386,8 @@ export const useDiagramStore = create<DiagramState>()(
     const liveFontFamily = resolvedFamily ?? fontFamily;
     const liveShowHeader =
       diagram.showHeader ?? resolvedAppearance.showHeader ?? true;
+    const dirty = options?.dirty ?? false;
+    const ensured = ensureLayers(diagram.layers, diagram.activeLayerId);
     set({
       characters: diagram.characters,
       lines: diagram.lines,
@@ -2022,7 +2396,11 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts: diagram.floatingTexts ?? [],
       viewport: diagram.viewport ?? { x: 0, y: 0, scale: 1 },
       bookmarks: normalizeBookmarks(diagram.bookmarks),
+      layers: ensured.layers,
+      activeLayerId: ensured.activeLayerId,
       diagramId: diagram.id,
+      dirty,
+      cleanJson: null,
       diagramTitle: diagram.title ?? "",
       diagramSubtitle: diagram.subtitle ?? "",
       showDiagramHeader: liveShowHeader,
@@ -2052,12 +2430,101 @@ export const useDiagramStore = create<DiagramState>()(
       connectDrag: null,
       toolMode: "select",
       exportBounds: null,
-      undoStack: [],
-      redoStack: [],
+      ...(options?.preserveHistory
+        ? {}
+        : { undoStack: [] as PersistedDiagramState[], redoStack: [] as PersistedDiagramState[] }),
     });
+    if (!dirty) {
+      get().markClean();
+    }
 
     if (get().autosaveEnabled) {
       await get().flushAutosave();
+    }
+  },
+
+  captureSession: () => {
+    const s = get();
+    const toolMode =
+      s.toolMode === "exportBounds"
+        ? "select"
+        : s.toolMode === "editGroupMembers" && s.selection?.type === "group"
+          ? "editGroupMembers"
+          : s.toolMode === "editGroupMembers"
+            ? "select"
+            : s.toolMode;
+    return {
+      document: pickPersistedState(s),
+      diagramId: s.diagramId,
+      dirty: s.dirty,
+      undoStack: s.undoStack,
+      redoStack: s.redoStack,
+      selection: s.selection,
+      selectionDetailsOpen: s.selectionDetailsOpen,
+      editingFloatingTextId: s.editingFloatingTextId,
+      toolMode,
+      connectFrom: null,
+    };
+  },
+
+  applySession: async (session) => {
+    cancelScheduledAutosave();
+
+    const doc = session.document;
+    let fontFamily = doc.diagramFontFamily || DEFAULT_DIAGRAM_FONT;
+    if (isDeprecatedFontFamily(fontFamily)) {
+      fontFamily = DEFAULT_DIAGRAM_FONT;
+    }
+
+    const toolMode =
+      session.toolMode === "editGroupMembers" &&
+      session.selection?.type === "group"
+        ? "editGroupMembers"
+        : session.toolMode === "exportBounds"
+          ? "select"
+          : session.toolMode === "editGroupMembers"
+            ? "select"
+            : session.toolMode;
+
+    // Apply document state synchronously so tab titles / dirty flags update
+    // immediately when switching — before any font I/O.
+    set({
+      ...doc,
+      diagramFontFamily: fontFamily,
+      diagramAppearance: {
+        ...doc.diagramAppearance,
+        fontFamily,
+      },
+      fontMissing: !isDefaultDiagramFont(fontFamily),
+      diagramId: session.diagramId,
+      dirty: session.dirty,
+      cleanJson: null,
+      undoStack: session.undoStack,
+      redoStack: session.redoStack,
+      selection: session.selection,
+      selectionDetailsOpen: session.selectionDetailsOpen,
+      editingFloatingTextId: session.editingFloatingTextId,
+      toolMode,
+      connectFrom: null,
+      connectDrag: null,
+      exportBounds: null,
+    });
+
+    await cleanupDeprecatedFonts();
+    const resolvedFamily = await ensureFontLoaded(fontFamily);
+    const liveFontFamily = resolvedFamily ?? fontFamily;
+    // Only patch fonts if this session is still the live buffer.
+    if (get().diagramId !== session.diagramId) return;
+    set({
+      diagramFontFamily: liveFontFamily,
+      diagramAppearance: {
+        ...get().diagramAppearance,
+        fontFamily: liveFontFamily,
+      },
+      fontMissing: !resolvedFamily && !isDefaultDiagramFont(fontFamily),
+    });
+    if (!session.dirty) {
+      get().markClean();
     }
   },
 
@@ -2070,6 +2537,8 @@ export const useDiagramStore = create<DiagramState>()(
       floatingTexts,
       viewport,
       bookmarks,
+      layers,
+      activeLayerId,
       diagramId,
       diagramTitle,
       diagramSubtitle,
@@ -2081,7 +2550,7 @@ export const useDiagramStore = create<DiagramState>()(
       gridStyle,
     } = get();
     return {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       id: diagramId,
       title: diagramTitle || undefined,
       subtitle: diagramSubtitle || undefined,
@@ -2099,11 +2568,14 @@ export const useDiagramStore = create<DiagramState>()(
       groups,
       boxes,
       floatingTexts: floatingTexts.length > 0 ? floatingTexts : undefined,
+      layers,
+      activeLayerId,
       viewport,
       bookmarks: bookmarks.length > 0 ? bookmarks : undefined,
     };
   },
-  })),
+  };
+  }),
 );
 
 export function getCharacterInitials(name: string): string {

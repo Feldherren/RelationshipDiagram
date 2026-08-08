@@ -5,6 +5,11 @@ import {
   type DiagramBackgroundMode,
 } from "../../utils/diagramBackground";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import {
+  MAX_LABEL_FONT_SIZE,
+  MIN_LABEL_FONT_SIZE,
+  clampLabelFontSize,
+} from "../../utils/labelMetrics";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import {
@@ -47,8 +52,54 @@ function LabelChromeEditors({
   includeTextColor?: boolean;
 }) {
   const { t } = useTranslation();
+
+  const commitFontSize = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      onChange({ fontSize: chrome.fontSize });
+      return;
+    }
+    onChange({ fontSize: clampLabelFontSize(parsed) });
+  };
+
   return (
     <>
+      <label className="field">
+        <span>{t(`${labelPrefix}FontSize`)}</span>
+        <div className="range-row">
+          <input
+            type="number"
+            min={MIN_LABEL_FONT_SIZE}
+            max={MAX_LABEL_FONT_SIZE}
+            step={1}
+            value={chrome.fontSize}
+            aria-label={t(`${labelPrefix}FontSize`)}
+            onChange={(e) => {
+              if (e.target.value.trim() === "") return;
+              const parsed = Number(e.target.value);
+              if (!Number.isFinite(parsed)) return;
+              onChange({ fontSize: Math.round(parsed) });
+            }}
+            onBlur={(e) => commitFontSize(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitFontSize((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          <input
+            type="range"
+            min={MIN_LABEL_FONT_SIZE}
+            max={MAX_LABEL_FONT_SIZE}
+            value={chrome.fontSize}
+            onChange={(e) =>
+              onChange({ fontSize: Number(e.target.value) })
+            }
+          />
+        </div>
+      </label>
       {includeTextColor && (
         <RgbPicker
           label={t(`${labelPrefix}Text`)}
@@ -96,8 +147,10 @@ export function DiagramAppearancePanel({
       )}
 
       {showAppearanceColours && (
-        <fieldset className="theme-editor-group">
-          <legend>{t("diagramAppearance.groupBackground")}</legend>
+        <div className="theme-editor-group" role="group">
+          <h3 className="theme-editor-group-title">
+            {t("diagramAppearance.groupBackground")}
+          </h3>
           <BackgroundModeControls
             mode={value.backgroundMode}
             backgroundColor={value.backgroundColor}
@@ -127,12 +180,14 @@ export function DiagramAppearancePanel({
                 : t("diagramProperties.backgroundColour")
             }
           />
-        </fieldset>
+        </div>
       )}
 
       {canvasSetup && (
-        <fieldset className="theme-editor-group">
-          <legend>{t("diagramAppearance.groupFont")}</legend>
+        <div className="theme-editor-group" role="group">
+          <h3 className="theme-editor-group-title">
+            {t("diagramAppearance.groupFont")}
+          </h3>
           <div className="field">
             <span>
               {settingsLabels
@@ -159,11 +214,13 @@ export function DiagramAppearancePanel({
           {canvasSetup.showFontHints && (
             <p className="hint">{t("diagramProperties.uiFontHint")}</p>
           )}
-        </fieldset>
+        </div>
       )}
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupHeader")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupHeader")}
+        </h3>
         <div className="diagram-appearance-element">
           <div className="diagram-appearance-preview-column">
             <HeaderAppearancePreview
@@ -217,10 +274,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupCharacters")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupCharacters")}
+        </h3>
         <div className="diagram-appearance-element">
           <CharacterAppearancePreview
             borderColor={value.defaultCharacterBorderColor}
@@ -292,10 +351,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupLines")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupLines")}
+        </h3>
         <div className="diagram-appearance-element">
           <LineAppearancePreview
             lineColor={value.defaultLineColor}
@@ -329,10 +390,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupBoxes")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupBoxes")}
+        </h3>
         <div className="diagram-appearance-element">
           <BoxAppearancePreview
             borderColor={value.defaultBoxBorderColor}
@@ -366,10 +429,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupText")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupText")}
+        </h3>
         <div className="diagram-appearance-element">
           <FloatingTextAppearancePreview
             color={value.defaultFloatingTextColor}
@@ -389,7 +454,7 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
     </div>
   );
 }

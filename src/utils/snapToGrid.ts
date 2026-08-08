@@ -15,6 +15,10 @@ import {
   resolveBoxBounds,
 } from "./geometry";
 import { DIAGRAM_GRID_SIZE } from "./gridBackground";
+import {
+  labelFontSizesFromAppearance,
+  type LabelFontSizes,
+} from "./labelMetrics";
 
 export function snapCoord(value: number, gridSize = DIAGRAM_GRID_SIZE): number {
   return Math.round(value / gridSize) * gridSize;
@@ -58,12 +62,15 @@ function boundsForMultiItem(
   boxes: Box[],
   floatingTexts: FloatingText[],
   fontFamily: string,
+  labelFonts: LabelFontSizes,
 ): Bounds | null {
   if (item.type === "character") {
     const character = characters.find((c) => c.id === item.id);
     if (!character) return null;
     return getCharacterBounds(character, fontFamily, 1, {
       includeConnectHandle: false,
+      nameFontSize: labelFonts.characterName,
+      subtitleFontSize: labelFonts.characterSubtitle,
     });
   }
   if (item.type === "floatingText") {
@@ -74,7 +81,7 @@ function boundsForMultiItem(
   const box = boxes.find((b) => b.id === item.id);
   if (!box) return null;
   return box.collapsed
-    ? getCollapsedBoxBounds(box, fontFamily)
+    ? getCollapsedBoxBounds(box, fontFamily, labelFonts.boxName)
     : resolveBoxBounds(box);
 }
 
@@ -85,11 +92,13 @@ export function getMultiSelectionBounds(
   boxes: Box[],
   floatingTexts: FloatingText[],
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  appearance?: Parameters<typeof labelFontSizesFromAppearance>[0],
 ): Bounds | null {
   if (selection?.type !== "multi" || selection.items.length === 0) {
     return null;
   }
 
+  const labelFonts = labelFontSizesFromAppearance(appearance);
   let union: Bounds | null = null;
   for (const item of selection.items) {
     const bounds = boundsForMultiItem(
@@ -98,6 +107,7 @@ export function getMultiSelectionBounds(
       boxes,
       floatingTexts,
       fontFamily,
+      labelFonts,
     );
     if (!bounds) continue;
     union = union ? unionBounds(union, bounds) : bounds;
@@ -158,6 +168,7 @@ export function captureMultiDragSnapshot(
     characterIds: string[];
     floatingTextIds: string[];
   },
+  appearance?: Parameters<typeof labelFontSizesFromAppearance>[0],
 ): MultiDragSnapshot | null {
   if (selection?.type !== "multi" || selection.items.length === 0) {
     return null;
@@ -169,6 +180,7 @@ export function captureMultiDragSnapshot(
     boxes,
     floatingTexts,
     fontFamily,
+    appearance,
   );
   if (!initialBounds) return null;
 

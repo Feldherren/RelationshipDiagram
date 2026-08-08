@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import type Konva from "konva";
 import { useTranslation } from "react-i18next";
 import { useDiagramStore } from "../../store/diagramStore";
-import { exportStageToPng, getAutoExportBounds } from "../../utils/export";
+import { exportStageImage, getAutoExportBounds } from "../../utils/export";
+import {
+  exportQualityFromPercent,
+  exportQualityPercentFromRatio,
+  formatUsesQuality,
+  isExportFormat,
+  type ExportFormat,
+} from "../../utils/exportFormat";
 import { downloadDataUrl, getDefaultExportFilename } from "../../utils/persistence";
-import { isDefaultDiagramFont } from "../../utils/diagramFont";
 import { getAppPreferences } from "../../utils/appPreferences";
 import {
   clampExportZoomPercent,
@@ -27,27 +33,13 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const lines = useDiagramStore((s) => s.lines);
   const groups = useDiagramStore((s) => s.groups);
   const boxes = useDiagramStore((s) => s.boxes);
-  const floatingTexts = useDiagramStore((s) => s.floatingTexts);
   const diagramTitle = useDiagramStore((s) => s.diagramTitle);
   const diagramSubtitle = useDiagramStore((s) => s.diagramSubtitle);
   const showDiagramHeader = useDiagramStore((s) => s.showDiagramHeader);
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const diagramAppearance = useDiagramStore((s) => s.diagramAppearance);
-  const diagramId = useDiagramStore((s) => s.diagramId);
-  const diagram = {
-    schemaVersion: 3 as const,
-    id: diagramId,
-    title: diagramTitle || undefined,
-    subtitle: diagramSubtitle || undefined,
-    fontFamily: isDefaultDiagramFont(diagramFontFamily)
-      ? undefined
-      : diagramFontFamily,
-    characters,
-    lines,
-    groups,
-    boxes,
-    floatingTexts,
-  };
+  const getDiagram = useDiagramStore((s) => s.getDiagram);
+  const diagram = getDiagram();
   const exportBounds = useDiagramStore((s) => s.exportBounds);
   const diagramBackgroundColor = useDiagramStore((s) => s.diagramBackgroundColor);
   const showGrid = useDiagramStore((s) => s.showGrid);
@@ -67,6 +59,12 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     exportZoomPercentFromRatio(exportPrefs.defaultExportPixelRatio),
   );
   const [padding, setPadding] = useState(exportPrefs.defaultExportPadding);
+  const [format, setFormat] = useState<ExportFormat>(
+    exportPrefs.defaultExportFormat,
+  );
+  const [qualityPercent, setQualityPercent] = useState(() =>
+    exportQualityPercentFromRatio(exportPrefs.defaultExportQuality),
+  );
   const [autoBounds, setAutoBounds] = useState<Bounds | null>(null);
 
   useEffect(() => {
@@ -75,6 +73,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
     setMode(prefs.defaultExportBoundsMode);
     setZoomPercent(exportZoomPercentFromRatio(prefs.defaultExportPixelRatio));
     setPadding(prefs.defaultExportPadding);
+    setFormat(prefs.defaultExportFormat);
+    setQualityPercent(exportQualityPercentFromRatio(prefs.defaultExportQuality));
   }, [open]);
 
   useEffect(() => {
@@ -121,16 +121,21 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
   const height = activeBounds
     ? Math.round(activeBounds.height * pixelRatio)
     : 0;
+  const showQuality = formatUsesQuality(format);
 
   const handleExport = async () => {
     const stage = stageRef.current;
     if (!stage || !activeBounds) return;
     const exportZoom = clampExportZoomPercent(zoomPercent);
     setZoomPercent(exportZoom);
+    const quality = exportQualityFromPercent(qualityPercent);
+    setQualityPercent(exportQualityPercentFromRatio(quality));
     try {
-      const dataUrl = await exportStageToPng(stage, {
+      const dataUrl = await exportStageImage(stage, {
         bounds: activeBounds,
         pixelRatio: exportZoomRatioFromPercent(exportZoom),
+        format,
+        quality,
         backgroundColor: diagramBackgroundColor,
         showGrid:
           diagramAppearance.backgroundMode === "image" ? false : showGrid,
@@ -148,7 +153,8 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
       });
       const saved = await downloadDataUrl(
         dataUrl,
-        getDefaultExportFilename(diagramTitle),
+        getDefaultExportFilename(diagramTitle, format),
+        format,
       );
       if (saved) onClose();
     } catch (err) {
@@ -216,6 +222,38 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
           }
         />
 
+        <label className="field">
+          <span>{t("export.format")}</span>
+          <select
+            value={format}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (isExportFormat(next)) setFormat(next);
+            }}
+          >
+            <option value="png">{t("export.formatPng")}</option>
+            <option value="webp">{t("export.formatWebp")}</option>
+            <option value="jpeg">{t("export.formatJpeg")}</option>
+          </select>
+        </label>
+
+        {showQuality && (
+          <label className="field">
+            <span>{t("export.quality")}</span>
+            <div className="export-quality-row">
+              <input
+                type="range"
+                min={1}
+                max={100}
+                value={qualityPercent}
+                onChange={(e) => setQualityPercent(Number(e.target.value))}
+                aria-label={t("export.quality")}
+              />
+              <span className="export-quality-value">{qualityPercent}%</span>
+            </div>
+          </label>
+        )}
+
         {activeBounds ? (
           <div className="export-preview">
             <p>
@@ -236,7 +274,7 @@ export function ExportDialog({ open, stageRef, onClose }: ExportDialogProps) {
             disabled={!activeBounds}
             onClick={handleExport}
           >
-            {t("export.downloadPng")}
+            {t("export.download")}
           </button>
         </div>
       </div>

@@ -27,11 +27,12 @@ import {
   CHARACTER_LABEL_PADDING_Y,
   CHARACTER_NAME_FONT_SIZE,
   CHARACTER_SUBTITLE_FONT_SIZE,
+  DEFAULT_PILL_LABEL_FONT_SIZE,
   getFloatingTextSize,
   getPillLabelSize,
 } from "./labelMetrics";
 import { getGroupHubPosition } from "./groupHub";
-import { getConnectHandleOffset, CONNECT_HANDLE_SCREEN_RADIUS } from "./connection";
+import { getConnectHandleOffset, CONNECT_HANDLE_RADIUS } from "./connection";
 import { DEFAULT_DIAGRAM_FONT } from "./diagramFont";
 
 const NODE_STROKE_MARGIN = CHARACTER_BORDER_STROKE_WIDTH / 2;
@@ -123,10 +124,17 @@ export function getCharacterShapeBounds(character: Character): Bounds {
 export function getCharacterBounds(
   character: Character,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
-  viewportScale = 1,
-  options?: { includeConnectHandle?: boolean },
+  _viewportScale = 1,
+  options?: {
+    includeConnectHandle?: boolean;
+    nameFontSize?: number;
+    subtitleFontSize?: number;
+  },
 ): Bounds {
   const includeConnectHandle = options?.includeConnectHandle !== false;
+  const nameFontSize = options?.nameFontSize ?? CHARACTER_NAME_FONT_SIZE;
+  const subtitleFontSize =
+    options?.subtitleFontSize ?? CHARACTER_SUBTITLE_FONT_SIZE;
   const size = character.size || DEFAULT_CHARACTER_SIZE;
   const { x, y } = character.position;
   const shape = getCharacterShapeBounds(character);
@@ -137,7 +145,7 @@ export function getCharacterBounds(
   let maxY = shape.y + shape.height;
 
   if (includeConnectHandle) {
-    const handleRadius = CONNECT_HANDLE_SCREEN_RADIUS / viewportScale;
+    const handleRadius = CONNECT_HANDLE_RADIUS;
     const handleOffset = getConnectHandleOffset(size);
     const handleX = x + handleOffset.x;
     const handleY = y + handleOffset.y;
@@ -152,7 +160,7 @@ export function getCharacterBounds(
   if (character.name) {
     const nameSize = getPillLabelSize(
       character.name,
-      CHARACTER_NAME_FONT_SIZE,
+      nameFontSize,
       "normal",
       fontFamily,
       CHARACTER_LABEL_PADDING_X,
@@ -168,7 +176,7 @@ export function getCharacterBounds(
   if (character.subtitle) {
     const subtitleSize = getPillLabelSize(
       character.subtitle,
-      CHARACTER_SUBTITLE_FONT_SIZE,
+      subtitleFontSize,
       "normal",
       fontFamily,
       CHARACTER_LABEL_PADDING_X,
@@ -213,6 +221,7 @@ export function getCollapsedBoxSquareBounds(center: Point): Bounds {
 export function getCollapsedBoxBounds(
   box: Box,
   fontFamily: string = DEFAULT_DIAGRAM_FONT,
+  boxNameFontSize: number = DEFAULT_PILL_LABEL_FONT_SIZE,
 ): Bounds {
   const center = box.collapsedPosition ?? { x: 0, y: 0 };
   const size = COLLAPSED_BOX_SIZE;
@@ -223,7 +232,12 @@ export function getCollapsedBoxBounds(
   let maxY = center.y + size;
 
   if (box.name) {
-    const pill = getPillLabelSize(box.name, 12, "normal", fontFamily);
+    const pill = getPillLabelSize(
+      box.name,
+      boxNameFontSize,
+      "normal",
+      fontFamily,
+    );
     const pillCenterY = center.y - (size + pill.height / 2 + 6);
     minX = Math.min(minX, center.x - pill.width / 2);
     maxX = Math.max(maxX, center.x + pill.width / 2);

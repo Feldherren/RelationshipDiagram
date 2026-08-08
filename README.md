@@ -2,6 +2,8 @@
 
 A browser-based and desktop editor for character relationship diagrams. Create characters, connect them with styled lines, organise them into labelled boxes, and tag them with membership groups on an infinite pan/zoom canvas.
 
+If this tool helps you, consider supporting this project on [my Ko-fi](https://ko-fi.com/feldherren); you don't have to and it will never be a requirement to access features of this application, but I'd appreciate it and it encourages me to work on useful tools.
+
 ## Important Notes
 This application is largely generated code (don't want to get accused of hiding that, or of being *good* with react, vite, tauri, et cetera). I'm not good at frontend stuff and wanted a usable character relationship diagram application with a few more features than the last thing I was using, and I wanted it more than I wanted to spend however long it would take to learn and write everything from scratch.
 I can (and do) still read the code, and I'm happy to fix reported issues and consider feature requests, should anyone make any.
@@ -10,15 +12,15 @@ Also, note that whilst screenshots (all one of them) demonstrate the [Honey Pige
 
 ## Features
 - **Characters** - give them names, subtitles, an image, and a customised border colour
-- **Lines** for relationships - coloured lines with optional labels, a couple choices of styles (straight, dotted, wavy, jagged), can be curved for visibility
-- **Groups** - semantic membership (a character can belong to many groups). Shown as coloured chips on each character’s border; select a group to highlight its members
+- **Relationships** - coloured lines with optional labels, a couple choices of styles (straight, dotted, wavy, jagged), can be curved for visibility
+- **Groups** - a character can belong to many groups. Shown as coloured chips on each character’s border; select a group to highlight its members
 - **Boxes** - labelled organisational regions with customisable colours. Drag characters or text into a box by position; collapse a box to hide whoever is inside it
 - **Text** - floating text
 - **Diagram properties** - title and subtitle, background style, background colour, font
 - **Themes** - in-app UI theme and diagram theme editors (themes are stored in localStorage), theme export and import (JSON)
 - **Bookmarks** - user-definable easy navigation
 - Saving and loading (*.rdiagram)
-- Image export (entire graphic or selected area) at two distinct levels of zoom (it estimates the dimensions of the exported image)
+- Image export (entire graphic or selected area) to PNG, JPEG or WEBP formats, at two predefined levels of zoom or a user-customisable level
 
 ## Screenshots
 
@@ -97,10 +99,8 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 
 | Action | How |
 |--------|-----|
-| Add character | Upper-right **Add character** button |
-| Add box | Upper-right **Add box** button |
+| Add character/box/text | Right-click/double-click canvas for buttons |
 | Add group | **Groups** (lower left) → **Add group** |
-| Add floating text | Upper-right **Add text** button |
 | Pan | Drag empty canvas, or middle-mouse drag |
 | Zoom | Scroll wheel |
 | Connect nodes | Click a character or box’s **+** button, then click a target (same node for a self-loop) — or drag **+** to a target |
@@ -110,20 +110,11 @@ Installers and binaries are written to `src-tauri/target/release/bundle/`.
 | Assign group membership | **Groups** (lower left) → **Edit members**, or select a group → **Edit members on canvas** |
 | Highlight / edit group | Click a membership chip, or pick a group from **Groups** — members stay prominent; edit in the floating panel |
 | Customise group chip | Select a group → **Customise chip…** in the floating panel |
-| Organise with a box | Drag characters so their centres sit inside the box; move the box header to move those characters with it |
+| Organise with a box | Drag characters so their images sit inside the box; move the box header to move those characters with it |
 | Collapse box | Click the collapse control on the box, or use **Collapse box** in the floating panel |
 | Delete | Select an item → **Delete** key |
 | Save / Open | **Save** / **Open** (`.rdiagram` JSON files) |
 | Export PNG | **Export** — auto content bounds or draw a custom region |
-
-## Groups vs boxes
-
-| | **Group** | **Box** |
-|--|-----------|---------|
-| Purpose | “Who belongs together” (factions, families, etc.) | Layout / clutter control on the canvas |
-| Membership | Explicit list; multi-membership allowed | Whoever’s position is currently inside the rectangle |
-| On canvas | Coloured chips on characters (background, symbol, colours) | Labelled rectangle (connectable, collapsible) |
-| Highlight | Selecting a group emphasises its members | — |
 
 ## File format
 

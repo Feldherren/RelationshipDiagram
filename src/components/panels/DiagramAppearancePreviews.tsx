@@ -34,6 +34,9 @@ function PreviewPill({
   /** Overrides chrome.textColor when set (e.g. line labels). */
   textColor?: RGB;
 }) {
+  const size = fontSize ?? chrome.fontSize;
+  const paddingY = Math.max(2, Math.round(size * 0.25));
+  const paddingX = Math.max(6, Math.round(size * 0.55));
   return (
     <span
       className="diagram-appearance-preview-pill"
@@ -42,7 +45,8 @@ function PreviewPill({
         backgroundColor: rgbToCss(chrome.backgroundColor),
         borderColor: rgbToCss(chrome.borderColor),
         fontFamily: formatUiFontFamily(fontFamily),
-        fontSize: `${fontSize ?? chrome.fontSize}px`,
+        fontSize: `${size}px`,
+        padding: `${paddingY}px ${paddingX}px`,
       }}
     >
       {text}

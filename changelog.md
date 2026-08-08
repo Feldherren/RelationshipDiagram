@@ -8,7 +8,9 @@
 	- You can make stuff on a layer directly, or shift items from other layers via a dropdown in their details popup.
 	- Relationship lines can be created from and to characters on separate layers, and be on different layers from the things they connect
 - Can now export image in WEBP and JPEG formats as well as PNG; these extra formats have a slider for image quality.
-- Can now adjust label sizes, in both diagram properties and the UI theme editor.
+- Theme editor improvements (both in Settings and Diagram properties)
+	- Can now adjust label sizes, in both diagram properties and the UI theme editor.
+	- Preview now scrolls with you as you scroll around, so it doesn't go out of view until you're out of the section it belongs to.
 # v0.7.0
 - New app icon.
 - Added github repo link to Settings > About.

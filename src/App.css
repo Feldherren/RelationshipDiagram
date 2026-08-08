@@ -1526,6 +1526,10 @@ body,
   border: 1px solid var(--ui-border);
   box-sizing: border-box;
   background-color: var(--ui-surface-muted);
+  position: sticky;
+  top: 0.5rem;
+  align-self: flex-start;
+  z-index: 1;
 }
 
 .background-pattern-preview-blank {
@@ -1944,19 +1948,35 @@ body,
 }
 
 .theme-editor-group {
-  margin: 0 0 1rem;
+  position: relative;
+  /* Top margin leaves room for absolutely positioned group titles. */
+  margin: 0.65rem 0 1rem;
   padding: 0.75rem 0.75rem 0.25rem;
   border: 1px solid var(--ui-border-strong);
   border-radius: 0.5rem;
+  /* Sticky previews need a visible overflow ancestor (fieldset defaults can block). */
+  overflow: visible;
 }
 
-.theme-editor-group legend {
+.theme-editor-group legend,
+.theme-editor-group-title {
   padding: 0 0.375rem;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--ui-section-heading);
+}
+
+/* Div-based groups: recreate fieldset legend sitting on the top border. */
+.theme-editor-group > .theme-editor-group-title {
+  position: absolute;
+  top: 0;
+  left: 0.5rem;
+  transform: translateY(-50%);
+  margin: 0;
+  background: var(--ui-surface);
+  line-height: 1.2;
 }
 
 .theme-editor-swatches {
@@ -2056,12 +2076,18 @@ body,
   min-width: 0;
 }
 
-/* Fixed preview column so colour pickers align across element groups. */
+/* Fixed preview column so colour pickers align across element groups.
+   Sticky keeps the preview in view while scrolling long control lists
+   within the same section (releases when the section leaves the pane). */
 .diagram-appearance-element > .diagram-appearance-preview,
 .diagram-appearance-element > .diagram-appearance-preview-column {
   flex: 0 0 9rem;
   width: 9rem;
   box-sizing: border-box;
+  position: sticky;
+  top: 0.5rem;
+  align-self: flex-start;
+  z-index: 1;
 }
 
 .diagram-appearance-preview-column {

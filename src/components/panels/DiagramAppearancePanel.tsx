@@ -147,8 +147,10 @@ export function DiagramAppearancePanel({
       )}
 
       {showAppearanceColours && (
-        <fieldset className="theme-editor-group">
-          <legend>{t("diagramAppearance.groupBackground")}</legend>
+        <div className="theme-editor-group" role="group">
+          <h3 className="theme-editor-group-title">
+            {t("diagramAppearance.groupBackground")}
+          </h3>
           <BackgroundModeControls
             mode={value.backgroundMode}
             backgroundColor={value.backgroundColor}
@@ -178,12 +180,14 @@ export function DiagramAppearancePanel({
                 : t("diagramProperties.backgroundColour")
             }
           />
-        </fieldset>
+        </div>
       )}
 
       {canvasSetup && (
-        <fieldset className="theme-editor-group">
-          <legend>{t("diagramAppearance.groupFont")}</legend>
+        <div className="theme-editor-group" role="group">
+          <h3 className="theme-editor-group-title">
+            {t("diagramAppearance.groupFont")}
+          </h3>
           <div className="field">
             <span>
               {settingsLabels
@@ -210,11 +214,13 @@ export function DiagramAppearancePanel({
           {canvasSetup.showFontHints && (
             <p className="hint">{t("diagramProperties.uiFontHint")}</p>
           )}
-        </fieldset>
+        </div>
       )}
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupHeader")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupHeader")}
+        </h3>
         <div className="diagram-appearance-element">
           <div className="diagram-appearance-preview-column">
             <HeaderAppearancePreview
@@ -268,10 +274,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupCharacters")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupCharacters")}
+        </h3>
         <div className="diagram-appearance-element">
           <CharacterAppearancePreview
             borderColor={value.defaultCharacterBorderColor}
@@ -343,10 +351,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupLines")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupLines")}
+        </h3>
         <div className="diagram-appearance-element">
           <LineAppearancePreview
             lineColor={value.defaultLineColor}
@@ -380,10 +390,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupBoxes")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupBoxes")}
+        </h3>
         <div className="diagram-appearance-element">
           <BoxAppearancePreview
             borderColor={value.defaultBoxBorderColor}
@@ -417,10 +429,12 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
 
-      <fieldset className="theme-editor-group">
-        <legend>{t("diagramAppearance.groupText")}</legend>
+      <div className="theme-editor-group" role="group">
+        <h3 className="theme-editor-group-title">
+          {t("diagramAppearance.groupText")}
+        </h3>
         <div className="diagram-appearance-element">
           <FloatingTextAppearancePreview
             color={value.defaultFloatingTextColor}
@@ -440,7 +454,7 @@ export function DiagramAppearancePanel({
             </div>
           )}
         </div>
-      </fieldset>
+      </div>
     </div>
   );
 }

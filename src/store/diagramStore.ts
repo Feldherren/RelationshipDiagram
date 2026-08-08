@@ -667,6 +667,7 @@ export const useDiagramStore = create<DiagramState>()(
         }
         const initialBoxSnap = snapshot.boxes[boxId];
         if (!initialBoxSnap) continue;
+        const currentBox = boxes.find((b) => b.id === boxId);
         const initialBox: Box = {
           id: boxId,
           name: "",
@@ -675,6 +676,9 @@ export const useDiagramStore = create<DiagramState>()(
           bounds: initialBoxSnap.bounds ?? undefined,
           anchorPosition: initialBoxSnap.anchorPosition ?? undefined,
           collapsedPosition: initialBoxSnap.collapsedPosition ?? undefined,
+          layerId:
+            currentBox?.layerId ??
+            resolveActiveLayerId(get().layers, get().activeLayerId),
         };
         get().moveBox(
           boxId,
@@ -2120,11 +2124,11 @@ export const useDiagramStore = create<DiagramState>()(
           removedFloatingTextIds.has(selection.id)
         ) {
           selection = null;
-        } else if (
-          selection.type === "line" &&
-          !lines.some((l) => l.id === selection.id)
-        ) {
-          selection = null;
+        } else if (selection.type === "line") {
+          const lineId = selection.id;
+          if (!lines.some((l) => l.id === lineId)) {
+            selection = null;
+          }
         } else if (selection.type === "multi") {
           const nextItems = selection.items.filter((item) => {
             if (item.type === "character") return !removedCharacterIds.has(item.id);

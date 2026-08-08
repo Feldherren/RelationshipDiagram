@@ -47,6 +47,8 @@ function measureHeaderBlock(
   title: string,
   subtitle: string,
   fontFamily: string,
+  titleFontSize: number,
+  subtitleFontSize: number,
 ): {
   titleSize: { width: number; height: number } | null;
   subtitleSize: { width: number; height: number } | null;
@@ -54,10 +56,15 @@ function measureHeaderBlock(
   blockHeight: number;
 } {
   const titleSize = title
-    ? measureDiagramHeaderPill(title, "title", fontFamily)
+    ? measureDiagramHeaderPill(title, "title", fontFamily, titleFontSize)
     : null;
   const subtitleSize = subtitle
-    ? measureDiagramHeaderPill(subtitle, "subtitle", fontFamily)
+    ? measureDiagramHeaderPill(
+        subtitle,
+        "subtitle",
+        fontFamily,
+        subtitleFontSize,
+      )
     : null;
 
   const blockWidth = Math.max(titleSize?.width ?? 0, subtitleSize?.width ?? 0);
@@ -205,6 +212,8 @@ export function layoutExportHeader(
     title,
     subtitle,
     config.fontFamily,
+    config.titleLabel.fontSize,
+    config.subtitleLabel.fontSize,
   );
   if (blockWidth <= 0 || blockHeight <= 0) return null;
 
@@ -264,9 +273,10 @@ export function drawExportHeaderPills(
     const x = centerX - pillWidth / 2;
     const y = centerY - pillHeight / 2;
     const radius = pillHeight / 2;
-    const fontSize = getDiagramHeaderPillFontSize(pill.variant) * pixelRatio;
     const chrome =
       pill.variant === "title" ? layout.titleLabel : layout.subtitleLabel;
+    const fontSize =
+      getDiagramHeaderPillFontSize(pill.variant, chrome.fontSize) * pixelRatio;
 
     ctx.save();
     ctx.shadowColor = DIAGRAM_HEADER_PILL_SHADOW;

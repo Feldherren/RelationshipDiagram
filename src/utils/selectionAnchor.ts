@@ -23,7 +23,7 @@ import {
   resolveBoxBounds,
 } from "./geometry";
 import { getGroupHubPosition } from "./groupHub";
-import { getPillLabelSize } from "./labelMetrics";
+import { getPillLabelSize, labelFontSizesFromAppearance } from "./labelMetrics";
 import { getLineDisplayLabel } from "./lineEndpoints";
 import { routeLine } from "./lineRouting";
 
@@ -268,8 +268,6 @@ function getBookmarkMarkerWorldBounds(
   };
 }
 
-const LINE_LABEL_FONT_SIZE = 12;
-/** Padding around the label midpoint when a line has no visible pill. */
 const UNLABELED_LINE_HIT = 14;
 
 /**
@@ -329,9 +327,10 @@ export function getLineSelectionAvoidBounds(
   const routed = routeLine(line, diagram);
   const displayLabel = getLineDisplayLabel(line, diagram);
   if (displayLabel) {
+    const fontSize = labelFontSizesFromAppearance(diagram.appearance).line;
     const pill = getPillLabelSize(
       displayLabel,
-      LINE_LABEL_FONT_SIZE,
+      fontSize,
       "normal",
       diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT,
     );

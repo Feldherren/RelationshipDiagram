@@ -60,7 +60,11 @@ export function serializeDiagramSubtitleColor(color: RGB): RGB | undefined {
 
 export function getDiagramHeaderPillFontSize(
   variant: DiagramHeaderPillVariant,
+  fontSize?: number,
 ): number {
+  if (typeof fontSize === "number" && Number.isFinite(fontSize)) {
+    return fontSize;
+  }
   return variant === "title"
     ? DIAGRAM_TITLE_FONT_SIZE
     : DIAGRAM_SUBTITLE_FONT_SIZE;
@@ -119,20 +123,25 @@ export function measureDiagramHeaderPill(
   text: string,
   variant: DiagramHeaderPillVariant,
   fontFamily: string,
+  fontSize?: number,
 ): { width: number; height: number } {
-  const fontSize = getDiagramHeaderPillFontSize(variant);
+  const resolvedSize = getDiagramHeaderPillFontSize(variant, fontSize);
   const root = getMeasureRoot();
   root.replaceChildren();
 
   const pill = document.createElement("span");
   pill.className = getDiagramHeaderPillClassName(variant);
   pill.style.fontFamily = formatUiFontFamily(fontFamily);
-  pill.style.fontSize = `${fontSize}px`;
+  pill.style.fontSize = `${resolvedSize}px`;
   pill.textContent = text;
   root.appendChild(pill);
 
   const rect = pill.getBoundingClientRect();
-  const canvasTextWidth = measureCanvasTextWidth(text, fontSize, fontFamily);
+  const canvasTextWidth = measureCanvasTextWidth(
+    text,
+    resolvedSize,
+    fontFamily,
+  );
   const canvasPillWidth =
     Math.ceil(canvasTextWidth) + DIAGRAM_HEADER_PILL_PADDING_X * 2;
 

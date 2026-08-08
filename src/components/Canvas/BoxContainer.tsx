@@ -458,6 +458,7 @@ export function BoxContainer({
               state.diagramFontFamily,
             ).map((t) => t.id),
           }),
+          state.diagramAppearance,
         )
       : null;
 
@@ -567,8 +568,8 @@ export function BoxContainer({
         {showLabel && (
           <PillLabel
             text={box.name}
-            y={-(size + getPillLabelHeight(12) / 2 + 6)}
-            fontSize={12}
+            y={-(size + getPillLabelHeight(boxNameLabel.fontSize) / 2 + 6)}
+            fontSize={boxNameLabel.fontSize}
             textFill={rgbToCss(boxNameLabel.textColor)}
             fill={rgbToCss(boxNameLabel.backgroundColor)}
             unselectedStroke={rgbToCss(boxNameLabel.borderColor)}
@@ -707,7 +708,7 @@ export function BoxContainer({
           text={box.name}
           x={bounds.x + bounds.width / 2}
           y={bounds.y + 14}
-          fontSize={12}
+          fontSize={boxNameLabel.fontSize}
           textFill={rgbToCss(boxNameLabel.textColor)}
           fill={rgbToCss(boxNameLabel.backgroundColor)}
           unselectedStroke={rgbToCss(boxNameLabel.borderColor)}

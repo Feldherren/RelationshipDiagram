@@ -5,6 +5,11 @@ import {
   type DiagramBackgroundMode,
 } from "../../utils/diagramBackground";
 import { isDefaultDiagramFont } from "../../utils/diagramFont";
+import {
+  MAX_LABEL_FONT_SIZE,
+  MIN_LABEL_FONT_SIZE,
+  clampLabelFontSize,
+} from "../../utils/labelMetrics";
 import { RgbPicker } from "../pickers/RgbPicker";
 import { BackgroundModeControls } from "./BackgroundModeControls";
 import {
@@ -47,8 +52,54 @@ function LabelChromeEditors({
   includeTextColor?: boolean;
 }) {
   const { t } = useTranslation();
+
+  const commitFontSize = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      onChange({ fontSize: chrome.fontSize });
+      return;
+    }
+    onChange({ fontSize: clampLabelFontSize(parsed) });
+  };
+
   return (
     <>
+      <label className="field">
+        <span>{t(`${labelPrefix}FontSize`)}</span>
+        <div className="range-row">
+          <input
+            type="number"
+            min={MIN_LABEL_FONT_SIZE}
+            max={MAX_LABEL_FONT_SIZE}
+            step={1}
+            value={chrome.fontSize}
+            aria-label={t(`${labelPrefix}FontSize`)}
+            onChange={(e) => {
+              if (e.target.value.trim() === "") return;
+              const parsed = Number(e.target.value);
+              if (!Number.isFinite(parsed)) return;
+              onChange({ fontSize: Math.round(parsed) });
+            }}
+            onBlur={(e) => commitFontSize(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitFontSize((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          <input
+            type="range"
+            min={MIN_LABEL_FONT_SIZE}
+            max={MAX_LABEL_FONT_SIZE}
+            value={chrome.fontSize}
+            onChange={(e) =>
+              onChange({ fontSize: Number(e.target.value) })
+            }
+          />
+        </div>
+      </label>
       {includeTextColor && (
         <RgbPicker
           label={t(`${labelPrefix}Text`)}

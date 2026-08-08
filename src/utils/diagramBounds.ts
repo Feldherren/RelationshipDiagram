@@ -13,6 +13,7 @@ import {
 import { getLineBounds } from "./lineRouting";
 import { shouldRenderLine } from "./lineEndpoints";
 import { isLayerVisible } from "./layers";
+import { labelFontSizesFromAppearance } from "./labelMetrics";
 
 function isEntityLayerVisible(diagram: Diagram, layerId: string): boolean {
   return isLayerVisible(diagram.layers ?? [], layerId);
@@ -23,6 +24,7 @@ export function collectContentObstacles(
   viewportScale = 1,
 ): Bounds[] {
   const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const labelFonts = labelFontSizesFromAppearance(diagram.appearance);
   const obstacles: Bounds[] = [];
 
   for (const character of diagram.characters) {
@@ -32,13 +34,20 @@ export function collectContentObstacles(
         b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
     );
     if (inCollapsedBox) continue;
-    obstacles.push(getCharacterBounds(character, fontFamily, viewportScale));
+    obstacles.push(
+      getCharacterBounds(character, fontFamily, viewportScale, {
+        nameFontSize: labelFonts.characterName,
+        subtitleFontSize: labelFonts.characterSubtitle,
+      }),
+    );
   }
 
   for (const box of diagram.boxes) {
     if (!isEntityLayerVisible(diagram, box.layerId)) continue;
     if (box.collapsed) {
-      obstacles.push(getCollapsedBoxBounds(box, fontFamily));
+      obstacles.push(
+        getCollapsedBoxBounds(box, fontFamily, labelFonts.boxName),
+      );
     } else {
       const bounds = resolveBoxBounds(box);
       if (bounds) obstacles.push(bounds);
@@ -48,7 +57,12 @@ export function collectContentObstacles(
   for (const line of diagram.lines) {
     if (!isEntityLayerVisible(diagram, line.layerId)) continue;
     if (!shouldRenderLine(line, diagram)) continue;
-    const bounds = getLineBounds(line, diagram, fontFamily);
+    const bounds = getLineBounds(
+      line,
+      diagram,
+      fontFamily,
+      labelFonts.line,
+    );
     if (bounds) obstacles.push(bounds);
   }
 
@@ -71,6 +85,7 @@ export function computeContentBounds(
   viewportScale = 1,
 ): Bounds | null {
   const fontFamily = diagram.fontFamily ?? DEFAULT_DIAGRAM_FONT;
+  const labelFonts = labelFontSizesFromAppearance(diagram.appearance);
   let result: Bounds | null = null;
 
   for (const character of diagram.characters) {
@@ -80,14 +95,21 @@ export function computeContentBounds(
         b.collapsed && isCharacterContainedInBox(character, b, fontFamily),
     );
     if (inCollapsedBox) continue;
-    const bounds = getCharacterBounds(character, fontFamily, viewportScale);
+    const bounds = getCharacterBounds(character, fontFamily, viewportScale, {
+      nameFontSize: labelFonts.characterName,
+      subtitleFontSize: labelFonts.characterSubtitle,
+    });
     result = result ? mergeBounds(result, bounds) : bounds;
   }
 
   for (const box of diagram.boxes) {
     if (!isEntityLayerVisible(diagram, box.layerId)) continue;
     if (box.collapsed) {
-      const bounds = getCollapsedBoxBounds(box, fontFamily);
+      const bounds = getCollapsedBoxBounds(
+        box,
+        fontFamily,
+        labelFonts.boxName,
+      );
       result = result ? mergeBounds(result, bounds) : bounds;
     } else {
       const bounds = resolveBoxBounds(box);
@@ -98,7 +120,12 @@ export function computeContentBounds(
   for (const line of diagram.lines) {
     if (!isEntityLayerVisible(diagram, line.layerId)) continue;
     if (!shouldRenderLine(line, diagram)) continue;
-    const bounds = getLineBounds(line, diagram, fontFamily);
+    const bounds = getLineBounds(
+      line,
+      diagram,
+      fontFamily,
+      labelFonts.line,
+    );
     if (bounds) result = result ? mergeBounds(result, bounds) : bounds;
   }
 

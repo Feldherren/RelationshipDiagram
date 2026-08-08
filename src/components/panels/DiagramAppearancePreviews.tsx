@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { LabelChrome, RGB } from "../../models/types";
 import { contrastingInk, rgbToCss } from "../../models/types";
 import { rgbaWithAlpha } from "../../utils/geometry";
-import { DEFAULT_DIAGRAM_FONT, DIAGRAM_SUBTITLE_FONT_SIZE, DIAGRAM_TITLE_FONT_SIZE } from "../../utils/diagramFont";
+import { DEFAULT_DIAGRAM_FONT } from "../../utils/diagramFont";
 import { formatUiFontFamily } from "../../utils/systemFonts";
 import type { DiagramBackgroundColor } from "../../utils/diagramBackground";
 import { useDiagramStore } from "../../store/diagramStore";
@@ -24,7 +24,7 @@ function PreviewPill({
   text,
   chrome,
   fontFamily,
-  fontSize = 12,
+  fontSize,
   textColor,
 }: {
   text: string;
@@ -42,7 +42,7 @@ function PreviewPill({
         backgroundColor: rgbToCss(chrome.backgroundColor),
         borderColor: rgbToCss(chrome.borderColor),
         fontFamily: formatUiFontFamily(fontFamily),
-        fontSize: `${fontSize}px`,
+        fontSize: `${fontSize ?? chrome.fontSize}px`,
       }}
     >
       {text}
@@ -96,13 +96,11 @@ export function CharacterAppearancePreview({
           text={t("diagramAppearance.previewCharacterName")}
           chrome={nameLabel}
           fontFamily={fontFamily}
-          fontSize={13}
         />
         <PreviewPill
           text={t("diagramAppearance.previewCharacterSubtitle")}
           chrome={subtitleLabel}
           fontFamily={fontFamily}
-          fontSize={11}
         />
       </div>
     </div>
@@ -234,13 +232,11 @@ export function HeaderAppearancePreview({
           text={t("diagramAppearance.previewHeaderTitle")}
           chrome={titleLabel}
           fontFamily={fontFamily}
-          fontSize={DIAGRAM_TITLE_FONT_SIZE}
         />
         <PreviewPill
           text={t("diagramAppearance.previewHeaderSubtitle")}
           chrome={subtitleLabel}
           fontFamily={fontFamily}
-          fontSize={DIAGRAM_SUBTITLE_FONT_SIZE}
         />
       </div>
     </div>

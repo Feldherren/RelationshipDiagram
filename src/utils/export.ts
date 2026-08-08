@@ -13,11 +13,7 @@ import { computeDiagramBounds } from "./diagramBounds";
 import { expandBounds, mergeBounds } from "./geometry";
 import { resolveDiagramBackground } from "./diagramBackground";
 import { createBackgroundImageCanvas } from "./backgroundImageStyle";
-import {
-  DIAGRAM_SUBTITLE_FONT_SIZE,
-  DIAGRAM_TITLE_FONT_SIZE,
-  ensureFontLoaded,
-} from "./diagramFont";
+import { ensureFontLoaded } from "./diagramFont";
 import { formatUiFontFamily } from "./systemFonts";
 import {
   drawExportHeaderPills,
@@ -256,10 +252,10 @@ export async function exportStageImage(
     const formattedFamily = formatUiFontFamily(header.fontFamily);
     await Promise.all([
       document.fonts.load(
-        `normal ${DIAGRAM_TITLE_FONT_SIZE}px ${formattedFamily}`,
+        `normal ${header.titleLabel.fontSize}px ${formattedFamily}`,
       ),
       document.fonts.load(
-        `normal ${DIAGRAM_SUBTITLE_FONT_SIZE}px ${formattedFamily}`,
+        `normal ${header.subtitleLabel.fontSize}px ${formattedFamily}`,
       ),
     ]);
     await document.fonts.ready;

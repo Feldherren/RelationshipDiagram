@@ -478,6 +478,7 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
                 visibleLayerIds.has(t.layerId),
               ),
               fontFamily: state.diagramFontFamily,
+              appearance: state.diagramAppearance,
             },
           );
           const next = selectionFromMarqueeHits(hits);
@@ -677,8 +678,19 @@ export function DiagramCanvas({ stageRef }: DiagramCanvasProps) {
       floatingTexts,
       layers,
       fontFamily: diagramFontFamily,
+      appearance: diagramAppearance,
     }),
-    [diagramId, characters, lines, groups, boxes, floatingTexts, layers, diagramFontFamily],
+    [
+      diagramId,
+      characters,
+      lines,
+      groups,
+      boxes,
+      floatingTexts,
+      layers,
+      diagramFontFamily,
+      diagramAppearance,
+    ],
   );
 
   const membershipByCharacterId = useMemo(

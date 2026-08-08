@@ -360,6 +360,7 @@ export function FloatingTextNode({
                 state.diagramFontFamily,
               ).map((t) => t.id),
             }),
+            state.diagramAppearance,
           );
         } else {
           multiDragSnapshotRef.current = null;

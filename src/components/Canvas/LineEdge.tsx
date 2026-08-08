@@ -269,7 +269,7 @@ export function LineEdge({
           text={displayLabel!}
           x={routed.labelPoint.x}
           y={routed.labelPoint.y}
-          fontSize={12}
+          fontSize={lineLabel.fontSize}
           textFill={rgbToCss(labelTextColor)}
           fill={rgbToCss(lineLabel.backgroundColor)}
           unselectedStroke={rgbToCss(lineLabel.borderColor)}

@@ -272,6 +272,7 @@ export interface LabelChrome {
   textColor: RGB;
   backgroundColor: RGB;
   borderColor: RGB;
+  fontSize: number;
 }
 
 /** How a diagram wallpaper image is placed within the viewport / export crop. */

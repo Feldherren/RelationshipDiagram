@@ -17,8 +17,6 @@ import {
   CHARACTER_LABEL_GAP,
   CHARACTER_LABEL_PADDING_X,
   CHARACTER_LABEL_PADDING_Y,
-  CHARACTER_NAME_FONT_SIZE,
-  CHARACTER_SUBTITLE_FONT_SIZE,
 } from "../../utils/labelMetrics";
 import { getPillLabelHeight, PillLabel } from "./PillLabel";
 import { ConnectHandle } from "./ConnectHandle";
@@ -162,13 +160,6 @@ export function CharacterNode({
   const size = character.size;
   const color = rgbToCss(character.borderColor);
   const subtitleOffset = size + 8;
-  const nameFontSize = CHARACTER_NAME_FONT_SIZE;
-  const subtitleFontSize = CHARACTER_SUBTITLE_FONT_SIZE;
-  const namePillHeight = getPillLabelHeight(
-    nameFontSize,
-    CHARACTER_LABEL_PADDING_Y,
-  );
-  const labelGap = CHARACTER_LABEL_GAP;
   const diagramFontFamily = useDiagramStore((s) => s.diagramFontFamily);
   const nameLabel = useDiagramStore(
     (s) => s.diagramAppearance.characterNameLabel,
@@ -182,6 +173,13 @@ export function CharacterNode({
   const characterInitialsColor = useDiagramStore(
     (s) => s.diagramAppearance.characterInitialsColor,
   );
+  const nameFontSize = nameLabel.fontSize;
+  const subtitleFontSize = subtitleLabel.fontSize;
+  const namePillHeight = getPillLabelHeight(
+    nameFontSize,
+    CHARACTER_LABEL_PADDING_Y,
+  );
+  const labelGap = CHARACTER_LABEL_GAP;
   const handleOffset = getConnectHandleOffset(size);
   const showConnectHandle =
     showBody && (selected || hovered || isConnectSource);
@@ -286,6 +284,7 @@ export function CharacterNode({
                       state.diagramFontFamily,
                     ).map((t) => t.id),
                   }),
+                  state.diagramAppearance,
                 );
               } else {
                 multiDragSnapshotRef.current = null;
